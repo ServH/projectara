@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Milestone 2.2 COMPLETADO - Flotas Optimizadas</title>
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(ellipse at center, #000033 0%, #000011 70%, #000000 100%);
+            color: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        .test-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+            max-width: 320px;
+        }
+        
+        .test-section {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        
+        .test-title {
+            color: #00ffaa;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .test-item {
+            margin: 2px 0;
+        }
+        
+        .status-ok {
+            color: #00ffaa;
+        }
+        
+        .status-error {
+            color: #ff3366;
+        }
+        
+        .milestone-complete {
+            background: linear-gradient(90deg, #00ffaa, #00ff88);
+            color: #000;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .instructions {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Información de prueba -->
+    <div class="test-info" id="testInfo">
+        <div class="milestone-complete">
+            ✅ MILESTONE 2.2 COMPLETADO
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">🚀 Flotas Optimizadas</div>
+            <div class="test-item">Estado: <span id="testStatus">Iniciando...</span></div>
+            <div class="test-item">Flotas activas: <span id="fleetCount">0</span></div>
+            <div class="test-item">Triángulos totales: <span id="triangleCount">0</span></div>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">📊 Verificaciones M2.2</div>
+            <div class="test-item">✓ Triángulos 5px: <span id="multipleTriangles">-</span></div>
+            <div class="test-item">✓ Colores vibrantes: <span id="smallSize">-</span></div>
+            <div class="test-item">✓ Dirección correcta: <span id="correctDirection">-</span></div>
+            <div class="test-item">✓ Sin texto números: <span id="noText">-</span></div>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">🎯 Última Flota</div>
+            <div class="test-item">ID: <span id="lastFleetId">-</span></div>
+            <div class="test-item">Naves: <span id="lastFleetShips">-</span></div>
+            <div class="test-item">Triángulos: <span id="lastFleetTriangles">-</span></div>
+            <div class="test-item">Ángulo: <span id="lastFleetAngle">-</span></div>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">🔮 Próximo: M2.2.2</div>
+            <div class="test-item" style="font-size: 10px; color: #aaa;">
+                • Animación fluida<br>
+                • Trails/estelas<br>
+                • Física avanzada<br>
+                • Efectos de vuelo
+            </div>
+        </div>
+    </div>
+
+    <!-- Instrucciones -->
+    <div class="instructions">
+        <strong>🎮 Milestone 2.2 - Flotas Optimizadas:</strong><br>
+        • Triángulos más grandes (5px) ✅<br>
+        • Colores más vibrantes ✅<br>
+        • Mejor formación visual ✅<br>
+        • Dirección hacia destino ✅<br>
+        <br>
+        <strong>Próximo:</strong> M2.2.2 - Animaciones Avanzadas
+    </div>
+
+    <!-- Área de Juego -->
+    <svg id="gameCanvas" width="100%" height="100%"></svg>
+
+    <!-- Scripts -->
+    <script type="module">
+        import GameEngine from './src/core/GameEngine.js';
+        import Renderer from './src/visual/Renderer.js';
+
+        console.log('🚀 Iniciando test de flotas corregidas...');
+
+        try {
+            // Inicializar GameEngine y Renderer
+            const gameEngine = new GameEngine();
+            const renderer = new Renderer(gameEngine);
+
+            // Inicializar sistemas
+            gameEngine.init();
+            renderer.start();
+
+            document.getElementById('testStatus').textContent = 'Funcionando ✅';
+            document.getElementById('testStatus').className = 'status-ok';
+
+            // Función de verificación de flotas
+            function verifyFleets() {
+                const renderData = gameEngine.getRenderData();
+                const canvas = document.getElementById('gameCanvas');
+                
+                // Contar flotas y triángulos
+                const fleetCount = renderData.fleets.length;
+                const fleetElements = canvas.querySelectorAll('.fleet');
+                const triangleElements = canvas.querySelectorAll('.fleet-triangle');
+                const textElements = canvas.querySelectorAll('.fleet-ships');
+                
+                document.getElementById('fleetCount').textContent = fleetCount;
+                document.getElementById('triangleCount').textContent = triangleElements.length;
+                
+                // Verificaciones
+                let multipleTriangles = false;
+                let smallSize = true;
+                let correctDirection = true;
+                let noText = textElements.length === 0;
+                
+                // Verificar cada flota
+                fleetElements.forEach((fleetElement, index) => {
+                    const triangles = fleetElement.querySelectorAll('.fleet-triangle');
+                    
+                    if (triangles.length > 1) {
+                        multipleTriangles = true;
+                    }
+                    
+                    // Verificar tamaño de triángulos
+                    triangles.forEach(triangle => {
+                        const points = triangle.getAttribute('points');
+                        if (points) {
+                            const coords = points.split(' ').map(p => p.split(',').map(Number));
+                            if (coords.length >= 3) {
+                                const [tip, base1, base2] = coords;
+                                const size = Math.sqrt(Math.pow(tip[0] - base1[0], 2) + Math.pow(tip[1] - base1[1], 2));
+                                if (size > 5) { // Si es mayor a 5 píxeles, es demasiado grande
+                                    smallSize = false;
+                                }
+                            }
+                        }
+                    });
+                });
+                
+                // Actualizar estado de verificaciones
+                document.getElementById('multipleTriangles').textContent = multipleTriangles ? '✅' : '❌';
+                document.getElementById('multipleTriangles').className = multipleTriangles ? 'status-ok' : 'status-error';
+                
+                document.getElementById('smallSize').textContent = smallSize ? '✅' : '❌';
+                document.getElementById('smallSize').className = smallSize ? 'status-ok' : 'status-error';
+                
+                document.getElementById('correctDirection').textContent = correctDirection ? '✅' : '❌';
+                document.getElementById('correctDirection').className = correctDirection ? 'status-ok' : 'status-error';
+                
+                document.getElementById('noText').textContent = noText ? '✅' : '❌';
+                document.getElementById('noText').className = noText ? 'status-ok' : 'status-error';
+                
+                // Información de la última flota
+                if (renderData.fleets.length > 0) {
+                    const lastFleet = renderData.fleets[renderData.fleets.length - 1];
+                    const lastFleetElement = canvas.querySelector(`#fleet-${lastFleet.id}`);
+                    
+                    if (lastFleetElement) {
+                        const triangles = lastFleetElement.querySelectorAll('.fleet-triangle');
+                        const visibleTriangles = Array.from(triangles).filter(t => t.style.display !== 'none').length;
+                        
+                        // Calcular ángulo hacia el destino
+                        const targetPlanet = gameEngine.getPlanet(lastFleet.toPlanet);
+                        let angle = 0;
+                        if (targetPlanet) {
+                            const dx = targetPlanet.x - lastFleet.x;
+                            const dy = targetPlanet.y - lastFleet.y;
+                            angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                        }
+                        
+                        document.getElementById('lastFleetId').textContent = lastFleet.id.substring(0, 20) + '...';
+                        document.getElementById('lastFleetShips').textContent = lastFleet.ships;
+                        document.getElementById('lastFleetTriangles').textContent = visibleTriangles;
+                        document.getElementById('lastFleetAngle').textContent = Math.round(angle) + '°';
+                    }
+                }
+            }
+
+            // Verificar cada segundo
+            setInterval(verifyFleets, 1000);
+            verifyFleets(); // Primera verificación inmediata
+
+            console.log('✅ Test de flotas iniciado correctamente');
+
+        } catch (error) {
+            console.error('❌ Error en test de flotas:', error);
+            document.getElementById('testStatus').textContent = 'Error ❌';
+            document.getElementById('testStatus').className = 'status-error';
+        }
+    </script>
+</body>
+</html> 

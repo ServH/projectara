@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Test Optimizaciones - Project Ara</title>
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        .optimization-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+            min-width: 300px;
+        }
+        
+        .optimization-panel h3 {
+            margin: 0 0 10px 0;
+            color: #00ff88;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        
+        .metric-value {
+            font-weight: bold;
+        }
+        
+        .metric-good { color: #00ff88; }
+        .metric-warning { color: #ffaa00; }
+        .metric-bad { color: #ff4444; }
+        
+        .controls {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+        }
+        
+        .control-button {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .control-button:hover {
+            background: #555;
+        }
+        
+        .control-button.active {
+            background: #00ff88;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <!-- HUD Superior -->
+    <div class="top-bar">
+        <div class="hud-section">
+            <div class="hud-item">
+                <span class="hud-label">🪐 Planetas:</span>
+                <span class="hud-value" id="planetsCount">0</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">🚀 Flotas:</span>
+                <span class="hud-value" id="fleetsCount">0</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">📊 FPS:</span>
+                <span class="hud-value" id="fpsCounter">60</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">🧠 Memoria:</span>
+                <span class="hud-value" id="memoryUsage">0 MB</span>
+            </div>
+        </div>
+        
+        <div class="percentage-selector">
+            <span class="percentage-label">Envío:</span>
+            <span class="percentage-value" id="percentageDisplay">100%</span>
+        </div>
+    </div>
+
+    <!-- Área de Juego -->
+    <div class="game-area">
+        <svg id="gameCanvas" width="100%" height="100%"></svg>
+    </div>
+
+    <!-- Controles Inferiores -->
+    <div class="bottom-bar">
+        <div class="controls-section">
+            <div class="control-group">
+                <span class="control-label">Controles:</span>
+                <span class="control-key">F1</span> Debug
+                <span class="control-key">F5</span> Reiniciar
+                <span class="control-key">1-4</span> Porcentaje
+                <span class="control-key">Ctrl+A</span> Seleccionar Todo
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Optimizaciones -->
+    <div class="optimization-panel" id="optimizationPanel">
+        <h3>🚀 Optimizaciones Milestone 2.2</h3>
+        
+        <div class="metric">
+            <span>Performance Profiler:</span>
+            <span class="metric-value" id="profilerStatus">❌</span>
+        </div>
+        
+        <div class="metric">
+            <span>Culling System:</span>
+            <span class="metric-value" id="cullingStatus">❌</span>
+        </div>
+        
+        <div class="metric">
+            <span>Memory Manager:</span>
+            <span class="metric-value" id="memoryManagerStatus">❌</span>
+        </div>
+        
+        <div class="metric">
+            <span>Spatial Grid:</span>
+            <span class="metric-value" id="spatialGridStatus">❌</span>
+        </div>
+        
+        <div class="metric">
+            <span>SVG Pool:</span>
+            <span class="metric-value" id="svgPoolStatus">❌</span>
+        </div>
+        
+        <div class="metric">
+            <span>Fleet Physics:</span>
+            <span class="metric-value" id="fleetPhysicsStatus">❌</span>
+        </div>
+        
+        <hr style="margin: 10px 0; border-color: #333;">
+        
+        <div class="metric">
+            <span>Objetos Renderizados:</span>
+            <span class="metric-value" id="renderedObjects">0</span>
+        </div>
+        
+        <div class="metric">
+            <span>Objetos Culled:</span>
+            <span class="metric-value" id="culledObjects">0</span>
+        </div>
+        
+        <div class="metric">
+            <span>Culling Rate:</span>
+            <span class="metric-value" id="cullingRate">0%</span>
+        </div>
+        
+        <div class="metric">
+            <span>Pool Hits:</span>
+            <span class="metric-value" id="poolHits">0</span>
+        </div>
+        
+        <div class="metric">
+            <span>Pool Hit Rate:</span>
+            <span class="metric-value" id="poolHitRate">0%</span>
+        </div>
+        
+        <div class="controls">
+            <button class="control-button" id="toggleCulling">Toggle Culling</button>
+            <button class="control-button" id="toggleSpatialGrid">Toggle Spatial Grid</button>
+            <button class="control-button" id="toggleMemoryManager">Toggle Memory Manager</button>
+            <button class="control-button" id="toggleSVGPool">Toggle SVG Pool</button>
+            <button class="control-button" id="forceGC">Force GC</button>
+            <button class="control-button" id="stressTest">Stress Test</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module">
+        import GameEngine from './src/core/GameEngine.js';
+        import Renderer from './src/visual/Renderer.js';
+        import SelectionSystem from './src/systems/SelectionSystem.js';
+        import DragDropHandler from './src/input/DragDropHandler.js';
+
+        // Inicializar juego
+        const gameEngine = new GameEngine();
+        const renderer = new Renderer(gameEngine);
+        const selectionSystem = new SelectionSystem(gameEngine);
+        const dragDropHandler = new DragDropHandler(gameEngine);
+
+        // Inicializar sistemas
+        gameEngine.init();
+        renderer.start();
+
+        // Variables para el panel de optimizaciones
+        let optimizationUpdateInterval;
+
+        // Función para actualizar panel de optimizaciones
+        function updateOptimizationPanel() {
+            const debugInfo = gameEngine.getDebugInfo();
+            
+            // Estado de sistemas
+            document.getElementById('profilerStatus').textContent = 
+                gameEngine.performanceProfiler ? '✅' : '❌';
+            document.getElementById('cullingStatus').textContent = 
+                gameEngine.cullingSystem ? '✅' : '❌';
+            document.getElementById('memoryManagerStatus').textContent = 
+                gameEngine.memoryManager ? '✅' : '❌';
+            document.getElementById('spatialGridStatus').textContent = 
+                gameEngine.spatialGrid ? '✅' : '❌';
+            document.getElementById('svgPoolStatus').textContent = 
+                gameEngine.svgPool ? '✅' : '❌';
+            document.getElementById('fleetPhysicsStatus').textContent = 
+                gameEngine.fleetPhysics ? '✅' : '❌';
+            
+            // Métricas de rendimiento
+            if (debugInfo.cullingStats) {
+                document.getElementById('renderedObjects').textContent = 
+                    debugInfo.cullingStats.renderedObjects || 0;
+                document.getElementById('culledObjects').textContent = 
+                    debugInfo.cullingStats.culledObjects || 0;
+                document.getElementById('cullingRate').textContent = 
+                    Math.round(debugInfo.cullingStats.cullingRate || 0) + '%';
+            }
+            
+            if (debugInfo.svgPool) {
+                const stats = debugInfo.svgPool;
+                document.getElementById('poolHits').textContent = stats.poolHits || 0;
+                document.getElementById('poolHitRate').textContent = 
+                    Math.round(stats.hitRate || 0) + '%';
+            }
+            
+            // Actualizar HUD
+            document.getElementById('planetsCount').textContent = debugInfo.planetsCount;
+            document.getElementById('fleetsCount').textContent = debugInfo.fleetsCount;
+            document.getElementById('fpsCounter').textContent = Math.round(debugInfo.stats.fps);
+            
+            if (debugInfo.memoryManager && debugInfo.memoryManager.memory) {
+                document.getElementById('memoryUsage').textContent = 
+                    debugInfo.memoryManager.memory.used + ' MB';
+            }
+        }
+
+        // Controles del panel
+        document.getElementById('toggleCulling').addEventListener('click', () => {
+            gameEngine.config.performance.enableCulling = !gameEngine.config.performance.enableCulling;
+            console.log('🔄 Culling:', gameEngine.config.performance.enableCulling);
+        });
+
+        document.getElementById('toggleSpatialGrid').addEventListener('click', () => {
+            gameEngine.config.performance.enableSpatialGrid = !gameEngine.config.performance.enableSpatialGrid;
+            console.log('🔄 Spatial Grid:', gameEngine.config.performance.enableSpatialGrid);
+        });
+
+        document.getElementById('toggleMemoryManager').addEventListener('click', () => {
+            gameEngine.config.performance.enableMemoryManager = !gameEngine.config.performance.enableMemoryManager;
+            console.log('🔄 Memory Manager:', gameEngine.config.performance.enableMemoryManager);
+        });
+
+        document.getElementById('toggleSVGPool').addEventListener('click', () => {
+            gameEngine.config.performance.enableSVGPool = !gameEngine.config.performance.enableSVGPool;
+            console.log('🔄 SVG Pool:', gameEngine.config.performance.enableSVGPool);
+        });
+
+        document.getElementById('forceGC').addEventListener('click', () => {
+            if (gameEngine.memoryManager) {
+                gameEngine.memoryManager.forceCleanup();
+                console.log('🗑️ Garbage collection forzado');
+            }
+        });
+
+        document.getElementById('stressTest').addEventListener('click', () => {
+            // Crear muchas flotas para probar optimizaciones
+            gameEngine.setScenarioConfig({
+                planetCount: 50,
+                initialFleets: 30
+            });
+            console.log('💥 Stress test iniciado');
+        });
+
+        // Iniciar actualización del panel
+        optimizationUpdateInterval = setInterval(updateOptimizationPanel, 500);
+
+        // Controles de teclado
+        document.addEventListener('keydown', (event) => {
+            switch(event.key) {
+                case 'F1':
+                    event.preventDefault();
+                    const panel = document.getElementById('optimizationPanel');
+                    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                    break;
+                case 'F5':
+                    event.preventDefault();
+                    gameEngine.reset();
+                    break;
+            }
+        });
+
+        // Cleanup al cerrar
+        window.addEventListener('beforeunload', () => {
+            clearInterval(optimizationUpdateInterval);
+            gameEngine.destroy();
+            renderer.destroy();
+        });
+
+        console.log('🧪 Test de optimizaciones iniciado - Presiona F1 para toggle del panel');
+    </script>
+</body>
+</html> 

@@ -5,28 +5,28 @@
 
 // 🪐 CONFIGURACIÓN DE PLANETAS
 export const PLANET_CONFIG = {
-    // Velocidades de producción (naves/segundo) - MÁS RÁPIDAS
+    // Velocidades de producción (naves/segundo) - MÁS PAUSADAS
     production: {
-        small: 2.5,     // 2.5 naves/segundo (era 0.5)
-        medium: 4.0,    // 4.0 naves/segundo (era 1.0)
-        large: 6.0,     // 6.0 naves/segundo (era 1.5)
-        huge: 8.0       // 8.0 naves/segundo (era 2.0)
+        small: 1.8,     // 1.8 naves/segundo (era 2.5) - MÁS LENTO
+        medium: 2.8,    // 2.8 naves/segundo (era 4.0) - MÁS LENTO
+        large: 4.2,     // 4.2 naves/segundo (era 6.0) - MÁS LENTO
+        huge: 5.5       // 5.5 naves/segundo (era 8.0) - MÁS LENTO
     },
 
     // Capacidades máximas
     capacity: {
-        small: 60,      // 60 naves máximo (era 50)
-        medium: 120,    // 120 naves máximo (era 100)
-        large: 250,     // 250 naves máximo (era 200)
-        huge: 400       // 400 naves máximo (era 300)
+        small: 60,      // 60 naves máximo
+        medium: 120,    // 120 naves máximo
+        large: 250,     // 250 naves máximo
+        huge: 400       // 400 naves máximo
     },
 
     // Naves iniciales
     initialShips: {
-        small: 15,      // 15 naves iniciales (era 10)
-        medium: 25,     // 25 naves iniciales (era 20)
-        large: 40,      // 40 naves iniciales (era 35)
-        huge: 60        // 60 naves iniciales (era 50)
+        small: 15,      // 15 naves iniciales
+        medium: 25,     // 25 naves iniciales
+        large: 40,      // 40 naves iniciales
+        huge: 60        // 60 naves iniciales
     },
 
     // Radios visuales
@@ -40,59 +40,59 @@ export const PLANET_CONFIG = {
 
 // 🚀 CONFIGURACIÓN DE FLOTAS
 export const FLEET_CONFIG = {
-    // Velocidades base (píxeles/segundo) - MÁS RÁPIDAS
+    // Velocidades base (píxeles/segundo) - MÁS LENTAS
     speed: {
-        base: 250,              // Velocidad base (era 150)
-        variation: 0.15,        // Variación por tamaño (era 0.1)
-        minimum: 180            // Velocidad mínima
+        base: 180,              // Velocidad base (era 250) - MÁS LENTO
+        variation: 0.12,        // Variación por tamaño (era 0.15)
+        minimum: 120            // Velocidad mínima (era 180) - MÁS LENTO
     },
 
     // Configuración de trails
     trail: {
-        maxLength: 15,          // Longitud máxima del trail (era 8)
-        updateInterval: 40,     // ms entre updates (era 50)
-        fadeTime: 1.5           // Tiempo de fade en segundos
+        maxLength: 12,          // Longitud máxima del trail (era 15)
+        updateInterval: 50,     // ms entre updates (era 40) - MÁS LENTO
+        fadeTime: 2.0           // Tiempo de fade en segundos (era 1.5)
     },
 
     // Formación y agrupación
     formation: {
-        maxSpread: 25,          // Dispersión máxima
+        maxSpread: 20,          // Dispersión máxima (era 25)
         minSpread: 5,           // Dispersión mínima
         cohesion: 0.8           // Factor de cohesión
     }
 };
 
-// 🤖 CONFIGURACIÓN DE IA - BALANCEADA
+// 🤖 CONFIGURACIÓN DE IA - MUY CONSERVADORA
 export const AI_CONFIG = {
-    // Timing de decisiones - MÁS PAUSADO
+    // Timing de decisiones - MUCHO MÁS PAUSADO
     timing: {
-        decisionInterval: 2000,     // 2 segundos (era 1500ms) - MÁS LENTO
-        reactionTime: 600,          // Tiempo de reacción más lento (era 400ms)
-        planningDepth: 2            // Menos profundidad de planificación
+        decisionInterval: 3500,     // 3.5 segundos (era 2000ms) - MUCHO MÁS LENTO
+        reactionTime: 1000,         // Tiempo de reacción más lento (era 600ms)
+        planningDepth: 1            // Menos profundidad de planificación (era 2)
     },
 
-    // Comportamiento - MÁS CONSERVADOR
+    // Comportamiento - MUY CONSERVADOR
     behavior: {
-        aggressiveness: 0.55,       // Menos agresiva (era 0.65) - MÁS CONSERVADOR
-        expansionPriority: 0.65,    // Prioridad expansión moderada (era 0.75)
-        riskTolerance: 0.4,         // Menos tolerancia al riesgo (era 0.5)
-        adaptability: 0.5           // Menos adaptabilidad (era 0.6)
+        aggressiveness: 0.35,       // Muy poco agresiva (era 0.55) - MUY CONSERVADOR
+        expansionPriority: 0.45,    // Prioridad expansión baja (era 0.65)
+        riskTolerance: 0.25,        // Muy poca tolerancia al riesgo (era 0.4)
+        adaptability: 0.3           // Muy poca adaptabilidad (era 0.5)
     },
 
-    // Thresholds de acción - MÁS ALTOS
+    // Thresholds de acción - MUCHO MÁS ALTOS
     thresholds: {
-        minShipsToAttack: 15,       // Más naves para atacar (era 12) - MÁS CONSERVADOR
-        minShipsToDefend: 10,       // Más naves para defender (era 8)
-        strengthRatioAttack: 1.8,   // Ratio más alto para atacar (era 1.5) - MUCHO MÁS CONSERVADOR
-        strengthRatioDefend: 0.9    // Ratio más alto para defender (era 0.8)
+        minShipsToAttack: 25,       // Muchas más naves para atacar (era 15) - MUY CONSERVADOR
+        minShipsToDefend: 15,       // Más naves para defender (era 10)
+        strengthRatioAttack: 2.5,   // Ratio mucho más alto para atacar (era 1.8) - EXTREMADAMENTE CONSERVADOR
+        strengthRatioDefend: 1.2    // Ratio más alto para defender (era 0.9)
     },
 
-    // Porcentajes de envío - MÁS CONSERVADORES
+    // Porcentajes de envío - MUY CONSERVADORES
     sendPercentages: {
-        attack: 0.55,               // 55% para ataques (era 65%) - MÁS CONSERVADOR
-        expand: 0.45,               // 45% para expansión (era 55%)
-        reinforce: 0.35,            // 35% para refuerzos (era 40%)
-        defend: 0.25                // 25% para defensa (era 30%)
+        attack: 0.35,               // 35% para ataques (era 55%) - MUY CONSERVADOR
+        expand: 0.30,               // 30% para expansión (era 45%)
+        reinforce: 0.25,            // 25% para refuerzos (era 35%)
+        defend: 0.20                // 20% para defensa (era 25%)
     }
 };
 
@@ -143,23 +143,23 @@ export const INPUT_CONFIG = {
     }
 };
 
-// 🎨 CONFIGURACIÓN VISUAL
+// 🎨 CONFIGURACIÓN VISUAL (MILESTONE 2.2 - COLORES MEJORADOS)
 export const VISUAL_CONFIG = {
-    // Colores principales
+    // Colores principales - MEJORADOS para mejor visibilidad
     colors: {
-        player: '#00ff88',          // Verde jugador
-        ai: '#ff4444',              // Rojo IA
-        neutral: '#888888',         // Gris neutral
+        player: '#00ffaa',          // 🎯 MEJORADO: Verde más brillante (era #00ff88)
+        ai: '#ff3366',              // 🎯 MEJORADO: Rojo más vibrante (era #ff4444)
+        neutral: '#aaaaaa',         // 🎯 MEJORADO: Gris más claro (era #888888)
         background: '#000011',      // Fondo oscuro
-        selection: '#00ff88',       // Color selección
+        selection: '#00ffaa',       // 🎯 MEJORADO: Verde brillante para selección
         preview: '#ffaa00'          // Color preview
     },
 
-    // Efectos
+    // Efectos - MEJORADOS para flotas más visibles
     effects: {
-        glowIntensity: 20,          // Intensidad glow
+        glowIntensity: 25,          // 🎯 AUMENTADO: Más glow (era 20)
         pulseSpeed: 2,              // Velocidad pulso
-        trailOpacity: 0.6,          // Opacidad trails
+        trailOpacity: 0.7,          // 🎯 AUMENTADO: Trails más visibles (era 0.6)
         particleCount: 50,          // Partículas por efecto
         animationSpeed: 1.2         // Velocidad animaciones
     },

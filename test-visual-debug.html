@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Debug Visual - Galcon</title>
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        .debug-overlay {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+            max-width: 400px;
+        }
+        .debug-section {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        .debug-title {
+            color: #00ff88;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .debug-item {
+            margin: 2px 0;
+        }
+        .color-sample {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 1px solid white;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <!-- Debug Overlay -->
+    <div class="debug-overlay" id="debugOverlay">
+        <div class="debug-section">
+            <div class="debug-title">🎨 Debug Visual</div>
+            <div class="debug-item">Estado: <span id="debugStatus">Iniciando...</span></div>
+            <div class="debug-item">Planetas: <span id="planetCount">0</span></div>
+            <div class="debug-item">Flotas: <span id="fleetCount">0</span></div>
+        </div>
+        
+        <div class="debug-section">
+            <div class="debug-title">🎯 Colores de Planetas</div>
+            <div class="debug-item">
+                <span class="color-sample" id="playerColorSample"></span>
+                Player: <span id="playerColor">#00ff88</span>
+            </div>
+            <div class="debug-item">
+                <span class="color-sample" id="aiColorSample"></span>
+                AI: <span id="aiColor">#ff4444</span>
+            </div>
+            <div class="debug-item">
+                <span class="color-sample" id="neutralColorSample"></span>
+                Neutral: <span id="neutralColor">#888888</span>
+            </div>
+        </div>
+        
+        <div class="debug-section">
+            <div class="debug-title">📊 Primeros 3 Planetas</div>
+            <div id="planetDetails"></div>
+        </div>
+        
+        <div class="debug-section">
+            <div class="debug-title">🚀 Flotas Activas</div>
+            <div id="fleetDetails"></div>
+        </div>
+    </div>
+
+    <!-- Área de Juego -->
+    <svg id="gameCanvas" width="100%" height="100%"></svg>
+
+    <!-- Scripts -->
+    <script type="module">
+        import GameEngine from './src/core/GameEngine.js';
+        import Renderer from './src/visual/Renderer.js';
+
+        console.log('🔧 Iniciando debug visual...');
+
+        try {
+            // Inicializar GameEngine y Renderer
+            const gameEngine = new GameEngine();
+            const renderer = new Renderer(gameEngine);
+
+            // Inicializar sistemas
+            gameEngine.init();
+            renderer.start();
+
+            document.getElementById('debugStatus').textContent = 'Funcionando ✅';
+
+            // Actualizar muestras de color
+            document.getElementById('playerColorSample').style.backgroundColor = '#00ff88';
+            document.getElementById('aiColorSample').style.backgroundColor = '#ff4444';
+            document.getElementById('neutralColorSample').style.backgroundColor = '#888888';
+
+            // Función de debug visual
+            function updateVisualDebug() {
+                const renderData = gameEngine.getRenderData();
+                
+                // Actualizar contadores
+                document.getElementById('planetCount').textContent = renderData.planets.length;
+                document.getElementById('fleetCount').textContent = renderData.fleets.length;
+                
+                // Detalles de planetas
+                const planetDetails = document.getElementById('planetDetails');
+                let planetInfo = '';
+                renderData.planets.slice(0, 3).forEach((planet, i) => {
+                    planetInfo += `<div class="debug-item">
+                        <span class="color-sample" style="background-color: ${planet.color}"></span>
+                        ${planet.id}: ${planet.owner} (${planet.ships} naves)
+                        <br>&nbsp;&nbsp;&nbsp;&nbsp;Color: ${planet.color}
+                        <br>&nbsp;&nbsp;&nbsp;&nbsp;Pos: (${Math.round(planet.x)}, ${Math.round(planet.y)})
+                    </div>`;
+                });
+                planetDetails.innerHTML = planetInfo;
+                
+                // Detalles de flotas
+                const fleetDetails = document.getElementById('fleetDetails');
+                let fleetInfo = '';
+                if (renderData.fleets.length === 0) {
+                    fleetInfo = '<div class="debug-item">No hay flotas activas</div>';
+                } else {
+                    renderData.fleets.slice(0, 3).forEach((fleet, i) => {
+                        fleetInfo += `<div class="debug-item">
+                            <span class="color-sample" style="background-color: ${fleet.color}"></span>
+                            ${fleet.id}: ${fleet.owner} (${fleet.ships} naves)
+                            <br>&nbsp;&nbsp;&nbsp;&nbsp;Color: ${fleet.color}
+                            <br>&nbsp;&nbsp;&nbsp;&nbsp;Pos: (${Math.round(fleet.x)}, ${Math.round(fleet.y)})
+                            <br>&nbsp;&nbsp;&nbsp;&nbsp;Progreso: ${Math.round(fleet.progress * 100)}%
+                        </div>`;
+                    });
+                }
+                fleetDetails.innerHTML = fleetInfo;
+                
+                // Verificar si hay elementos SVG en el canvas
+                const canvas = document.getElementById('gameCanvas');
+                const planetElements = canvas.querySelectorAll('.planet');
+                const fleetElements = canvas.querySelectorAll('.fleet');
+                
+                console.log(`🎨 Elementos SVG: ${planetElements.length} planetas, ${fleetElements.length} flotas`);
+                
+                // Verificar colores aplicados en SVG
+                planetElements.forEach((element, i) => {
+                    if (i < 3) {
+                        const circle = element.querySelector('.planet-body');
+                        if (circle) {
+                            const fill = circle.getAttribute('fill');
+                            console.log(`🎨 Planeta ${i}: fill="${fill}"`);
+                        }
+                    }
+                });
+            }
+
+            // Actualizar debug cada segundo
+            setInterval(updateVisualDebug, 1000);
+            updateVisualDebug(); // Primera actualización inmediata
+
+            // Click para enviar flotas de prueba
+            document.getElementById('gameCanvas').addEventListener('click', (e) => {
+                const rect = e.target.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                console.log(`🖱️ Click en (${x}, ${y})`);
+                
+                // Buscar planeta en esa posición
+                const planet = gameEngine.getPlanetAtPosition(x, y);
+                if (planet && planet.owner === 'player' && planet.ships > 1) {
+                    // Buscar un planeta neutral cercano para enviar flota
+                    const planets = Array.from(gameEngine.planets.values());
+                    const neutralPlanets = planets.filter(p => p.owner === 'neutral');
+                    
+                    if (neutralPlanets.length > 0) {
+                        const target = neutralPlanets[0];
+                        console.log(`🚀 Enviando flota de prueba desde ${planet.id} a ${target.id}`);
+                        planet.sendFleet(target, 0.5);
+                    }
+                }
+            });
+
+            console.log('✅ Debug visual iniciado correctamente');
+
+        } catch (error) {
+            console.error('❌ Error en debug visual:', error);
+            document.getElementById('debugStatus').textContent = 'Error ❌';
+        }
+    </script>
+</body>
+</html> 

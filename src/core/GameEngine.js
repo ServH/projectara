@@ -2,16 +2,21 @@
  * 🎮 GALCON GAME - GAME ENGINE
  * Motor principal del juego con arquitectura modular
  * MILESTONE 2.1: Integración de PercentageSelector
- * MILESTONE 2.2: Integración de PerformanceProfiler
+ * MILESTONE 2.2: Integración de Sistemas de Optimización
  */
 
 import eventBus, { GAME_EVENTS } from './EventBus.js';
 import Planet from '../entities/Planet.js';
 import Fleet from '../entities/Fleet.js';
 import AISystem from '../systems/AISystem.js';
-import PercentageSelector from '../ui/PercentageSelector.js'; // 🎛️ NUEVO
-import FleetRedirectionSystem from '../systems/FleetRedirectionSystem.js'; // 🔄 NUEVO
-import PerformanceProfiler from '../debug/PerformanceProfiler.js'; // 📊 NUEVO
+import PercentageSelector from '../ui/PercentageSelector.js'; // 🎛️ MILESTONE 2.1
+import FleetRedirectionSystem from '../systems/FleetRedirectionSystem.js'; // 🔄 MILESTONE 2.1
+import PerformanceProfiler from '../debug/PerformanceProfiler.js'; // 📊 MILESTONE 2.2
+import CullingSystem from '../visual/CullingSystem.js'; // 👁️ MILESTONE 2.2
+import MemoryManager from '../systems/MemoryManager.js'; // 🧠 MILESTONE 2.2
+import SpatialGrid from '../systems/SpatialGrid.js'; // 🗺️ MILESTONE 2.2
+import SVGPool from '../visual/SVGPool.js'; // 🏊 MILESTONE 2.2
+import FleetPhysics from '../systems/FleetPhysics.js'; // 🐦 MILESTONE 2.2
 import { GAME_CONFIG } from '../config/GameConfig.js';
 import { BALANCE_CONFIG } from '../config/BalanceConfig.js';
 
@@ -26,11 +31,18 @@ export class GameEngine {
         this.fleets = new Map();
         this.players = new Map();
         
-        // Sistemas del juego
+        // Sistemas del juego - MILESTONE 2.1
         this.aiSystem = null;
-        this.percentageSelector = null; // 🎛️ NUEVO
-        this.fleetRedirectionSystem = null; // 🔄 NUEVO
-        this.performanceProfiler = null; // 📊 NUEVO
+        this.percentageSelector = null;
+        this.fleetRedirectionSystem = null;
+        
+        // 📊 MILESTONE 2.2: Sistemas de optimización
+        this.performanceProfiler = null;
+        this.cullingSystem = null;
+        this.memoryManager = null;
+        this.spatialGrid = null;
+        this.svgPool = null;
+        this.fleetPhysics = null;
         
         // Configuración del juego usando nueva configuración
         this.config = {
@@ -47,7 +59,12 @@ export class GameEngine {
             performance: {
                 targetFPS: 60,
                 maxFleets: 100,
-                enableProfiling: true // 📊 NUEVO
+                enableProfiling: true, // 📊 MILESTONE 2.2
+                enableCulling: true,   // 👁️ MILESTONE 2.2
+                enableSpatialGrid: true, // 🗺️ MILESTONE 2.2
+                enableMemoryManager: true, // 🧠 MILESTONE 2.2
+                enableSVGPool: true,   // 🏊 MILESTONE 2.2
+                enableFleetPhysics: false // 🐦 MILESTONE 2.2 (experimental)
             }
         };
         
@@ -121,21 +138,51 @@ export class GameEngine {
         // Inicializar sistema de IA
         this.aiSystem = new AISystem(this);
         
-        // 🎛️ NUEVO: Inicializar PercentageSelector con referencia al GameEngine
+        // 🎛️ MILESTONE 2.1: Inicializar PercentageSelector con referencia al GameEngine
         this.percentageSelector = new PercentageSelector(this);
         
-        // 🔄 NUEVO: Inicializar FleetRedirectionSystem
+        // 🔄 MILESTONE 2.1: Inicializar FleetRedirectionSystem
         this.fleetRedirectionSystem = new FleetRedirectionSystem(this);
         
-        // 📊 NUEVO: Inicializar PerformanceProfiler
-        this.performanceProfiler = new PerformanceProfiler();
-        
-        // Iniciar profiling si está habilitado
+        // 📊 MILESTONE 2.2: Inicializar PerformanceProfiler
         if (this.config.performance.enableProfiling) {
+            this.performanceProfiler = new PerformanceProfiler();
             this.performanceProfiler.start();
         }
         
-        console.log('🤖 Sistemas del juego inicializados con PercentageSelector, FleetRedirectionSystem y PerformanceProfiler');
+        // 👁️ MILESTONE 2.2: Inicializar CullingSystem con dimensiones del mundo
+        if (this.config.performance.enableCulling) {
+            this.cullingSystem = new CullingSystem(
+                this.config.world.width, 
+                this.config.world.height
+            );
+        }
+        
+        // 🧠 MILESTONE 2.2: Inicializar MemoryManager
+        if (this.config.performance.enableMemoryManager) {
+            this.memoryManager = new MemoryManager();
+        }
+        
+        // 🗺️ MILESTONE 2.2: Inicializar SpatialGrid con dimensiones del mundo
+        if (this.config.performance.enableSpatialGrid) {
+            this.spatialGrid = new SpatialGrid(
+                this.config.world.width, 
+                this.config.world.height,
+                100 // Tamaño de celda
+            );
+        }
+        
+        // 🏊 MILESTONE 2.2: Inicializar SVGPool
+        if (this.config.performance.enableSVGPool) {
+            this.svgPool = new SVGPool();
+        }
+        
+        // 🐦 MILESTONE 2.2: Inicializar FleetPhysics (experimental)
+        if (this.config.performance.enableFleetPhysics) {
+            this.fleetPhysics = new FleetPhysics();
+        }
+        
+        console.log('🤖 Sistemas del juego inicializados con optimizaciones del Milestone 2.2');
     }
 
     /**
@@ -330,14 +377,40 @@ export class GameEngine {
         
         if (this.isPaused) return;
         
+        // 🗺️ MILESTONE 2.2: Limpiar spatial grid para nueva frame
+        if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
+            this.spatialGrid.clear();
+        }
+        
         // Actualizar planetas (producción)
         for (const planet of this.planets.values()) {
             planet.update(dt);
+            
+            // 🗺️ MILESTONE 2.2: Insertar planeta en spatial grid
+            if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
+                this.spatialGrid.insert(planet);
+            }
         }
         
         // Actualizar flotas (movimiento)
         for (const fleet of this.fleets.values()) {
             fleet.update(dt);
+            
+            // 🗺️ MILESTONE 2.2: Insertar flota en spatial grid
+            if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
+                this.spatialGrid.insert(fleet);
+            }
+        }
+        
+        // 🐦 MILESTONE 2.2: Actualizar física de flotas (experimental)
+        if (this.config.performance.enableFleetPhysics && this.fleetPhysics) {
+            const activeFleets = Array.from(this.fleets.values()).filter(f => !f.hasArrived);
+            this.fleetPhysics.updateFleetPhysics(activeFleets, dt);
+        }
+        
+        // 🗺️ MILESTONE 2.2: Actualizar cache del spatial grid
+        if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
+            this.spatialGrid.updateCache();
         }
         
         // Limpiar flotas que han llegado
@@ -364,6 +437,11 @@ export class GameEngine {
         this.fleets.forEach((fleet, id) => {
             if (fleet.hasArrived) {
                 fleetsToRemove.push(id);
+                
+                // 🧠 MILESTONE 2.2: Programar limpieza con MemoryManager
+                if (this.config.performance.enableMemoryManager && this.memoryManager) {
+                    this.memoryManager.scheduleCleanup(fleet, 1000); // Limpiar después de 1 segundo
+                }
             }
         });
         
@@ -605,11 +683,22 @@ export class GameEngine {
      * Obtener datos para renderizado
      */
     getRenderData() {
+        let planets = Array.from(this.planets.values());
+        let fleets = Array.from(this.fleets.values());
+        
+        // 👁️ MILESTONE 2.2: Aplicar culling si está habilitado
+        if (this.config.performance.enableCulling && this.cullingSystem) {
+            planets = this.cullingSystem.cullPlanets(this.planets);
+            fleets = this.cullingSystem.cullFleets(this.fleets);
+        }
+        
         return {
-            planets: Array.from(this.planets.values()).map(p => p.getRenderData()),
-            fleets: Array.from(this.fleets.values()).map(f => f.getRenderData()),
+            planets: planets.map(p => p.getRenderData()),
+            fleets: fleets.map(f => f.getRenderData()),
             gameState: this.gameState,
-            stats: this.stats
+            stats: this.stats,
+            // 👁️ MILESTONE 2.2: Incluir estadísticas de culling
+            cullingStats: this.cullingSystem ? this.cullingSystem.getStats() : null
         };
     }
 
@@ -699,6 +788,31 @@ export class GameEngine {
             baseInfo.performanceProfiler = this.performanceProfiler.getMetrics();
         }
         
+        // 📊 MILESTONE 2.2: Añadir información del CullingSystem
+        if (this.cullingSystem) {
+            baseInfo.cullingSystem = this.cullingSystem.getDebugInfo();
+        }
+        
+        // 🧠 MILESTONE 2.2: Añadir información del MemoryManager
+        if (this.memoryManager) {
+            baseInfo.memoryManager = this.memoryManager.getDebugInfo();
+        }
+        
+        // 🗺️ MILESTONE 2.2: Añadir información del SpatialGrid
+        if (this.spatialGrid) {
+            baseInfo.spatialGrid = this.spatialGrid.getDebugInfo();
+        }
+        
+        // 🏊 MILESTONE 2.2: Añadir información del SVGPool
+        if (this.svgPool) {
+            baseInfo.svgPool = this.svgPool.getDebugInfo();
+        }
+        
+        // 🐦 MILESTONE 2.2: Añadir información del FleetPhysics
+        if (this.fleetPhysics) {
+            baseInfo.fleetPhysics = this.fleetPhysics.getDebugInfo();
+        }
+        
         return baseInfo;
     }
 
@@ -726,6 +840,31 @@ export class GameEngine {
         // 📊 NUEVO: Destruir PerformanceProfiler
         if (this.performanceProfiler) {
             this.performanceProfiler.destroy();
+        }
+        
+        // 📊 MILESTONE 2.2: Destruir CullingSystem
+        if (this.cullingSystem) {
+            this.cullingSystem.destroy();
+        }
+        
+        // 🧠 MILESTONE 2.2: Destruir MemoryManager
+        if (this.memoryManager) {
+            this.memoryManager.destroy();
+        }
+        
+        // 🗺️ MILESTONE 2.2: Destruir SpatialGrid
+        if (this.spatialGrid) {
+            this.spatialGrid.destroy();
+        }
+        
+        // 🏊 MILESTONE 2.2: Destruir SVGPool
+        if (this.svgPool) {
+            this.svgPool.destroy();
+        }
+        
+        // 🐦 MILESTONE 2.2: Destruir FleetPhysics
+        if (this.fleetPhysics) {
+            this.fleetPhysics.destroy();
         }
         
         // Limpiar entidades

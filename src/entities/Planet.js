@@ -299,14 +299,31 @@ export class Planet {
 
     /**
      * Verificar si un punto está dentro del planeta (MEJORADO)
-     * Usa un collider ligeramente más grande para mejor UX
+     * Usa un collider mucho más grande para mejor UX, especialmente en planetas pequeños
      */
     containsPoint(x, y) {
         const dx = x - this.x;
         const dy = y - this.y;
         
-        // Collider expandido: 1.3x el radio visual para planetas pequeños, 1.2x para otros
-        const colliderMultiplier = this.size === 'small' ? 1.4 : 1.2;
+        // Collider expandido: 2x para planetas pequeños, 1.5x para otros
+        let colliderMultiplier;
+        switch (this.size) {
+            case 'small':
+                colliderMultiplier = 2.0;  // Doble área para planetas pequeños
+                break;
+            case 'medium':
+                colliderMultiplier = 1.6;  // 60% más área
+                break;
+            case 'large':
+                colliderMultiplier = 1.4;  // 40% más área
+                break;
+            case 'huge':
+                colliderMultiplier = 1.3;  // 30% más área
+                break;
+            default:
+                colliderMultiplier = 1.5;
+        }
+        
         const colliderRadius = this.radius * colliderMultiplier;
         
         return (dx * dx + dy * dy) <= (colliderRadius * colliderRadius);
@@ -316,7 +333,23 @@ export class Planet {
      * Obtener radio del collider (para debug y otros usos)
      */
     getColliderRadius() {
-        const colliderMultiplier = this.size === 'small' ? 1.4 : 1.2;
+        let colliderMultiplier;
+        switch (this.size) {
+            case 'small':
+                colliderMultiplier = 2.0;
+                break;
+            case 'medium':
+                colliderMultiplier = 1.6;
+                break;
+            case 'large':
+                colliderMultiplier = 1.4;
+                break;
+            case 'huge':
+                colliderMultiplier = 1.3;
+                break;
+            default:
+                colliderMultiplier = 1.5;
+        }
         return this.radius * colliderMultiplier;
     }
 
