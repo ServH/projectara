@@ -2,6 +2,7 @@
  * 🎮 GALCON GAME - GAME ENGINE
  * Motor principal del juego con arquitectura modular
  * MILESTONE 2.1: Integración de PercentageSelector
+ * MILESTONE 2.2: Integración de PerformanceProfiler
  */
 
 import eventBus, { GAME_EVENTS } from './EventBus.js';
@@ -10,6 +11,7 @@ import Fleet from '../entities/Fleet.js';
 import AISystem from '../systems/AISystem.js';
 import PercentageSelector from '../ui/PercentageSelector.js'; // 🎛️ NUEVO
 import FleetRedirectionSystem from '../systems/FleetRedirectionSystem.js'; // 🔄 NUEVO
+import PerformanceProfiler from '../debug/PerformanceProfiler.js'; // 📊 NUEVO
 import { GAME_CONFIG } from '../config/GameConfig.js';
 import { BALANCE_CONFIG } from '../config/BalanceConfig.js';
 
@@ -28,6 +30,7 @@ export class GameEngine {
         this.aiSystem = null;
         this.percentageSelector = null; // 🎛️ NUEVO
         this.fleetRedirectionSystem = null; // 🔄 NUEVO
+        this.performanceProfiler = null; // 📊 NUEVO
         
         // Configuración del juego usando nueva configuración
         this.config = {
@@ -43,7 +46,8 @@ export class GameEngine {
             },
             performance: {
                 targetFPS: 60,
-                maxFleets: 100
+                maxFleets: 100,
+                enableProfiling: true // 📊 NUEVO
             }
         };
         
@@ -123,7 +127,15 @@ export class GameEngine {
         // 🔄 NUEVO: Inicializar FleetRedirectionSystem
         this.fleetRedirectionSystem = new FleetRedirectionSystem(this);
         
-        console.log('🤖 Sistemas del juego inicializados con PercentageSelector y FleetRedirectionSystem');
+        // 📊 NUEVO: Inicializar PerformanceProfiler
+        this.performanceProfiler = new PerformanceProfiler();
+        
+        // Iniciar profiling si está habilitado
+        if (this.config.performance.enableProfiling) {
+            this.performanceProfiler.start();
+        }
+        
+        console.log('🤖 Sistemas del juego inicializados con PercentageSelector, FleetRedirectionSystem y PerformanceProfiler');
     }
 
     /**
@@ -270,48 +282,77 @@ export class GameEngine {
     gameLoop() {
         if (!this.isRunning) return;
         
+        // 📊 NUEVO: Iniciar medición de frame
+        if (this.performanceProfiler) {
+            this.performanceProfiler.startFrame();
+        }
+        
         const currentTime = performance.now();
-        this.deltaTime = (currentTime - this.lastFrameTime) / 1000;
+        this.deltaTime = currentTime - this.lastFrameTime;
         this.lastFrameTime = currentTime;
+        this.gameTime += this.deltaTime;
+        this.frameCount++;
         
-        this.deltaTime = Math.min(this.deltaTime, 1/30);
+        // Actualizar FPS cada segundo
+        if (this.frameCount % 60 === 0) {
+            this.stats.fps = Math.round(1000 / this.deltaTime);
+        }
         
-        if (!this.isPaused) {
+        // 📊 NUEVO: Medir tiempo de actualización
+        if (this.performanceProfiler) {
+            this.performanceProfiler.measureUpdateTime(() => {
+                this.update(this.deltaTime);
+            });
+        } else {
             this.update(this.deltaTime);
         }
         
-        this.updateStats();
-        this.frameCount++;
+        // 📊 NUEVO: Finalizar medición de frame
+        if (this.performanceProfiler) {
+            this.performanceProfiler.endFrame();
+            
+            // Actualizar conteos de objetos para el profiler
+            this.performanceProfiler.updateGameObjectCounts(
+                this.planets.size,
+                this.fleets.size
+            );
+        }
         
         requestAnimationFrame(() => this.gameLoop());
     }
 
     /**
-     * Actualizar lógica del juego
+     * Actualizar estado del juego
      */
     update(deltaTime) {
-        this.gameTime += deltaTime;
+        // Convertir deltaTime a segundos y limitar
+        const dt = Math.min(deltaTime / 1000, 1/30);
         
-        // Actualizar planetas
-        this.planets.forEach(planet => {
-            planet.update(deltaTime);
-        });
+        if (this.isPaused) return;
         
-        // Actualizar flotas
-        this.fleets.forEach(fleet => {
-            fleet.update(deltaTime);
-        });
+        // Actualizar planetas (producción)
+        for (const planet of this.planets.values()) {
+            planet.update(dt);
+        }
         
-        // Actualizar sistema de IA
-        if (this.aiSystem) {
-            this.aiSystem.update(deltaTime);
+        // Actualizar flotas (movimiento)
+        for (const fleet of this.fleets.values()) {
+            fleet.update(dt);
         }
         
         // Limpiar flotas que han llegado
         this.cleanupArrivedFleets();
         
+        // Actualizar IA
+        if (this.aiSystem) {
+            this.aiSystem.update(dt);
+        }
+        
         // Verificar condiciones de victoria
         this.checkWinConditions();
+        
+        // Actualizar estadísticas
+        this.updateStats();
     }
 
     /**
@@ -554,7 +595,7 @@ export class GameEngine {
      * Actualizar estadísticas
      */
     updateStats() {
-        this.stats.fps = Math.round(1 / this.deltaTime);
+        this.stats.fps = Math.round(1000 / this.deltaTime);
         this.stats.planetsCount = this.planets.size;
         this.stats.fleetsCount = this.fleets.size;
         this.stats.gameTime = this.gameTime;
@@ -570,6 +611,62 @@ export class GameEngine {
             gameState: this.gameState,
             stats: this.stats
         };
+    }
+
+    /**
+     * 📊 NUEVO: Obtener reporte de rendimiento
+     */
+    getPerformanceReport() {
+        if (this.performanceProfiler) {
+            return this.performanceProfiler.generateReport();
+        }
+        return null;
+    }
+
+    /**
+     * 📊 NUEVO: Configurar escenario para benchmarks
+     */
+    setScenarioConfig(config) {
+        if (config.planetCount) {
+            this.config.world.planetCount = config.planetCount;
+        }
+        
+        // Regenerar mundo con nueva configuración
+        this.generateWorld();
+        
+        // Simular flotas iniciales si se especifica
+        if (config.initialFleets) {
+            this.simulateInitialFleets(config.initialFleets);
+        }
+    }
+
+    /**
+     * 📊 NUEVO: Simular flotas iniciales para benchmarks
+     */
+    simulateInitialFleets(targetCount) {
+        const playerPlanets = Array.from(this.planets.values())
+            .filter(p => p.owner === 'player' && p.ships > 10);
+        
+        const targetPlanets = Array.from(this.planets.values())
+            .filter(p => p.owner !== 'player');
+        
+        let fleetsCreated = 0;
+        
+        while (fleetsCreated < targetCount && playerPlanets.length > 0 && targetPlanets.length > 0) {
+            const fromPlanet = playerPlanets[Math.floor(Math.random() * playerPlanets.length)];
+            const toPlanet = targetPlanets[Math.floor(Math.random() * targetPlanets.length)];
+            
+            if (fromPlanet.ships > 5) {
+                const ships = Math.floor(fromPlanet.ships * 0.3);
+                const fleetData = fromPlanet.sendFleet(toPlanet, 0.3);
+                
+                if (fleetData) {
+                    fleetsCreated++;
+                }
+            }
+        }
+        
+        console.log(`📊 ${fleetsCreated} flotas iniciales simuladas para benchmark`);
     }
 
     /**
@@ -597,6 +694,11 @@ export class GameEngine {
             baseInfo.fleetRedirectionSystem = this.fleetRedirectionSystem.getDebugInfo();
         }
         
+        // 📊 NUEVO: Añadir información del PerformanceProfiler
+        if (this.performanceProfiler) {
+            baseInfo.performanceProfiler = this.performanceProfiler.getMetrics();
+        }
+        
         return baseInfo;
     }
 
@@ -621,6 +723,11 @@ export class GameEngine {
             this.fleetRedirectionSystem.destroy();
         }
         
+        // 📊 NUEVO: Destruir PerformanceProfiler
+        if (this.performanceProfiler) {
+            this.performanceProfiler.destroy();
+        }
+        
         // Limpiar entidades
         this.planets.clear();
         this.fleets.clear();
@@ -630,4 +737,4 @@ export class GameEngine {
     }
 }
 
-export default GameEngine; 
+export default GameEngine;

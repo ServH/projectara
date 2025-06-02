@@ -686,9 +686,29 @@
                             event.preventDefault();
                             this.toggleDebugPanel(gameEngine);
                             break;
+                        case 'F2':
+                            event.preventDefault();
+                            this.generatePerformanceReport(gameEngine);
+                            break;
+                        case 'F3':
+                            event.preventDefault();
+                            this.toggleProfiling(gameEngine);
+                            break;
+                        case 'F4':
+                            event.preventDefault();
+                            this.resetProfiler(gameEngine);
+                            break;
                         case 'F5':
                             event.preventDefault();
                             gameEngine.reset();
+                            break;
+                        case 'F6':
+                            event.preventDefault();
+                            this.runLightBenchmark(gameEngine);
+                            break;
+                        case 'F7':
+                            event.preventDefault();
+                            this.runFullBenchmark(gameEngine);
                             break;
                         case 'Escape':
                             event.preventDefault();
@@ -728,19 +748,216 @@
                     // Mostrar panel de debug
                     debugPanel.classList.remove('hidden');
                     
-                    // Actualizar contenido
-                    const debugInfo = gameEngine.getDebugInfo();
-                    debugContent.innerHTML = `
-                        <pre>${JSON.stringify(debugInfo, null, 2)}</pre>
-                    `;
+                    // Actualizar contenido con información de profiling
+                    this.updateDebugContent(gameEngine, debugContent);
+                    
+                    // Actualizar cada segundo mientras esté visible
+                    this.debugUpdateInterval = setInterval(() => {
+                        this.updateDebugContent(gameEngine, debugContent);
+                    }, 1000);
                 } else {
                     // Ocultar panel
                     debugPanel.classList.add('hidden');
+                    
+                    // Limpiar interval
+                    if (this.debugUpdateInterval) {
+                        clearInterval(this.debugUpdateInterval);
+                        this.debugUpdateInterval = null;
+                    }
                 }
+            }
+
+            updateDebugContent(gameEngine, debugContent) {
+                const debugInfo = gameEngine.getDebugInfo();
+                const performanceReport = gameEngine.getPerformanceReport();
+                
+                let content = `
+🎮 GAME ENGINE DEBUG
+====================
+Estado: ${debugInfo.gameState}
+Ejecutándose: ${debugInfo.isRunning}
+Pausado: ${debugInfo.isPaused}
+FPS: ${debugInfo.stats.fps}
+Planetas: ${debugInfo.planetsCount}
+Flotas: ${debugInfo.fleetsCount}
+
+`;
+
+                // 📊 Información de rendimiento
+                if (performanceReport) {
+                    content += `
+📊 PERFORMANCE PROFILER
+=======================
+FPS Actual: ${performanceReport.performance.fps.current}
+FPS Promedio: ${performanceReport.performance.fps.average}
+FPS Mínimo: ${performanceReport.performance.fps.min}
+FPS Máximo: ${performanceReport.performance.fps.max}
+
+Frame Time: ${performanceReport.performance.frameTime.current}ms
+Render Time: ${performanceReport.performance.renderTime.current}ms
+Update Time: ${performanceReport.performance.updateTime.current}ms
+
+Memoria Usada: ${performanceReport.memory.used}MB
+Memoria Total: ${performanceReport.memory.total}MB
+Uso: ${performanceReport.memory.usagePercent}%
+
+Elementos SVG: ${performanceReport.objects.svgElements}
+Total Objetos: ${performanceReport.objects.total}
+
+Estado: ${performanceReport.analysis.status}
+Problemas: ${performanceReport.analysis.issues.length}
+
+`;
+
+                    // Mostrar problemas si los hay
+                    if (performanceReport.analysis.issues.length > 0) {
+                        content += `⚠️ PROBLEMAS DETECTADOS:\n`;
+                        performanceReport.analysis.issues.forEach(issue => {
+                            content += `- ${issue}\n`;
+                        });
+                        content += `\n`;
+                    }
+
+                    // Mostrar recomendaciones
+                    if (performanceReport.analysis.recommendations.length > 0) {
+                        content += `💡 RECOMENDACIONES:\n`;
+                        performanceReport.analysis.recommendations.forEach(rec => {
+                            content += `- ${rec}\n`;
+                        });
+                        content += `\n`;
+                    }
+                }
+
+                // 🎛️ Información del PercentageSelector
+                if (debugInfo.percentageSelector) {
+                    content += `
+🎛️ PERCENTAGE SELECTOR
+======================
+Porcentaje: ${debugInfo.percentageSelector.currentPercentage}%
+Factor: ${debugInfo.percentageSelector.factor}
+Planetas Seleccionados: ${debugInfo.percentageSelector.hasSelectedPlanets}
+
+`;
+                }
+
+                // 🔄 Información del FleetRedirectionSystem
+                if (debugInfo.fleetRedirectionSystem) {
+                    content += `
+🔄 FLEET REDIRECTION
+====================
+Flotas Seleccionadas: ${debugInfo.fleetRedirectionSystem.selectedFleets}
+
+`;
+                }
+
+                content += `
+🎮 CONTROLES DE PROFILING
+=========================
+F2: Generar reporte completo
+F3: Iniciar/detener grabación
+F4: Resetear métricas
+F6: Ejecutar benchmark ligero
+F7: Ejecutar benchmark completo
+
+`;
+
+                debugContent.innerHTML = `<pre>${content}</pre>`;
             }
 
             delay(ms) {
                 return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            // 📊 NUEVOS: Métodos de profiling
+            generatePerformanceReport(gameEngine) {
+                const report = gameEngine.getPerformanceReport();
+                if (report) {
+                    console.log('📊 REPORTE DE RENDIMIENTO:', report);
+                    
+                    // Mostrar resumen en consola
+                    console.log(`📊 FPS: ${report.performance.fps.average} (min: ${report.performance.fps.min}, max: ${report.performance.fps.max})`);
+                    console.log(`📊 Memoria: ${report.memory.used}MB (${report.memory.usagePercent}%)`);
+                    console.log(`📊 Objetos: ${report.objects.total} (SVG: ${report.objects.svgElements})`);
+                    console.log(`📊 Estado: ${report.analysis.status}`);
+                    
+                    if (report.analysis.issues.length > 0) {
+                        console.warn('⚠️ Problemas detectados:', report.analysis.issues);
+                    }
+                    
+                    if (report.analysis.recommendations.length > 0) {
+                        console.log('💡 Recomendaciones:', report.analysis.recommendations);
+                    }
+                } else {
+                    console.warn('⚠️ Profiler no disponible');
+                }
+            }
+
+            toggleProfiling(gameEngine) {
+                if (gameEngine.performanceProfiler) {
+                    if (gameEngine.performanceProfiler.isRecording) {
+                        const data = gameEngine.performanceProfiler.stopRecording();
+                        console.log(`📊 Grabación detenida. ${data.length} muestras registradas`);
+                        console.log('📊 Datos de grabación:', data);
+                    } else {
+                        gameEngine.performanceProfiler.startRecording();
+                        console.log('📊 Grabación de profiling iniciada');
+                    }
+                } else {
+                    console.warn('⚠️ Profiler no disponible');
+                }
+            }
+
+            resetProfiler(gameEngine) {
+                if (gameEngine.performanceProfiler) {
+                    gameEngine.performanceProfiler.reset();
+                    console.log('📊 Métricas de profiler reseteadas');
+                } else {
+                    console.warn('⚠️ Profiler no disponible');
+                }
+            }
+
+            async runLightBenchmark(gameEngine) {
+                console.log('🧪 Iniciando benchmark ligero...');
+                
+                try {
+                    // Importar BenchmarkSuite dinámicamente
+                    const { default: BenchmarkSuite } = await import('./src/debug/BenchmarkSuite.js');
+                    const benchmark = new BenchmarkSuite(gameEngine);
+                    
+                    const result = await benchmark.runScenario('light');
+                    console.log('🧪 Benchmark ligero completado:', result);
+                    
+                    benchmark.destroy();
+                } catch (error) {
+                    console.error('❌ Error en benchmark ligero:', error);
+                }
+            }
+
+            async runFullBenchmark(gameEngine) {
+                console.log('🧪 Iniciando benchmark completo...');
+                
+                try {
+                    // Importar BenchmarkSuite dinámicamente
+                    const { default: BenchmarkSuite } = await import('./src/debug/BenchmarkSuite.js');
+                    const benchmark = new BenchmarkSuite(gameEngine);
+                    
+                    const report = await benchmark.runFullBenchmark();
+                    console.log('🧪 Benchmark completo finalizado:', report);
+                    
+                    // Mostrar resumen
+                    console.log(`🧪 Escenarios ejecutados: ${report.summary.successful}/${report.summary.totalScenarios}`);
+                    
+                    if (report.recommendations.length > 0) {
+                        console.log('💡 Recomendaciones del benchmark:');
+                        report.recommendations.forEach(rec => {
+                            console.log(`- [${rec.priority}] ${rec.issue}: ${rec.solution}`);
+                        });
+                    }
+                    
+                    benchmark.destroy();
+                } catch (error) {
+                    console.error('❌ Error en benchmark completo:', error);
+                }
             }
         }
 
