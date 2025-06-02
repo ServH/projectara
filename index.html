@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Galcon Game - Space Conquest</title>
+    
+    <!-- Estilos del juego -->
+    <link rel="stylesheet" href="css/main.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    
+    <style>
+        /* Reset y base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(ellipse at center, #000033 0%, #000011 70%, #000000 100%);
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Barra superior - HUD */
+        .top-bar {
+            height: 60px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 20, 40, 0.8) 100%);
+            border-bottom: 2px solid rgba(0, 255, 136, 0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0, 255, 136, 0.2);
+        }
+        
+        .game-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stats-container {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .stat-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .stat-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+        }
+        
+        .game-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 14px;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .status-indicator.paused {
+            background: #ffaa00;
+            box-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
+        }
+        
+        /* Área de juego */
+        .game-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        /* Barra inferior - Controles */
+        .bottom-bar {
+            height: 50px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 20, 40, 0.8) 100%);
+            border-top: 2px solid rgba(0, 255, 136, 0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            box-shadow: 0 -2px 20px rgba(0, 255, 136, 0.2);
+        }
+        
+        .controls-left, .controls-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .control-key {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .selection-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+        
+        .selected-count {
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid rgba(0, 255, 136, 0.4);
+            border-radius: 15px;
+            padding: 4px 12px;
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        /* Pantalla de carga */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(ellipse at center, #000033 0%, #000011 70%, #000000 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #00ff88;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+        
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-title {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #00ff88;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .loading-subtitle {
+            font-size: 1.2em;
+            margin-bottom: 40px;
+            opacity: 0.8;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 255, 136, 0.3);
+            border-top: 3px solid #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        .loading-progress {
+            width: 300px;
+            height: 4px;
+            background: rgba(0, 255, 136, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00ffaa);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px #00ff88;
+        }
+        
+        .loading-status {
+            font-size: 0.9em;
+            opacity: 0.7;
+            min-height: 20px;
+        }
+        
+        /* Panel de debug */
+        .debug-panel {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: 400px;
+            max-height: calc(100vh - 140px);
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #ff6666;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #ffffff;
+            overflow-y: auto;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+        }
+        
+        .debug-panel.hidden {
+            display: none;
+        }
+        
+        .debug-title {
+            color: #ff6666;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 14px;
+        }
+        
+        .debug-panel pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        /* Animaciones */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes attackFeedback {
+            0% {
+                stroke-opacity: 0.8;
+                r: attr(r);
+            }
+            50% {
+                stroke-opacity: 1;
+                r: calc(attr(r) + 10);
+            }
+            100% {
+                stroke-opacity: 0;
+                r: calc(attr(r) + 20);
+            }
+        }
+        
+        @keyframes conquestEffect {
+            0% {
+                stroke-opacity: 1;
+                stroke-width: 2;
+                r: attr(r);
+            }
+            100% {
+                stroke-opacity: 0;
+                stroke-width: 8;
+                r: calc(attr(r) + 30);
+            }
+        }
+        
+        @keyframes launchConfirmation {
+            0% {
+                stroke-opacity: 0.8;
+                r: attr(r);
+            }
+            100% {
+                stroke-opacity: 0;
+                r: calc(attr(r) + 25);
+        }
+        }
+        
+        @keyframes dragTargetPulse {
+            0% {
+                stroke-opacity: 0.6;
+                stroke-width: 3;
+        }
+            100% {
+                stroke-opacity: 1;
+                stroke-width: 5;
+            }
+        }
+        
+        @keyframes dragLinePulse {
+            0% {
+                stroke-opacity: 0.4;
+            }
+            50% {
+                stroke-opacity: 0.8;
+            }
+            100% {
+                stroke-opacity: 0.4;
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .top-bar {
+                height: 50px;
+                padding: 0 15px;
+            }
+            
+            .game-title {
+                font-size: 18px;
+            }
+            
+            .stats-container {
+                gap: 15px;
+            }
+            
+            .stat-value {
+                font-size: 14px;
+            }
+            
+            .bottom-bar {
+                height: 45px;
+                padding: 0 15px;
+        }
+        
+            .control-group {
+                font-size: 11px;
+                gap: 6px;
+            }
+            
+            .debug-panel {
+                width: calc(100vw - 40px);
+                right: 20px;
+                left: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Pantalla de carga -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-title">🚀 GALCON</div>
+        <div class="loading-subtitle">Space Conquest Game</div>
+        <div class="loading-spinner"></div>
+        <div class="loading-progress">
+            <div id="loadingProgressBar" class="loading-progress-bar"></div>
+        </div>
+        <div id="loadingStatus" class="loading-status">Inicializando sistemas...</div>
+    </div>
+
+    <!-- Barra superior - HUD -->
+    <div class="top-bar" style="display: none;" id="topBar">
+        <div class="game-title">
+            <span>🚀</span>
+            <span>GALCON</span>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stat-group">
+                <div class="stat-label">Planetas</div>
+                <div class="stat-value" id="hud-planets">-</div>
+            </div>
+            <div class="stat-group">
+                <div class="stat-label">Flotas</div>
+                <div class="stat-value" id="hud-fleets">-</div>
+            </div>
+            <div class="stat-group">
+                <div class="stat-label">Porcentaje</div>
+                <div class="stat-value" id="hud-percentage" style="color: #00ff88;">50%</div>
+            </div>
+            <div class="stat-group">
+                <div class="stat-label">FPS</div>
+                <div class="stat-value" id="hud-fps">-</div>
+            </div>
+        </div>
+        
+        <div class="game-status">
+            <div class="status-indicator" id="statusIndicator"></div>
+            <span id="hud-state">-</span>
+        </div>
+    </div>
+
+    <!-- Área de juego -->
+    <div class="game-area">
+        <!-- Canvas se crea dinámicamente aquí -->
+    </div>
+
+    <!-- Barra inferior - Controles -->
+    <div class="bottom-bar">
+        <div class="controls-left">
+            <div class="control-group">
+                <span class="control-key">Drag</span>
+                <span>Seleccionar múltiple</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Ctrl+Click</span>
+                <span>Añadir/quitar selección</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Shift+Click</span>
+                <span>Seleccionar todos</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Doble Click</span>
+                <span>Seleccionar todos</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Clic Derecho</span>
+                <span>Envío rápido</span>
+            </div>
+        </div>
+        
+        <div class="selection-info">
+            <span>Seleccionados:</span>
+            <span class="selected-count" id="hud-selected">0</span>
+        </div>
+        
+        <div class="controls-right">
+            <div class="control-group">
+                <span class="control-key">1-4</span>
+                <span>Porcentaje (25%, 50%, 75%, 100%)</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Rueda</span>
+                <span>Cambiar porcentaje</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">F1</span>
+                <span>Debug</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">F5</span>
+                <span>Reiniciar</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">ESC</span>
+                <span>Pausa</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de debug -->
+    <div id="debugPanel" class="debug-panel hidden">
+        <div class="debug-title">🐛 DEBUG INFO</div>
+        <div id="debugContent"></div>
+    </div>
+
+    <!-- Scripts del juego -->
+    <script type="module">
+        // Sistema de carga progresiva
+        class GameLoader {
+            constructor() {
+                this.loadingScreen = document.getElementById('loadingScreen');
+                this.progressBar = document.getElementById('loadingProgressBar');
+                this.statusText = document.getElementById('loadingStatus');
+                this.topBar = document.getElementById('topBar');
+                this.bottomBar = document.getElementById('bottomBar');
+                this.progress = 0;
+            }
+
+            updateProgress(progress, status) {
+                this.progress = Math.min(100, Math.max(0, progress));
+                this.progressBar.style.width = this.progress + '%';
+                this.statusText.textContent = status;
+            }
+
+            async load() {
+                try {
+                    this.updateProgress(10, 'Configurando canvas...');
+                    this.setupCanvas();
+                    await this.delay(200);
+
+                    this.updateProgress(30, 'Cargando motor del juego...');
+                    const { default: GameEngine } = await import('./src/core/GameEngine.js');
+                    await this.delay(200);
+
+                    this.updateProgress(50, 'Configurando sistemas...');
+                    const { default: SelectionSystem } = await import('./src/systems/SelectionSystem.js');
+                    const { default: AISystem } = await import('./src/systems/AISystem.js');
+                    const { default: DragDropHandler } = await import('./src/input/DragDropHandler.js');
+                    const { default: FleetRedirectionSystem } = await import('./src/systems/FleetRedirectionSystem.js');
+                    await this.delay(200);
+
+                    this.updateProgress(70, 'Generando galaxia...');
+                    
+                    // Inicializar el juego
+                    const gameEngine = new GameEngine();
+                    gameEngine.init();
+                    const selectionSystem = new SelectionSystem(gameEngine);
+                    const dragDropHandler = new DragDropHandler(gameEngine, selectionSystem);
+                    
+                    this.updateProgress(90, 'Configurando renderer...');
+                    const { default: Renderer } = await import('./src/visual/Renderer.js');
+                    const renderer = new Renderer(gameEngine);
+                    renderer.start();
+                    await this.delay(200);
+
+                    this.updateProgress(100, '¡Listo para conquistar la galaxia!');
+                    await this.delay(500);
+
+                    // Ocultar pantalla de carga y mostrar interfaz
+                    this.loadingScreen.classList.add('hidden');
+                    this.topBar.style.display = 'flex';
+                    
+                    // Mostrar barra inferior también
+                    const bottomBar = document.querySelector('.bottom-bar');
+                    if (bottomBar) {
+                        bottomBar.style.display = 'flex';
+                    }
+                    
+                    // Configurar actualización del HUD
+                    this.setupHUDUpdates(gameEngine, selectionSystem, dragDropHandler);
+                    
+                    // Configurar controles globales
+                    this.setupGlobalControls(gameEngine, selectionSystem, dragDropHandler);
+                    
+                    setTimeout(() => {
+                        this.loadingScreen.remove();
+                    }, 500);
+
+                } catch (error) {
+                    console.error('Error cargando el juego:', error);
+                    this.updateProgress(0, 'Error: ' + error.message);
+                }
+            }
+
+            setupCanvas() {
+                const gameArea = document.querySelector('.game-area');
+                let canvas = document.getElementById('gameCanvas');
+                if (!canvas) {
+                    canvas = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    canvas.id = 'gameCanvas';
+                    gameArea.appendChild(canvas);
+                }
+                
+                this.updateCanvasSize();
+                
+                // Manejar redimensionamiento
+                window.addEventListener('resize', () => {
+                    this.updateCanvasSize();
+                });
+            }
+            
+            updateCanvasSize() {
+                const canvas = document.getElementById('gameCanvas');
+                const gameArea = document.querySelector('.game-area');
+                
+                if (canvas && gameArea) {
+                    const rect = gameArea.getBoundingClientRect();
+                    canvas.setAttribute('width', rect.width);
+                    canvas.setAttribute('height', rect.height);
+                    canvas.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+                }
+            }
+
+            setupHUDUpdates(gameEngine, selectionSystem, dragDropHandler) {
+                // Elementos del HUD
+                const hudPlanets = document.getElementById('hud-planets');
+                const hudFleets = document.getElementById('hud-fleets');
+                const hudPercentage = document.getElementById('hud-percentage');
+                const hudFps = document.getElementById('hud-fps');
+                const hudSelected = document.getElementById('hud-selected');
+                const hudState = document.getElementById('hud-state');
+                const statusIndicator = document.getElementById('statusIndicator');
+                
+                console.log('📊 Configurando HUD - Elementos encontrados:', {
+                    hudPlanets: !!hudPlanets,
+                    hudFleets: !!hudFleets,
+                    hudPercentage: !!hudPercentage,
+                    hudFps: !!hudFps,
+                    hudSelected: !!hudSelected,
+                    hudState: !!hudState,
+                    statusIndicator: !!statusIndicator
+                });
+                
+                // Función para actualizar HUD
+                const updateHUD = () => {
+                    try {
+                        if (gameEngine && gameEngine.stats) {
+                            if (hudPlanets) hudPlanets.textContent = gameEngine.stats.planetsCount || 0;
+                            if (hudFleets) hudFleets.textContent = gameEngine.stats.fleetsCount || 0;
+                            if (hudPercentage && gameEngine.percentageSelector) {
+                                const percentage = gameEngine.percentageSelector.getCurrentPercentage();
+                                hudPercentage.textContent = percentage + '%';
+                                
+                                // Cambiar color según porcentaje
+                                const colors = {
+                                    25: '#ffaa00',  // Naranja - conservador
+                                    50: '#00ff88',  // Verde - equilibrado
+                                    75: '#ff6666',  // Rojo claro - agresivo
+                                    100: '#ff0000'  // Rojo - muy agresivo
+                                };
+                                hudPercentage.style.color = colors[percentage] || '#00ff88';
+                            }
+                            if (hudFps) hudFps.textContent = Math.round(gameEngine.stats.fps) || 0;
+                            if (hudState) hudState.textContent = gameEngine.gameState || 'unknown';
+                            
+                            // Actualizar indicador de estado
+                            if (statusIndicator) {
+                                if (gameEngine.isPaused) {
+                                    statusIndicator.classList.add('paused');
+                                    if (hudState) hudState.textContent = 'PAUSADO';
+                                } else {
+                                    statusIndicator.classList.remove('paused');
+                                    if (hudState) hudState.textContent = 'JUGANDO';
+                                }
+                            }
+                        }
+                        
+                        if (selectionSystem && hudSelected) {
+                            hudSelected.textContent = selectionSystem.selectedPlanets.size || 0;
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Error actualizando HUD:', error);
+                    }
+                };
+                
+                // Actualizar HUD cada 100ms
+                const hudInterval = setInterval(updateHUD, 100);
+                
+                // Actualización inicial
+                setTimeout(updateHUD, 500); // Dar tiempo a que se inicialice todo
+                
+                console.log('📊 HUD configurado y actualizándose cada 100ms');
+                
+                // Limpiar interval si es necesario
+                window.addEventListener('beforeunload', () => {
+                    clearInterval(hudInterval);
+                });
+            }
+
+            setupGlobalControls(gameEngine, selectionSystem, dragDropHandler) {
+                // Manejar teclas globales
+                document.addEventListener('keydown', (event) => {
+                    switch (event.key) {
+                        case 'F1':
+                            event.preventDefault();
+                            this.toggleDebugPanel(gameEngine);
+                            break;
+                        case 'F5':
+                            event.preventDefault();
+                            gameEngine.reset();
+                            break;
+                        case 'Escape':
+                            event.preventDefault();
+                            if (gameEngine.isPaused) {
+                                gameEngine.resume();
+                            } else {
+                            gameEngine.pause();
+                            }
+                            break;
+                        case ' ':
+                            event.preventDefault();
+                            if (gameEngine.isPaused) {
+                                gameEngine.resume();
+                            } else {
+                                gameEngine.pause();
+                            }
+                            break;
+                        case 'a':
+                        case 'A':
+                            if (event.ctrlKey || event.metaKey) {
+                                event.preventDefault();
+                                selectionSystem.selectAllPlayerPlanets();
+                                console.log('🎯 Ctrl+A: Seleccionando todos los planetas del jugador');
+                            }
+                            break;
+                    }
+                });
+                
+                console.log('🎮 Controles globales configurados');
+            }
+
+            toggleDebugPanel(gameEngine) {
+                const debugPanel = document.getElementById('debugPanel');
+                const debugContent = document.getElementById('debugContent');
+                
+                if (debugPanel.classList.contains('hidden')) {
+                    // Mostrar panel de debug
+                    debugPanel.classList.remove('hidden');
+                    
+                    // Actualizar contenido
+                    const debugInfo = gameEngine.getDebugInfo();
+                    debugContent.innerHTML = `
+                        <pre>${JSON.stringify(debugInfo, null, 2)}</pre>
+                    `;
+                } else {
+                    // Ocultar panel
+                    debugPanel.classList.add('hidden');
+                }
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        const gameLoader = new GameLoader();
+        gameLoader.load();
+    </script>
+</body>
+</html> 

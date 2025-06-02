@@ -1,0 +1,725 @@
+/**
+ * 🎨 GALCON GAME - VISUAL STYLES
+ * Estilos vibrantes y modernos estilo Galcon
+ */
+
+/* ===== RESET Y BASE ===== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Arial', 'Helvetica', sans-serif;
+    background: #000011;
+    color: #ffffff;
+    overflow: hidden;
+    user-select: none;
+}
+
+/* ===== CANVAS PRINCIPAL ===== */
+#gameCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(ellipse at center, #000033 0%, #000011 70%, #000000 100%);
+    cursor: crosshair;
+}
+
+/* ===== PLANETAS ===== */
+.planet {
+    transition: filter 0.2s ease, opacity 0.2s ease;
+    filter: drop-shadow(0 0 8px currentColor);
+    cursor: pointer;
+    /* Evitar que se muevan los planetas */
+    transform-origin: center;
+}
+
+.planet:hover {
+    filter: drop-shadow(0 0 15px currentColor) brightness(1.2);
+    /* Remover transform scale que causa problemas de posición */
+}
+
+.planet.selected {
+    filter: drop-shadow(0 0 20px #00ff88) brightness(1.3);
+    animation: planetSelectedGlow 2s ease-in-out infinite alternate;
+}
+
+.planet.drag-source {
+    filter: drop-shadow(0 0 25px #ffaa00) brightness(1.4);
+    animation: dragSourcePulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes planetSelectedGlow {
+    0% { 
+        filter: drop-shadow(0 0 20px #00ff88) brightness(1.3);
+    }
+    100% { 
+        filter: drop-shadow(0 0 30px #00ff88) brightness(1.5);
+    }
+}
+
+@keyframes dragSourcePulse {
+    0% { 
+        filter: drop-shadow(0 0 20px #ffaa00) brightness(1.2);
+    }
+    100% { 
+        filter: drop-shadow(0 0 35px #ffaa00) brightness(1.6);
+    }
+}
+
+/* Planetas del jugador */
+.planet.player {
+    fill: #00ff88;
+    stroke: #00cc66;
+    stroke-width: 2;
+}
+
+.planet.player:hover {
+    fill: #00ffaa;
+    stroke: #00ff88;
+}
+
+/* Planetas de la IA */
+.planet.ai {
+    fill: #ff4444;
+    stroke: #cc2222;
+    stroke-width: 2;
+}
+
+.planet.ai:hover {
+    fill: #ff6666;
+    stroke: #ff4444;
+}
+
+/* Planetas neutrales */
+.planet.neutral {
+    fill: #888888;
+    stroke: #666666;
+    stroke-width: 2;
+}
+
+.planet.neutral:hover {
+    fill: #aaaaaa;
+    stroke: #888888;
+}
+
+/* ===== TEXTO DE PLANETAS ===== */
+.planet-text {
+    font-family: 'Arial Black', 'Arial', sans-serif;
+    font-weight: bold;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+    transition: all 0.2s ease;
+}
+
+.planet-text.player {
+    fill: #ffffff;
+    filter: drop-shadow(0 0 3px #00ff88);
+}
+
+.planet-text.ai {
+    fill: #ffffff;
+    filter: drop-shadow(0 0 3px #ff4444);
+}
+
+.planet-text.neutral {
+    fill: #ffffff;
+    filter: drop-shadow(0 0 3px #888888);
+}
+
+.planet-text.production-boost {
+    animation: productionBoost 0.5s ease-out;
+}
+
+@keyframes productionBoost {
+    0% { 
+        transform: scale(1);
+        fill-opacity: 1;
+    }
+    50% { 
+        transform: scale(1.3);
+        fill-opacity: 0.8;
+    }
+    100% { 
+        transform: scale(1);
+        fill-opacity: 1;
+    }
+}
+
+/* ===== FLOTAS ===== */
+.fleet {
+    transition: all 0.1s ease;
+    filter: drop-shadow(0 0 5px currentColor);
+    pointer-events: none;
+    animation: fleetPulse 1.5s ease-in-out infinite alternate;
+}
+
+.fleet.player {
+    fill: #00ff88;
+    stroke: #00cc66;
+    stroke-width: 1;
+}
+
+.fleet.ai {
+    fill: #ff4444;
+    stroke: #cc2222;
+    stroke-width: 1;
+}
+
+@keyframes fleetPulse {
+    0% { 
+        filter: drop-shadow(0 0 3px currentColor);
+        opacity: 0.9;
+    }
+    100% { 
+        filter: drop-shadow(0 0 8px currentColor);
+        opacity: 1;
+    }
+}
+
+/* ===== TRAILS DE FLOTAS ===== */
+.fleet-trail {
+    pointer-events: none;
+    opacity: 0.6;
+    animation: trailFade 2s linear infinite;
+}
+
+.fleet-trail.player {
+    stroke: #00ff88;
+    fill: none;
+    stroke-width: 2;
+}
+
+.fleet-trail.ai {
+    stroke: #ff4444;
+    fill: none;
+    stroke-width: 2;
+}
+
+@keyframes trailFade {
+    0% { opacity: 0.8; }
+    100% { opacity: 0.3; }
+}
+
+/* ===== CAJA DE SELECCIÓN ===== */
+.selection-box {
+    fill: rgba(0, 255, 136, 0.1);
+    stroke: #00ff88;
+    stroke-width: 2;
+    stroke-dasharray: 8, 4;
+    pointer-events: none;
+    animation: selectionBoxPulse 1s ease-in-out infinite;
+}
+
+@keyframes selectionBoxPulse {
+    0%, 100% { 
+        stroke-opacity: 0.8;
+        fill-opacity: 0.1;
+    }
+    50% { 
+        stroke-opacity: 1;
+        fill-opacity: 0.2;
+    }
+}
+
+/* ===== EFECTOS DE PARTÍCULAS ===== */
+.particle {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.particle.explosion {
+    fill: #ffaa00;
+    animation: explosionParticle 0.5s ease-out forwards;
+}
+
+@keyframes explosionParticle {
+    0% {
+        opacity: 1;
+        transform: scale(0);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.5);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(3);
+    }
+}
+
+.particle.conquest {
+    fill: #00ff88;
+    animation: conquestParticle 1s ease-out forwards;
+}
+
+@keyframes conquestParticle {
+    0% {
+        opacity: 1;
+        transform: scale(0) rotate(0deg);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(2) rotate(360deg);
+    }
+}
+
+/* ===== EFECTOS DE COMBATE ===== */
+@keyframes conquestEffect {
+    0% {
+        opacity: 1;
+        transform: scale(0.8);
+        filter: brightness(2);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.2);
+        filter: brightness(1.5);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: brightness(1);
+    }
+}
+
+.planet.conquered {
+    animation: conquestEffect 0.8s ease-out;
+}
+
+/* ===== HUD MINIMALISTA ===== */
+.hud {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid #00ff88;
+    border-radius: 8px;
+    padding: 15px;
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+    color: #ffffff;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+    z-index: 1000;
+}
+
+.hud-title {
+    color: #00ff88;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.hud-stat {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    padding: 2px 0;
+}
+
+.hud-value {
+    color: #00ff88;
+    font-weight: bold;
+}
+
+.hud-value.warning {
+    color: #ffaa00;
+    animation: warningBlink 1s ease-in-out infinite;
+}
+
+.hud-value.critical {
+    color: #ff4444;
+    animation: criticalBlink 0.5s ease-in-out infinite;
+}
+
+@keyframes warningBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+@keyframes criticalBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* ===== PANEL DE DEBUG ===== */
+.debug-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #00ff88;
+    border-radius: 4px;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #cccccc;
+    max-width: 300px;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+.debug-panel.hidden {
+    display: none;
+}
+
+.debug-section {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.debug-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.debug-title {
+    color: #00ff88;
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.debug-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+    padding: 2px 0;
+}
+
+.debug-value {
+    color: #ffffff;
+    font-weight: bold;
+}
+
+/* ===== ANIMACIONES GLOBALES ===== */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { 
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+@keyframes glow {
+    0%, 100% { 
+        filter: drop-shadow(0 0 5px currentColor);
+    }
+    50% { 
+        filter: drop-shadow(0 0 15px currentColor);
+    }
+}
+
+/* ===== UTILIDADES ===== */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+.pulse {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.glow {
+    animation: glow 2s ease-in-out infinite;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.no-select {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .hud {
+        top: 10px;
+        left: 10px;
+        padding: 10px;
+        font-size: 12px;
+    }
+    
+    .debug-panel {
+        top: 10px;
+        right: 10px;
+        padding: 8px;
+        font-size: 10px;
+        max-width: 250px;
+    }
+    
+    .drag-preview-line {
+        stroke-width: 4;
+    }
+    
+    .drag-target-highlight {
+        stroke-width: 4;
+    }
+    
+    .planet {
+        filter: drop-shadow(0 0 6px currentColor);
+    }
+}
+
+/* ===== EFECTOS DE ALTO RENDIMIENTO ===== */
+.gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform, opacity, filter;
+    backface-visibility: hidden;
+}
+
+.smooth-animation {
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== COLORES VIBRANTES ADICIONALES ===== */
+:root {
+    --player-color: #00ff88;
+    --player-color-bright: #00ffaa;
+    --player-color-dark: #00cc66;
+    
+    --ai-color: #ff4444;
+    --ai-color-bright: #ff6666;
+    --ai-color-dark: #cc2222;
+    
+    --neutral-color: #888888;
+    --neutral-color-bright: #aaaaaa;
+    --neutral-color-dark: #666666;
+    
+    --background-dark: #000011;
+    --background-space: #000033;
+    
+    --glow-intensity: 0 0 20px;
+    --glow-strong: 0 0 30px;
+}
+
+/* ===== MEJORAS DE ACCESIBILIDAD ===== */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .planet,
+    .fleet,
+    .drag-preview-line,
+    .drag-target-highlight {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* ===== OPTIMIZACIONES DE RENDIMIENTO ===== */
+.planet,
+.fleet,
+.particle {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* ===== DRAG & DROP EFFECTS ===== */
+.drag-preview-line {
+    pointer-events: none;
+    animation: dragLinePulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes dragLinePulse {
+    0% { stroke-opacity: 0.5; stroke-width: 2; }
+    50% { stroke-opacity: 0.9; stroke-width: 4; }
+    100% { stroke-opacity: 0.5; stroke-width: 2; }
+}
+
+.drag-target-highlight {
+    pointer-events: none;
+}
+
+@keyframes dragTargetPulse {
+    0% { stroke-opacity: 0.6; stroke-width: 4; }
+    100% { stroke-opacity: 1.0; stroke-width: 6; }
+}
+
+@keyframes launchConfirmation {
+    0% { 
+        stroke-opacity: 0.9; 
+        stroke-width: 5; 
+        r: attr(r);
+    }
+    50% { 
+        stroke-opacity: 1.0; 
+        stroke-width: 8; 
+        r: calc(attr(r) + 10);
+    }
+    100% { 
+        stroke-opacity: 0; 
+        stroke-width: 2; 
+        r: calc(attr(r) + 20);
+    }
+}
+
+/* Efectos visuales para flotas */
+@keyframes fleetTrail {
+    0% { stroke-opacity: 0.8; }
+    50% { stroke-opacity: 0.4; }
+    100% { stroke-opacity: 0.8; }
+}
+
+/* Efectos de conquista */
+@keyframes conquestEffect {
+    0% { 
+        fill-opacity: 0.3; 
+        stroke-opacity: 0.8; 
+        r: attr(r);
+    }
+    50% { 
+        fill-opacity: 0.6; 
+        stroke-opacity: 1.0; 
+        r: calc(attr(r) + 15);
+    }
+    100% { 
+        fill-opacity: 0; 
+        stroke-opacity: 0; 
+        r: calc(attr(r) + 30);
+    }
+}
+
+/* ===== HIGH CONTRAST MODE ===== */
+@media (prefers-contrast: high) {
+    .planet {
+        stroke-width: 3;
+    }
+    
+    .drag-preview-line {
+        stroke-width: 5;
+        stroke-opacity: 1;
+    }
+    
+    .drag-target-highlight {
+        stroke-width: 5;
+    }
+}
+
+/* 🎛️ MILESTONE 2.1: Animaciones para controles Galcon auténticos */
+
+/* Animación para feedback de ataque */
+@keyframes attackFeedback {
+    0% {
+        stroke-opacity: 0.8;
+        r: attr(r);
+    }
+    50% {
+        stroke-opacity: 1;
+        r: calc(attr(r) + 15);
+    }
+    100% {
+        stroke-opacity: 0;
+        r: calc(attr(r) + 30);
+    }
+}
+
+/* Animación para selección de flotas */
+@keyframes fleetSelection {
+    0% {
+        stroke-opacity: 0.8;
+        stroke-width: 2;
+    }
+    50% {
+        stroke-opacity: 1;
+        stroke-width: 3;
+    }
+    100% {
+        stroke-opacity: 0.8;
+        stroke-width: 2;
+    }
+}
+
+/* Animación para feedback de redirección */
+@keyframes redirectionFeedback {
+    0% {
+        stroke-opacity: 0.8;
+        r: attr(r);
+        stroke-width: 3;
+    }
+    50% {
+        stroke-opacity: 1;
+        r: calc(attr(r) + 20);
+        stroke-width: 5;
+    }
+    100% {
+        stroke-opacity: 0;
+        r: calc(attr(r) + 40);
+        stroke-width: 1;
+    }
+}
+
+/* Estilos para indicador de porcentaje */
+.percentage-indicator {
+    filter: drop-shadow(0 0 5px rgba(0, 255, 136, 0.3));
+}
+
+/* Estilos para elementos de redirección */
+.fleet-redirection-lines {
+    filter: drop-shadow(0 0 3px rgba(255, 170, 0, 0.4));
+}
+
+.fleet-selection-indicators {
+    filter: drop-shadow(0 0 3px rgba(255, 102, 102, 0.4));
+}
+
+/* Mejoras visuales para controles */
+.control-key {
+    transition: all 0.2s ease;
+}
+
+.control-key:hover {
+    background: rgba(0, 255, 136, 0.2);
+    border-color: rgba(0, 255, 136, 0.5);
+    transform: scale(1.05);
+}
+
+/* Animación de pulso para indicador de estado */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+} 
