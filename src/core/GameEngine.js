@@ -2,6 +2,7 @@
  * 🎮 GALCON GAME - GAME ENGINE (REFACTORIZADO FASE 1)
  * Motor principal del juego con arquitectura modular optimizada
  * HITO 2.5: Optimización crítica para 60 FPS estables
+ * MILESTONE 2.3: Navegación inteligente integrada
  * 
  * OPTIMIZACIONES APLICADAS:
  * - ❌ Eliminados 85+ console.log del loop crítico
@@ -9,6 +10,7 @@
  * - 🧪 Separados métodos de testing
  * - 📊 Cacheadas estadísticas y validaciones
  * - 🗺️ Optimizado spatial grid
+ * - 🧭 Sistema de navegación inteligente integrado
  */
 
 import eventBus, { GAME_EVENTS } from './EventBus.js';
@@ -25,6 +27,7 @@ import FleetPhysics from '../systems/FleetPhysics.js';
 import { GAME_CONFIG } from '../config/GameConfig.js';
 import { BALANCE_CONFIG } from '../config/BalanceConfig.js';
 import { FleetFormationSystem } from '../systems/FleetFormationSystem.js';
+import NavigationSystem from '../navigation/NavigationSystem.js';
 
 export class GameEngine {
     constructor() {
@@ -42,6 +45,7 @@ export class GameEngine {
         this.percentageSelector = null;
         this.fleetRedirectionSystem = null;
         this.fleetFormationSystem = null;
+        this.navigationSystem = null;  // 🧭 Sistema de navegación inteligente
         
         // Sistemas de optimización
         this.performanceProfiler = null;
@@ -223,6 +227,9 @@ export class GameEngine {
         if (this.config.performance.enableFleetPhysics) {
             this.fleetPhysics = new FleetPhysics();
         }
+        
+        // 🧭 Inicializar sistema de navegación inteligente
+        this.navigationSystem = new NavigationSystem(this, null); // CanvasRenderer se conectará después
         
         if (this.debugMode) {
             console.log('🤖 Sistemas del juego inicializados con optimizaciones Canvas 2D');
@@ -493,6 +500,11 @@ export class GameEngine {
             this.aiSystem.update(dt);
         }
         
+        // 🧭 Actualizar sistema de navegación inteligente
+        if (this.navigationSystem) {
+            this.navigationSystem.update();
+        }
+        
         // 🚀 OPTIMIZACIÓN: Verificar condiciones de victoria con cache
         this.checkWinConditionsOptimized();
         
@@ -624,6 +636,13 @@ export class GameEngine {
      */
     getAllPlanets() {
         return Array.from(this.planets.values());
+    }
+
+    /**
+     * Obtener todas las flotas
+     */
+    getAllFleets() {
+        return Array.from(this.fleets.values());
     }
 
     /**
@@ -847,6 +866,10 @@ export class GameEngine {
             this.aiSystem.destroy();
         }
         
+        if (this.navigationSystem) {
+            this.navigationSystem.destroy();
+        }
+        
         if (this.performanceProfiler) {
             this.performanceProfiler.destroy();
         }
@@ -858,7 +881,7 @@ export class GameEngine {
         if (this.debugMode) {
             console.log('💥 GameEngine destruido');
         }
-        }
+    }
         
     // 🧪 MÉTODOS DE TESTING SEPARADOS (solo para desarrollo)
     
@@ -903,6 +926,17 @@ export class GameEngine {
     disableDebugMode() {
         this.debugMode = false;
         console.log('🔧 Modo debug desactivado');
+    }
+
+    /**
+     * 🧭 Conectar CanvasRenderer al sistema de navegación
+     * Llamado desde GameLoader después de inicializar el renderer
+     */
+    connectNavigationRenderer(canvasRenderer) {
+        if (this.navigationSystem && canvasRenderer) {
+            this.navigationSystem.canvasRenderer = canvasRenderer;
+            console.log('🧭 NavigationSystem conectado al CanvasRenderer');
+        }
     }
 }
 

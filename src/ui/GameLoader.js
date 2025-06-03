@@ -50,6 +50,9 @@ export class GameLoader {
             const renderer = new CanvasRenderer(gameEngine);
             console.log('🎨 Canvas 2D Renderer cargado');
             
+            // 🧭 Conectar NavigationSystem al CanvasRenderer
+            gameEngine.connectNavigationRenderer(renderer);
+            
             renderer.start();
             await this.delay(200);
             
