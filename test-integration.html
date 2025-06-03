@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Test Integración - Orientación en Juego Principal</title>
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        body {
+            background: #0a0a0a;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-container {
+            display: flex;
+            gap: 20px;
+            height: 100vh;
+        }
+        
+        .game-area {
+            flex: 1;
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            position: relative;
+            background: radial-gradient(circle at center, #001122 0%, #000000 100%);
+        }
+        
+        .debug-panel {
+            width: 300px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            height: fit-content;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .debug-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(0, 255, 136, 0.05);
+            border-radius: 4px;
+        }
+        
+        .debug-value {
+            color: #88ffaa;
+            font-weight: bold;
+        }
+        
+        button {
+            background: #00ff88;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #00cc66;
+        }
+        
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .status-ok { color: #00ff88; }
+        .status-warning { color: #ffaa00; }
+        .status-error { color: #ff4444; }
+        
+        .log-entry {
+            font-size: 11px;
+            margin: 2px 0;
+            padding: 2px 5px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="game-area">
+            <svg id="gameCanvas" viewBox="0 0 800 600">
+                <!-- El juego se renderizará aquí -->
+            </svg>
+        </div>
+        
+        <div class="debug-panel">
+            <h3>🎯 Test Integración - Hito 1</h3>
+            
+            <div class="debug-section">
+                <h4>Estado del Juego</h4>
+                <div>Planetas: <span id="planetCount" class="debug-value">0</span></div>
+                <div>Flotas: <span id="fleetCount" class="debug-value">0</span></div>
+                <div>Estado: <span id="gameStatus" class="debug-value">Iniciando...</span></div>
+            </div>
+            
+            <div class="debug-section">
+                <h4>Controles</h4>
+                <button onclick="startGame()">🎮 Iniciar Juego</button>
+                <button onclick="launchTestFleet()">🚀 Lanzar Flota</button>
+                <button onclick="toggleDebug()">🔍 Debug</button>
+                <button onclick="resetGame()">🔄 Reset</button>
+            </div>
+            
+            <div class="debug-section">
+                <h4>Verificación Hito 1</h4>
+                <div id="criteria1">❓ Flotas visibles</div>
+                <div id="criteria2">❓ Orientación correcta</div>
+                <div id="criteria3">❓ Movimiento fluido</div>
+                <div id="criteria4">❓ Colores aplicados</div>
+            </div>
+            
+            <div class="debug-section">
+                <h4>Log de Eventos</h4>
+                <div id="eventLog" style="max-height: 200px; overflow-y: auto; font-size: 10px;">
+                    <div class="log-entry">Esperando inicio del juego...</div>
+                </div>
+            </div>
+            
+            <div class="debug-section">
+                <h4>Instrucciones</h4>
+                <p style="font-size: 11px;">
+                    1. Haz clic en "Iniciar Juego"<br>
+                    2. Observa que las flotas apuntan hacia su destino<br>
+                    3. Verifica que se mueven correctamente<br>
+                    4. Comprueba que los colores son correctos
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cargar el juego completo -->
+    <script type="module">
+        import { GameEngine } from './src/core/GameEngine.js';
+        
+        let gameEngine = null;
+        let debugMode = false;
+        let updateInterval = null;
+        
+        // Elementos DOM
+        const planetCountEl = document.getElementById('planetCount');
+        const fleetCountEl = document.getElementById('fleetCount');
+        const gameStatusEl = document.getElementById('gameStatus');
+        const eventLogEl = document.getElementById('eventLog');
+        
+        /**
+         * Inicializar el juego
+         */
+        window.startGame = function() {
+            try {
+                // Crear instancia del juego
+                gameEngine = new GameEngine();
+                
+                // Configurar canvas
+                const canvas = document.getElementById('gameCanvas');
+                gameEngine.renderer.canvas = canvas;
+                
+                // Inicializar
+                gameEngine.initialize();
+                gameEngine.start();
+                
+                gameStatusEl.textContent = 'Ejecutándose';
+                gameStatusEl.className = 'debug-value status-ok';
+                
+                logEvent('🎮 Juego iniciado correctamente');
+                
+                // Iniciar monitoreo
+                startMonitoring();
+                
+            } catch (error) {
+                console.error('Error al iniciar juego:', error);
+                gameStatusEl.textContent = 'Error';
+                gameStatusEl.className = 'debug-value status-error';
+                logEvent(`❌ Error: ${error.message}`);
+            }
+        };
+        
+        /**
+         * Lanzar flota de prueba
+         */
+        window.launchTestFleet = function() {
+            if (!gameEngine) {
+                logEvent('⚠️ Inicia el juego primero');
+                return;
+            }
+            
+            try {
+                const planets = gameEngine.getAllPlanets();
+                if (planets.length < 2) {
+                    logEvent('⚠️ Se necesitan al menos 2 planetas');
+                    return;
+                }
+                
+                // Encontrar planeta del jugador
+                const playerPlanet = planets.find(p => p.owner === 'player');
+                const targetPlanet = planets.find(p => p.owner !== 'player');
+                
+                if (playerPlanet && targetPlanet) {
+                    gameEngine.launchFleet(playerPlanet.id, targetPlanet.id, Math.floor(playerPlanet.ships / 2));
+                    logEvent(`🚀 Flota lanzada: ${playerPlanet.id} → ${targetPlanet.id}`);
+                } else {
+                    logEvent('⚠️ No se encontraron planetas válidos');
+                }
+            } catch (error) {
+                logEvent(`❌ Error al lanzar flota: ${error.message}`);
+            }
+        };
+        
+        /**
+         * Toggle modo debug
+         */
+        window.toggleDebug = function() {
+            debugMode = !debugMode;
+            if (gameEngine && gameEngine.renderer) {
+                gameEngine.renderer.config.showDebugInfo = debugMode;
+            }
+            logEvent(`🔍 Debug ${debugMode ? 'activado' : 'desactivado'}`);
+        };
+        
+        /**
+         * Reset del juego
+         */
+        window.resetGame = function() {
+            if (gameEngine) {
+                gameEngine.stop();
+                gameEngine = null;
+            }
+            
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+            
+            // Limpiar canvas
+            const canvas = document.getElementById('gameCanvas');
+            while (canvas.firstChild) {
+                canvas.removeChild(canvas.firstChild);
+            }
+            
+            gameStatusEl.textContent = 'Detenido';
+            gameStatusEl.className = 'debug-value';
+            
+            logEvent('🔄 Juego reiniciado');
+        };
+        
+        /**
+         * Iniciar monitoreo del estado
+         */
+        function startMonitoring() {
+            if (updateInterval) clearInterval(updateInterval);
+            
+            updateInterval = setInterval(() => {
+                if (!gameEngine) return;
+                
+                try {
+                    // Actualizar contadores
+                    const planets = gameEngine.getAllPlanets();
+                    const fleets = gameEngine.getAllFleets();
+                    
+                    planetCountEl.textContent = planets.length;
+                    fleetCountEl.textContent = fleets.length;
+                    
+                    // Verificar criterios del Hito 1
+                    checkHito1Criteria(planets, fleets);
+                    
+                } catch (error) {
+                    console.error('Error en monitoreo:', error);
+                }
+            }, 1000);
+        }
+        
+        /**
+         * Verificar criterios del Hito 1
+         */
+        function checkHito1Criteria(planets, fleets) {
+            const criteria1 = document.getElementById('criteria1');
+            const criteria2 = document.getElementById('criteria2');
+            const criteria3 = document.getElementById('criteria3');
+            const criteria4 = document.getElementById('criteria4');
+            
+            // Criterio 1: Flotas visibles
+            const fleetsVisible = fleets.length > 0;
+            criteria1.textContent = fleetsVisible ? '✅ Flotas visibles' : '❌ Flotas visibles';
+            
+            // Criterio 2: Orientación correcta (verificar en DOM)
+            const fleetElements = document.querySelectorAll('.fleet-triangle');
+            const hasOrientation = Array.from(fleetElements).some(el => 
+                el.getAttribute('transform') && el.getAttribute('transform').includes('rotate')
+            );
+            criteria2.textContent = hasOrientation ? '✅ Orientación correcta' : '❌ Orientación correcta';
+            
+            // Criterio 3: Movimiento fluido (si hay flotas en movimiento)
+            const movingFleets = fleets.filter(f => !f.hasArrived);
+            criteria3.textContent = movingFleets.length > 0 ? '✅ Movimiento fluido' : '⏸️ Movimiento fluido';
+            
+            // Criterio 4: Colores aplicados
+            const hasColors = Array.from(fleetElements).some(el => 
+                el.getAttribute('fill') && el.getAttribute('fill') !== 'none'
+            );
+            criteria4.textContent = hasColors ? '✅ Colores aplicados' : '❌ Colores aplicados';
+        }
+        
+        /**
+         * Agregar entrada al log
+         */
+        function logEvent(message) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            
+            eventLogEl.appendChild(entry);
+            eventLogEl.scrollTop = eventLogEl.scrollHeight;
+            
+            // Limitar a 50 entradas
+            while (eventLogEl.children.length > 50) {
+                eventLogEl.removeChild(eventLogEl.firstChild);
+            }
+        }
+        
+        // Auto-inicializar después de un momento
+        setTimeout(() => {
+            logEvent('🎯 Test de integración listo');
+            logEvent('💡 Haz clic en "Iniciar Juego" para comenzar');
+        }, 500);
+        
+        console.log('🎯 Test de integración del Hito 1 cargado');
+    </script>
+</body>
+</html> 

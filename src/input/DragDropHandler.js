@@ -66,6 +66,8 @@ export class DragDropHandler {
      * Manejar mouse down
      */
     onMouseDown(event) {
+        console.log(`🖱️ CLICK DETECTADO en DragDropHandler`); // Log básico para verificar
+        
         if (event.button !== 0) return; // Solo botón izquierdo
 
         // Obtener posición relativa al canvas
@@ -79,17 +81,30 @@ export class DragDropHandler {
         this.currentX = x;
         this.currentY = y;
 
-        // Verificar si hay planetas seleccionados del jugador
+        // Verificar planetas seleccionados
         const selectedPlanets = this.selectionSystem.getSelectedPlanets();
         const playerSelectedPlanets = selectedPlanets.filter(p => p.owner === 'player');
         
-        // Solo iniciar drag si hay planetas seleccionados Y no estamos clickeando en un planeta del jugador
+        console.log(`🖱️ Click en (${Math.round(x)}, ${Math.round(y)}) - Planetas player seleccionados: ${playerSelectedPlanets.length}`);
+        
+        // Verificar si hay planetas seleccionados del jugador
         const clickedPlanet = this.gameEngine.getPlanetAtPosition(x, y);
         
+        if (clickedPlanet) {
+            console.log(`🖱️ Planeta clickeado: ${clickedPlanet.id} (${clickedPlanet.owner})`);
+        }
+        
+        // Solo iniciar drag si hay planetas seleccionados Y no estamos clickeando en un planeta del jugador
         if (playerSelectedPlanets.length > 0 && (!clickedPlanet || clickedPlanet.owner !== 'player')) {
             // Preparar para posible drag & drop
             this.prepareForDrag(x, y);
             console.log(`🎯 Preparando drag desde ${playerSelectedPlanets.length} planetas seleccionados`);
+        } else {
+            if (playerSelectedPlanets.length === 0) {
+                console.log(`❌ No se puede hacer drag: no hay planetas del player seleccionados`);
+            } else if (clickedPlanet && clickedPlanet.owner === 'player') {
+                console.log(`❌ No se puede hacer drag: clickeando en planeta propio ${clickedPlanet.id}`);
+            }
         }
     }
 
@@ -146,8 +161,18 @@ export class DragDropHandler {
      * Iniciar drag desde planetas seleccionados
      */
     startDragFromSelection() {
+        console.log(`🎯 INICIANDO DRAG desde planetas seleccionados`);
+        
         this.isDragging = true;
         this.targetPlanet = null;
+        
+        const selectedPlanets = this.selectionSystem.getSelectedPlanets();
+        const playerPlanets = selectedPlanets.filter(p => p.owner === 'player');
+        
+        console.log(`🎯 Planetas para drag: ${playerPlanets.length}`);
+        playerPlanets.forEach(p => {
+            console.log(`  - ${p.id}: ${p.ships} naves`);
+        });
         
         this.createPreviewElements();
         
@@ -165,6 +190,8 @@ export class DragDropHandler {
      * Manejar mouse up - EJECUTAR AUTOMÁTICAMENTE SI HAY OBJETIVO
      */
     onMouseUp(event) {
+        console.log(`🔍 MouseUp - isDragging: ${this.isDragging}, targetPlanet: ${this.targetPlanet?.id || 'none'}`);
+        
         if (!this.isDragging) return;
 
         // Si hay un objetivo válido, ejecutar automáticamente

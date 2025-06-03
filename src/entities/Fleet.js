@@ -19,14 +19,18 @@ export class Fleet {
         this.targetX = Number(fleetData.targetX) || 0;
         this.targetY = Number(fleetData.targetY) || 0;
         
-        // Verificar que las posiciones sean válidas
+        // 🔍 VALIDACIÓN ESTRICTA: Verificar que las posiciones sean válidas
         if (isNaN(this.startX) || isNaN(this.startY) || isNaN(this.targetX) || isNaN(this.targetY)) {
-            console.error(`🚨 Fleet ${this.id}: Posiciones inválidas`, {
+            console.error(`🚨 Fleet ${this.id}: Coordenadas NaN detectadas - CORRIGIENDO`, {
                 startX: this.startX, startY: this.startY,
                 targetX: this.targetX, targetY: this.targetY
             });
-            // Usar posiciones por defecto
-            this.startX = this.startY = this.targetX = this.targetY = 0;
+            
+            // 🔧 CORRECCIÓN: Usar posiciones por defecto válidas
+            this.startX = isNaN(this.startX) ? 100 : this.startX;
+            this.startY = isNaN(this.startY) ? 100 : this.startY;
+            this.targetX = isNaN(this.targetX) ? 200 : this.targetX;
+            this.targetY = isNaN(this.targetY) ? 200 : this.targetY;
         }
         
         this.x = this.startX;
@@ -54,17 +58,17 @@ export class Fleet {
         this.pulsePhase = Math.random() * Math.PI * 2;
         this.formationSpread = this.calculateFormationSpread();
         
-        console.log(`🚀 Flota ${this.id} creada: ${this.ships} naves de ${this.owner} (${this.startX},${this.startY}) → (${this.targetX},${this.targetY})`);
+        console.log(`🚀 Flota ${this.id} creada: ${this.ships} naves de ${this.owner} (${Math.round(this.startX)},${Math.round(this.startY)}) → (${Math.round(this.targetX)},${Math.round(this.targetY)})`);
     }
 
     /**
      * Calcular velocidad basada en el número de naves
      */
     calculateSpeed() {
-        // Flotas más rápidas para juego más dinámico
-        const baseSpeed = 300; // píxeles por segundo (era 150)
-        const speedPenalty = Math.log(this.ships) * 0.05; // Menor penalización
-        return Math.max(baseSpeed * (1 - speedPenalty), baseSpeed * 0.7); // Mínimo más alto
+        // 🎯 HITO 1A: Velocidad más lenta para coincidir con test-hito1a
+        const baseSpeed = 120; // píxeles por segundo (reducido de 300)
+        const speedPenalty = Math.log(this.ships) * 0.02; // Menor penalización
+        return Math.max(baseSpeed * (1 - speedPenalty), baseSpeed * 0.8); // Velocidad más consistente
     }
 
     /**
@@ -207,6 +211,8 @@ export class Fleet {
             id: this.id,
             x: this.x,
             y: this.y,
+            targetX: this.targetX,
+            targetY: this.targetY,
             ships: this.ships,
             owner: this.owner,
             color: this.getColor(),

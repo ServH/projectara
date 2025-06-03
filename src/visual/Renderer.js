@@ -270,18 +270,13 @@ export class Renderer {
         circle.setAttribute('cy', planet.y);
         circle.setAttribute('r', planet.radius);
         
-        // 🔧 CORREGIDO: Aplicar color directamente al atributo fill
+        // Aplicar colores directamente al atributo fill
         circle.setAttribute('fill', planet.color);
         circle.setAttribute('stroke', planet.color);
         circle.setAttribute('stroke-width', '2');
         circle.setAttribute('class', `planet-body ${planet.owner}`);
         
-        // 🔧 DEBUG: Solo log del primer planeta para evitar spam
-        if (planet.id === 'planet_0') {
-            console.log(`🎨 Planeta ${planet.id}: color=${planet.color}, owner=${planet.owner}, ships=${planet.ships}`);
-        }
-        
-        // 📊 CORRECCIÓN: Solo actualizar glow si existe
+        // Solo actualizar glow si existe
         if (glow && planet.isSelected) {
             glow.setAttribute('cx', planet.x);
             glow.setAttribute('cy', planet.y);
@@ -347,113 +342,73 @@ export class Renderer {
     }
 
     /**
-     * Crear elemento visual de flota (MILESTONE 2.2 - FINAL)
+     * Crear elemento visual de flota (HITO 1A: EXACTAMENTE COMO EN TEST-HITO1A)
      */
     createFleetElement(fleet) {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.setAttribute('id', `fleet-${fleet.id}`);
         group.setAttribute('class', `fleet ${fleet.owner}`);
         
-        // 🔧 MILESTONE 2.2: Crear múltiples triángulos con tamaño mejorado
-        const maxTriangles = Math.min(fleet.ships, 20); // Máximo 20 triángulos visibles
-        const triangleSize = 5; // 🎯 AUMENTADO: Triángulos más visibles (2px → 5px)
+        // 🎯 HITO 1A: Crear triángulo EXACTAMENTE como en test-hito1a.html
+        const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
         
-        for (let i = 0; i < maxTriangles; i++) {
-            const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-            triangle.setAttribute('class', `fleet-triangle ${fleet.owner}`);
-            triangle.setAttribute('fill', fleet.color);
-            triangle.setAttribute('stroke', fleet.color);
-            triangle.setAttribute('stroke-width', '1'); // 🎯 MEJORADO: Borde más visible
-            triangle.setAttribute('data-triangle-index', i);
-            group.appendChild(triangle);
-        }
+        // 🎯 PUNTOS IDÉNTICOS al test-hito1a.html
+        // const points = [ [size, 0], [-size/2, -size/2], [-size/2, size/2] ];
+        const size = 8; // Mismo tamaño que en el test
+        const points = [
+            [size, 0],           // Punta hacia la derecha
+            [-size/2, -size/2],  // Esquina superior
+            [-size/2, size/2]    // Esquina inferior
+        ];
         
-        console.log(`🚀 Flota ${fleet.id} creada: ${maxTriangles} triángulos (5px), owner=${fleet.owner}, color=${fleet.color}`);
+        const pointsStr = points.map(p => p.join(',')).join(' ');
+        triangle.setAttribute('points', pointsStr);
+        triangle.setAttribute('fill', fleet.color);
+        triangle.setAttribute('stroke', fleet.color);
+        triangle.setAttribute('stroke-width', '1');
+        triangle.setAttribute('class', 'fleet-triangle');
+        
+        group.appendChild(triangle);
         
         return group;
     }
 
     /**
-     * Actualizar elemento visual de flota (MILESTONE 2.2 - FINAL)
+     * Actualizar elemento visual de flota (HITO 1A: ORIENTACIÓN PERFECTA COMO EN TEST)
      */
     updateFleetElement(fleetGroup, fleet) {
-        const triangles = fleetGroup.querySelectorAll('.fleet-triangle');
+        const triangle = fleetGroup.querySelector('.fleet-triangle');
         
-        if (triangles.length === 0) {
-            console.warn(`⚠️ No se encontraron triángulos para flota ${fleet.id}`);
+        if (!triangle) {
             return;
         }
         
-        // 🔧 MILESTONE 2.2: Calcular dirección hacia el destino
-        const targetPlanet = this.gameEngine.getPlanet(fleet.toPlanet);
-        let angle = 0;
-        
-        if (targetPlanet) {
-            const dx = targetPlanet.x - fleet.x;
-            const dy = targetPlanet.y - fleet.y;
-            angle = Math.atan2(dy, dx);
+        // Verificar que las coordenadas sean válidas
+        if (isNaN(fleet.x) || isNaN(fleet.y) || isNaN(fleet.targetX) || isNaN(fleet.targetY)) {
+            fleetGroup.style.display = 'none';
+            return;
         }
         
-        // 🔧 MILESTONE 2.2: Configurar cada triángulo con mejor visibilidad
-        const maxVisible = Math.min(fleet.ships, 20);
-        const triangleSize = 5; // 🎯 AUMENTADO: Tamaño mejorado
-        const spacing = 6; // 🎯 AUMENTADO: Más espaciado para mejor visibilidad (4px → 6px)
+        // Calcular ángulo EXACTAMENTE como en test-hito1a.html
+        const dx = fleet.targetX - fleet.x;
+        const dy = fleet.targetY - fleet.y;
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
         
-        triangles.forEach((triangle, index) => {
-            if (index < maxVisible) {
-                // Calcular posición en formación más densa
-                const row = Math.floor(index / 5); // 5 triángulos por fila
-                const col = index % 5;
-                
-                // Posición relativa en la formación
-                const offsetX = (col - 2) * spacing; // Centrar horizontalmente
-                const offsetY = row * spacing;
-                
-                // Rotar la formación según la dirección
-                const rotatedX = offsetX * Math.cos(angle) - offsetY * Math.sin(angle);
-                const rotatedY = offsetX * Math.sin(angle) + offsetY * Math.cos(angle);
-                
-                // Posición final del triángulo
-                const triangleX = fleet.x + rotatedX;
-                const triangleY = fleet.y + rotatedY;
-                
-                // 🔧 MILESTONE 2.2: Crear triángulo más grande que apunta hacia el destino
-                const tipX = triangleX + triangleSize * Math.cos(angle);
-                const tipY = triangleY + triangleSize * Math.sin(angle);
-                
-                const baseAngle1 = angle + (2 * Math.PI / 3);
-                const baseAngle2 = angle - (2 * Math.PI / 3);
-                
-                const base1X = triangleX + triangleSize * 0.8 * Math.cos(baseAngle1); // 🎯 MEJORADO: Base más grande
-                const base1Y = triangleY + triangleSize * 0.8 * Math.sin(baseAngle1);
-                
-                const base2X = triangleX + triangleSize * 0.8 * Math.cos(baseAngle2);
-                const base2Y = triangleY + triangleSize * 0.8 * Math.sin(baseAngle2);
-                
-                const points = [
-                    `${tipX},${tipY}`,      // Punta hacia el destino
-                    `${base1X},${base1Y}`,  // Base izquierda
-                    `${base2X},${base2Y}`   // Base derecha
-                ].join(' ');
-                
-                triangle.setAttribute('points', points);
-                triangle.setAttribute('fill', fleet.color);
-                triangle.setAttribute('stroke', fleet.color);
-                triangle.setAttribute('stroke-width', '1');
-                triangle.style.display = 'block';
-            } else {
-                // Ocultar triángulos extra
-                triangle.style.display = 'none';
-            }
-        });
+        // Verificar que el ángulo sea válido
+        if (isNaN(angle)) {
+            triangle.setAttribute('transform', `translate(${fleet.x}, ${fleet.y}) rotate(0)`);
+        } else {
+            triangle.setAttribute('transform', `translate(${fleet.x}, ${fleet.y}) rotate(${angle})`);
+        }
         
-        // 🔧 MILESTONE 2.2: Actualizar clases CSS
+        // Aplicar colores
+        triangle.setAttribute('fill', fleet.color);
+        triangle.setAttribute('stroke', fleet.color);
+        triangle.setAttribute('stroke-width', '1');
+        triangle.style.display = 'block';
+        
+        // Actualizar clases CSS
         fleetGroup.setAttribute('class', `fleet ${fleet.owner}`);
-        
-        // 🔧 DEBUG: Log ocasional para verificar
-        if (Math.random() < 0.01) { // 1% de las veces
-            console.log(`🚀 Flota ${fleet.id}: ${maxVisible} triángulos (5px), color=${fleet.color}, pos=(${Math.round(fleet.x)}, ${Math.round(fleet.y)}), angle=${Math.round(angle * 180 / Math.PI)}°`);
-        }
         
         // Ocultar si ha llegado
         if (fleet.hasArrived) {

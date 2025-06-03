@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Hito 1A - Una Nave con Orientación Perfecta</title>
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        body {
+            background: #0a0a0a;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 10px;
+            overflow: hidden;
+        }
+        
+        .test-container {
+            display: flex;
+            gap: 10px;
+            height: 100vh;
+            max-height: 100vh;
+        }
+        
+        .game-area {
+            flex: 1;
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            position: relative;
+            background: radial-gradient(circle at center, #001122 0%, #000000 100%);
+            min-width: 0; /* Para flex shrinking */
+        }
+        
+        .debug-panel {
+            width: 280px;
+            min-width: 280px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            padding: 10px;
+            height: calc(100vh - 20px);
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        
+        .debug-section {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(0, 255, 136, 0.05);
+            border-radius: 4px;
+        }
+        
+        .debug-section h4 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+        }
+        
+        .debug-value {
+            color: #88ffaa;
+            font-weight: bold;
+        }
+        
+        button {
+            background: #00ff88;
+            color: #000;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        
+        button:hover {
+            background: #00cc66;
+        }
+        
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .status-ok { color: #00ff88; }
+        .status-warning { color: #ffaa00; }
+        .status-error { color: #ff4444; }
+        
+        .log-entry {
+            font-size: 10px;
+            margin: 1px 0;
+            padding: 2px 4px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 2px;
+        }
+        
+        .criteria-success { color: #00ff88; }
+        .criteria-fail { color: #ff4444; }
+        .criteria-pending { color: #ffaa00; }
+        
+        /* Responsive para pantallas pequeñas */
+        @media (max-width: 1200px) {
+            .debug-panel {
+                width: 250px;
+                min-width: 250px;
+                font-size: 11px;
+            }
+        }
+        
+        @media (max-width: 900px) {
+            .test-container {
+                flex-direction: column;
+                height: auto;
+            }
+            .debug-panel {
+                width: 100%;
+                height: 300px;
+            }
+            .game-area {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="game-area">
+            <svg id="gameCanvas" viewBox="0 0 800 600">
+                <!-- El juego se renderizará aquí -->
+            </svg>
+        </div>
+        
+        <div class="debug-panel">
+            <h3>🎯 Hito 1A - Una Nave Perfecta</h3>
+            
+            <div class="debug-section">
+                <h4>Estado del Test</h4>
+                <div>Flotas: <span id="fleetCount" class="debug-value">0</span></div>
+                <div>Planetas: <span id="planetCount" class="debug-value">0</span></div>
+                <div>Modo: <span id="modeStatus" class="debug-value">Detenido</span></div>
+                <div>Estado: <span id="gameStatus" class="debug-value">Iniciando...</span></div>
+            </div>
+            
+            <div class="debug-section">
+                <h4>Controles</h4>
+                <button onclick="startSimpleTest()">🎯 Test Simple</button>
+                <button onclick="startMultiPlanetTest()">🌍 Test Multi-Planeta</button>
+                <button onclick="startChaosTest()">🚀 Test Caos (10 naves)</button>
+                <button onclick="startInteractiveTest()">🖱️ Test Interactivo</button>
+                <button onclick="resetTest()">🔄 Reset</button>
+            </div>
+            
+            <div class="debug-section">
+                <h4>✅ Criterios Hito 1A</h4>
+                <div id="criteria1">❓ Una nave por flota</div>
+                <div id="criteria2">❓ Orientación hacia destino</div>
+                <div id="criteria3">❓ Rotación suave</div>
+                <div id="criteria4">❓ Transform correcto</div>
+            </div>
+            
+            <div class="debug-section">
+                <h4>🔍 Análisis Técnico</h4>
+                <div>Naves en DOM: <span id="shipCount" class="debug-value">0</span></div>
+                <div>Con rotate: <span id="rotateCount" class="debug-value">0</span></div>
+                <div>Ángulo actual: <span id="currentAngle" class="debug-value">0°</span></div>
+            </div>
+            
+            <div class="debug-section">
+                <h4>Log de Eventos</h4>
+                <div id="eventLog" style="max-height: 120px; overflow-y: auto;">
+                    <div class="log-entry">Esperando inicio del test...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 🎯 HITO 1A: Test simplificado que replica test-orientation.html
+        
+        let testFleets = []; // Cambiar a array para múltiples naves
+        let planets = []; // Array de planetas
+        let updateInterval = null;
+        
+        // Variables para modo interactivo
+        let interactiveMode = false;
+        let isDragging = false;
+        let dragStartPlanet = null;
+        let dragLine = null;
+        
+        // Elementos DOM
+        const fleetCountEl = document.getElementById('fleetCount');
+        const gameStatusEl = document.getElementById('gameStatus');
+        const eventLogEl = document.getElementById('eventLog');
+        const shipCountEl = document.getElementById('shipCount');
+        const rotateCountEl = document.getElementById('rotateCount');
+        const currentAngleEl = document.getElementById('currentAngle');
+        const planetCountEl = document.getElementById('planetCount');
+        const modeStatusEl = document.getElementById('modeStatus');
+        
+        /**
+         * Función para calcular ángulo hacia el destino (igual que test-orientation.html)
+         */
+        function calculateAngleToTarget(fromX, fromY, toX, toY) {
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            return angle;
+        }
+        
+        /**
+         * Crear múltiples planetas en posiciones aleatorias
+         */
+        function createRandomPlanets(count = 5) {
+            planets = [];
+            const canvas = document.getElementById('gameCanvas');
+            const colors = ['#666', '#888', '#aaa', '#555', '#777'];
+            
+            for (let i = 0; i < count; i++) {
+                const x = 100 + Math.random() * 600; // Entre 100 y 700
+                const y = 100 + Math.random() * 400; // Entre 100 y 500
+                const color = colors[i % colors.length];
+                const radius = 15 + Math.random() * 10; // Entre 15 y 25
+                
+                // Crear círculo del planeta
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', x);
+                circle.setAttribute('cy', y);
+                circle.setAttribute('r', radius);
+                circle.setAttribute('fill', color);
+                circle.setAttribute('stroke', '#fff');
+                circle.setAttribute('stroke-width', 1);
+                circle.setAttribute('class', 'planet');
+                canvas.appendChild(circle);
+                
+                // Añadir texto con ID
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', x);
+                text.setAttribute('y', y + 4);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('fill', '#fff');
+                text.setAttribute('font-size', '10');
+                text.setAttribute('font-family', 'monospace');
+                text.textContent = `P${i}`;
+                canvas.appendChild(text);
+                
+                planets.push({ id: i, x, y, radius, color, element: circle });
+            }
+            
+            logEvent(`🌍 ${count} planetas creados aleatoriamente`);
+            return planets;
+        }
+        
+        /**
+         * Crear nave orientada hacia destino específico
+         */
+        function createOrientedShipToTarget(fromPlanet, toPlanet, color = '#00ff88') {
+            const canvas = document.getElementById('gameCanvas');
+            
+            // Crear nave (triángulo)
+            const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            
+            // Puntos del triángulo (apuntando hacia la derecha por defecto)
+            const size = 6;
+            const points = [
+                [size, 0],      // Punta
+                [-size/2, -size/2], // Esquina superior
+                [-size/2, size/2]   // Esquina inferior
+            ];
+            
+            const pointsStr = points.map(p => p.join(',')).join(' ');
+            triangle.setAttribute('points', pointsStr);
+            triangle.setAttribute('fill', color);
+            triangle.setAttribute('stroke', color);
+            triangle.setAttribute('stroke-width', 1);
+            triangle.setAttribute('class', 'fleet-triangle');
+            
+            // 🎯 CALCULAR ORIENTACIÓN hacia el planeta destino
+            const angle = calculateAngleToTarget(fromPlanet.x, fromPlanet.y, toPlanet.x, toPlanet.y);
+            
+            // 🎯 APLICAR TRANSFORM inicial
+            triangle.setAttribute('transform', `translate(${fromPlanet.x}, ${fromPlanet.y}) rotate(${angle})`);
+            
+            canvas.appendChild(triangle);
+            
+            return {
+                element: triangle,
+                x: fromPlanet.x,
+                y: fromPlanet.y,
+                targetX: toPlanet.x,
+                targetY: toPlanet.y,
+                angle: angle,
+                fromPlanet: fromPlanet,
+                toPlanet: toPlanet,
+                color: color
+            };
+        }
+        
+        /**
+         * Animar múltiples naves
+         */
+        function animateAllShips() {
+            let activeShips = 0;
+            
+            testFleets.forEach((ship, index) => {
+                if (ship && ship.element.parentNode) {
+                    const continuing = animateShip(ship);
+                    if (continuing) {
+                        activeShips++;
+                    } else {
+                        // Nave llegó al destino, remover del DOM
+                        if (ship.element.parentNode) {
+                            ship.element.parentNode.removeChild(ship.element);
+                        }
+                        testFleets[index] = null; // Marcar como completada
+                    }
+                }
+            });
+            
+            // Limpiar naves completadas
+            testFleets = testFleets.filter(ship => ship !== null);
+            
+            return activeShips > 0;
+        }
+        
+        /**
+         * Crear una nave simple que apunte al destino
+         */
+        function createOrientedShip(x, y, targetX, targetY, color = '#00ff88') {
+            const canvas = document.getElementById('gameCanvas');
+            
+            // Limpiar canvas anterior
+            while (canvas.firstChild) {
+                canvas.removeChild(canvas.firstChild);
+            }
+            
+            // Crear planeta destino
+            const targetCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            targetCircle.setAttribute('cx', targetX);
+            targetCircle.setAttribute('cy', targetY);
+            targetCircle.setAttribute('r', 20);
+            targetCircle.setAttribute('fill', '#666');
+            targetCircle.setAttribute('stroke', '#aaa');
+            targetCircle.setAttribute('stroke-width', 2);
+            canvas.appendChild(targetCircle);
+            
+            // Crear nave (triángulo)
+            const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            
+            // Puntos del triángulo (apuntando hacia la derecha por defecto)
+            const size = 8;
+            const points = [
+                [size, 0],      // Punta
+                [-size/2, -size/2], // Esquina superior
+                [-size/2, size/2]   // Esquina inferior
+            ];
+            
+            const pointsStr = points.map(p => p.join(',')).join(' ');
+            triangle.setAttribute('points', pointsStr);
+            triangle.setAttribute('fill', color);
+            triangle.setAttribute('stroke', color);
+            triangle.setAttribute('stroke-width', 1);
+            triangle.setAttribute('class', 'fleet-triangle');
+            
+            // 🎯 CALCULAR ORIENTACIÓN (igual que test-orientation.html)
+            const angle = calculateAngleToTarget(x, y, targetX, targetY);
+            
+            // 🎯 APLICAR TRANSFORM (igual que test-orientation.html)
+            triangle.setAttribute('transform', `translate(${x}, ${y}) rotate(${angle})`);
+            
+            canvas.appendChild(triangle);
+            
+            logEvent(`🎯 Nave creada en (${x}, ${y}) apuntando a (${targetX}, ${targetY})`);
+            logEvent(`🎯 Ángulo calculado: ${Math.round(angle)}°`);
+            
+            return {
+                element: triangle,
+                x: x,
+                y: y,
+                targetX: targetX,
+                targetY: targetY,
+                angle: angle
+            };
+        }
+        
+        /**
+         * Animar la nave hacia el destino
+         */
+        function animateShip(ship) {
+            const speed = 2; // píxeles por frame
+            
+            const dx = ship.targetX - ship.x;
+            const dy = ship.targetY - ship.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 5) {
+                // Mover hacia el destino
+                ship.x += (dx / distance) * speed;
+                ship.y += (dy / distance) * speed;
+                
+                // 🎯 RECALCULAR ORIENTACIÓN en cada frame
+                ship.angle = calculateAngleToTarget(ship.x, ship.y, ship.targetX, ship.targetY);
+                
+                // 🎯 ACTUALIZAR TRANSFORM
+                ship.element.setAttribute('transform', `translate(${ship.x}, ${ship.y}) rotate(${ship.angle})`);
+                
+                // Actualizar debug info
+                currentAngleEl.textContent = `${Math.round(ship.angle)}°`;
+                
+                return true; // Continuar animación
+            } else {
+                logEvent('🎯 Nave llegó al destino');
+                return false; // Detener animación
+            }
+        }
+        
+        /**
+         * Iniciar test simple
+         */
+        window.startSimpleTest = function() {
+            try {
+                logEvent('🎯 Iniciando test simple de orientación...');
+                
+                // Posiciones fijas para test
+                const startX = 100;
+                const startY = 300;
+                const targetX = 600;
+                const targetY = 200;
+                
+                // Crear nave orientada
+                testFleets = [createOrientedShip(startX, startY, targetX, targetY, '#00ff88')];
+                
+                gameStatusEl.textContent = 'Test Ejecutándose';
+                gameStatusEl.className = 'debug-value status-ok';
+                
+                // Iniciar animación
+                if (updateInterval) clearInterval(updateInterval);
+                updateInterval = setInterval(() => {
+                    if (testFleets.length > 0) {
+                        const continuing = animateShip(testFleets[0]);
+                        if (!continuing) {
+                            clearInterval(updateInterval);
+                            updateInterval = null;
+                            gameStatusEl.textContent = 'Test Completado';
+                        }
+                    }
+                    
+                    // Actualizar análisis
+                    analyzeDOMState();
+                    checkHito1ACriteria();
+                }, 50); // 20 FPS
+                
+                logEvent('✅ Test iniciado - nave debe rotar hacia destino');
+                
+            } catch (error) {
+                console.error('Error en test:', error);
+                logEvent(`❌ Error: ${error.message}`);
+                gameStatusEl.textContent = 'Error';
+                gameStatusEl.className = 'debug-value status-error';
+            }
+        };
+        
+        /**
+         * Reset del test
+         */
+        window.resetTest = function() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+            
+            // Desactivar modo interactivo
+            interactiveMode = false;
+            finalizeDrag();
+            
+            testFleets = [];
+            planets = [];
+            
+            // Limpiar canvas
+            const canvas = document.getElementById('gameCanvas');
+            while (canvas.firstChild) {
+                canvas.removeChild(canvas.firstChild);
+            }
+            
+            gameStatusEl.textContent = 'Detenido';
+            gameStatusEl.className = 'debug-value';
+            
+            modeStatusEl.textContent = 'Detenido';
+            modeStatusEl.className = 'debug-value';
+            
+            logEvent('🔄 Test reiniciado');
+        };
+        
+        /**
+         * Analizar estado del DOM
+         */
+        function analyzeDOMState() {
+            const fleetTriangles = document.querySelectorAll('.fleet-triangle');
+            const withRotate = Array.from(fleetTriangles).filter(el => 
+                el.getAttribute('transform') && el.getAttribute('transform').includes('rotate')
+            );
+            
+            shipCountEl.textContent = fleetTriangles.length;
+            rotateCountEl.textContent = withRotate.length;
+            fleetCountEl.textContent = testFleets.length;
+            planetCountEl.textContent = planets.length;
+        }
+        
+        /**
+         * Verificar criterios del Hito 1A
+         */
+        function checkHito1ACriteria() {
+            const criteria1 = document.getElementById('criteria1');
+            const criteria2 = document.getElementById('criteria2');
+            const criteria3 = document.getElementById('criteria3');
+            const criteria4 = document.getElementById('criteria4');
+            
+            const fleetTriangles = document.querySelectorAll('.fleet-triangle');
+            
+            // Criterio 1: Cada nave es individual (no formaciones)
+            const individualShips = fleetTriangles.length > 0;
+            criteria1.textContent = individualShips ? `✅ ${fleetTriangles.length} naves individuales` : '❌ Sin naves';
+            criteria1.className = individualShips ? 'criteria-success' : 'criteria-fail';
+            
+            // Criterio 2: Orientación hacia destino
+            const hasOrientation = Array.from(fleetTriangles).some(el => 
+                el.getAttribute('transform') && el.getAttribute('transform').includes('rotate')
+            );
+            criteria2.textContent = hasOrientation ? '✅ Orientación hacia destino' : '❌ Orientación hacia destino';
+            criteria2.className = hasOrientation ? 'criteria-success' : 'criteria-fail';
+            
+            // Criterio 3: Rotación suave (verificar que los ángulos cambian)
+            const rotatingShips = Array.from(fleetTriangles).filter(el => {
+                const transform = el.getAttribute('transform');
+                return transform && transform.includes('rotate') && !transform.includes('rotate(0)');
+            });
+            criteria3.textContent = rotatingShips.length > 0 ? `✅ ${rotatingShips.length} naves rotando` : '⏸️ Sin rotación';
+            criteria3.className = rotatingShips.length > 0 ? 'criteria-success' : 'criteria-pending';
+            
+            // Criterio 4: Transform correcto (translate + rotate)
+            const correctTransform = Array.from(fleetTriangles).filter(el => {
+                const transform = el.getAttribute('transform');
+                return transform && transform.includes('translate') && transform.includes('rotate');
+            });
+            criteria4.textContent = correctTransform.length > 0 ? `✅ ${correctTransform.length} transforms correctos` : '❌ Transform incorrecto';
+            criteria4.className = correctTransform.length > 0 ? 'criteria-success' : 'criteria-fail';
+        }
+        
+        /**
+         * Agregar entrada al log
+         */
+        function logEvent(message) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            
+            eventLogEl.appendChild(entry);
+            eventLogEl.scrollTop = eventLogEl.scrollHeight;
+            
+            // Limitar a 20 entradas
+            while (eventLogEl.children.length > 20) {
+                eventLogEl.removeChild(eventLogEl.firstChild);
+            }
+        }
+        
+        // Auto-inicializar
+        setTimeout(() => {
+            logEvent('🎯 Hito 1A: Test simplificado cargado');
+            logEvent('💡 Presiona "Test Simple" para ver orientación perfecta');
+        }, 500);
+        
+        console.log('🎯 Hito 1A: Test simplificado cargado');
+        
+        /**
+         * Test con múltiples planetas y naves
+         */
+        window.startMultiPlanetTest = function() {
+            try {
+                logEvent('🌍 Iniciando test multi-planeta...');
+                
+                // Limpiar canvas
+                const canvas = document.getElementById('gameCanvas');
+                while (canvas.firstChild) {
+                    canvas.removeChild(canvas.firstChild);
+                }
+                
+                // Crear 5 planetas aleatorios
+                createRandomPlanets(5);
+                
+                // Crear 3 naves desde diferentes orígenes hacia diferentes destinos
+                testFleets = [];
+                const colors = ['#00ff88', '#ff4444', '#4488ff'];
+                
+                for (let i = 0; i < 3; i++) {
+                    const fromPlanet = planets[i];
+                    const toPlanet = planets[(i + 2) % planets.length]; // Destino diferente
+                    const ship = createOrientedShipToTarget(fromPlanet, toPlanet, colors[i]);
+                    testFleets.push(ship);
+                    
+                    logEvent(`🚀 Nave ${i}: P${fromPlanet.id} → P${toPlanet.id} (${colors[i]})`);
+                }
+                
+                gameStatusEl.textContent = 'Test Multi-Planeta';
+                gameStatusEl.className = 'debug-value status-ok';
+                
+                // Iniciar animación
+                if (updateInterval) clearInterval(updateInterval);
+                updateInterval = setInterval(() => {
+                    const continuing = animateAllShips();
+                    if (!continuing) {
+                        clearInterval(updateInterval);
+                        updateInterval = null;
+                        gameStatusEl.textContent = 'Test Completado';
+                        logEvent('✅ Todas las naves llegaron a destino');
+                    }
+                    
+                    // Actualizar análisis
+                    analyzeDOMState();
+                    checkHito1ACriteria();
+                }, 50);
+                
+                logEvent('✅ Test multi-planeta iniciado');
+                
+            } catch (error) {
+                console.error('Error en test multi-planeta:', error);
+                logEvent(`❌ Error: ${error.message}`);
+                gameStatusEl.textContent = 'Error';
+                gameStatusEl.className = 'debug-value status-error';
+            }
+        };
+        
+        /**
+         * Test caos con 10 naves
+         */
+        window.startChaosTest = function() {
+            try {
+                logEvent('🚀 Iniciando test CAOS con 10 naves...');
+                
+                // Limpiar canvas
+                const canvas = document.getElementById('gameCanvas');
+                while (canvas.firstChild) {
+                    canvas.removeChild(canvas.firstChild);
+                }
+                
+                // Crear 8 planetas aleatorios
+                createRandomPlanets(8);
+                
+                // Crear 10 naves aleatorias
+                testFleets = [];
+                const colors = ['#00ff88', '#ff4444', '#4488ff', '#ffaa00', '#ff88aa', '#88ffaa', '#aa88ff', '#ffff44', '#44ffff', '#ff4488'];
+                
+                for (let i = 0; i < 10; i++) {
+                    const fromPlanet = planets[Math.floor(Math.random() * planets.length)];
+                    let toPlanet = planets[Math.floor(Math.random() * planets.length)];
+                    
+                    // Asegurar que origen y destino sean diferentes
+                    while (toPlanet.id === fromPlanet.id) {
+                        toPlanet = planets[Math.floor(Math.random() * planets.length)];
+                    }
+                    
+                    const ship = createOrientedShipToTarget(fromPlanet, toPlanet, colors[i]);
+                    testFleets.push(ship);
+                    
+                    logEvent(`🚀 Nave ${i}: P${fromPlanet.id} → P${toPlanet.id}`);
+                }
+                
+                gameStatusEl.textContent = 'Test CAOS';
+                gameStatusEl.className = 'debug-value status-warning';
+                
+                // Iniciar animación
+                if (updateInterval) clearInterval(updateInterval);
+                updateInterval = setInterval(() => {
+                    const continuing = animateAllShips();
+                    if (!continuing) {
+                        clearInterval(updateInterval);
+                        updateInterval = null;
+                        gameStatusEl.textContent = 'Caos Completado';
+                        logEvent('🎉 CAOS completado - todas las naves llegaron');
+                    }
+                    
+                    // Actualizar análisis
+                    analyzeDOMState();
+                    checkHito1ACriteria();
+                }, 50);
+                
+                logEvent('🎉 Test CAOS iniciado - 10 naves volando');
+                
+            } catch (error) {
+                console.error('Error en test caos:', error);
+                logEvent(`❌ Error: ${error.message}`);
+                gameStatusEl.textContent = 'Error';
+                gameStatusEl.className = 'debug-value status-error';
+            }
+        };
+        
+        /**
+         * Crear planetas interactivos para drag and drop
+         */
+        function createInteractivePlanets(count = 6) {
+            planets = [];
+            const canvas = document.getElementById('gameCanvas');
+            const colors = ['#00ff88', '#ff4444', '#4488ff', '#ffaa00', '#ff88aa', '#88ffaa'];
+            const owners = ['player', 'ai', 'neutral', 'neutral', 'neutral', 'neutral'];
+            
+            for (let i = 0; i < count; i++) {
+                const x = 120 + (i % 3) * 250 + Math.random() * 50; // Distribución más ordenada
+                const y = 150 + Math.floor(i / 3) * 200 + Math.random() * 50;
+                const color = colors[i % colors.length];
+                const owner = owners[i % owners.length];
+                const radius = 20 + Math.random() * 8;
+                const ships = owner === 'player' ? 15 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 8);
+                
+                // Crear grupo para el planeta
+                const planetGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                planetGroup.setAttribute('class', 'planet-group');
+                planetGroup.style.cursor = owner === 'player' ? 'grab' : 'default';
+                
+                // Crear círculo del planeta
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', x);
+                circle.setAttribute('cy', y);
+                circle.setAttribute('r', radius);
+                circle.setAttribute('fill', color);
+                circle.setAttribute('stroke', owner === 'player' ? '#fff' : '#666');
+                circle.setAttribute('stroke-width', owner === 'player' ? 3 : 1);
+                circle.setAttribute('class', 'planet');
+                
+                // Añadir texto con ships
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', x);
+                text.setAttribute('y', y + 4);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('fill', '#fff');
+                text.setAttribute('font-size', '12');
+                text.setAttribute('font-family', 'monospace');
+                text.setAttribute('font-weight', 'bold');
+                text.textContent = ships;
+                
+                // Añadir label con owner
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', x);
+                label.setAttribute('y', y + radius + 15);
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('fill', '#aaa');
+                label.setAttribute('font-size', '10');
+                label.setAttribute('font-family', 'monospace');
+                label.textContent = `P${i} (${owner})`;
+                
+                planetGroup.appendChild(circle);
+                planetGroup.appendChild(text);
+                planetGroup.appendChild(label);
+                canvas.appendChild(planetGroup);
+                
+                const planet = { 
+                    id: i, 
+                    x, 
+                    y, 
+                    radius, 
+                    color, 
+                    owner, 
+                    ships, 
+                    element: circle, 
+                    group: planetGroup,
+                    text: text
+                };
+                
+                // Añadir eventos de drag and drop solo para planetas del player
+                if (owner === 'player') {
+                    setupPlanetDragEvents(planet);
+                }
+                
+                planets.push(planet);
+            }
+            
+            logEvent(`🌍 ${count} planetas interactivos creados`);
+            logEvent(`🖱️ Arrastra desde planetas verdes para lanzar naves`);
+            return planets;
+        }
+        
+        /**
+         * Configurar eventos de drag and drop para un planeta
+         */
+        function setupPlanetDragEvents(planet) {
+            const canvas = document.getElementById('gameCanvas');
+            
+            // Mouse down - iniciar drag
+            planet.group.addEventListener('mousedown', (e) => {
+                if (!interactiveMode || planet.ships <= 0) return;
+                
+                e.preventDefault();
+                isDragging = true;
+                dragStartPlanet = planet;
+                
+                // Cambiar cursor
+                planet.group.style.cursor = 'grabbing';
+                
+                // Crear línea de drag
+                dragLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                dragLine.setAttribute('x1', planet.x);
+                dragLine.setAttribute('y1', planet.y);
+                dragLine.setAttribute('x2', planet.x);
+                dragLine.setAttribute('y2', planet.y);
+                dragLine.setAttribute('stroke', planet.color);
+                dragLine.setAttribute('stroke-width', 3);
+                dragLine.setAttribute('stroke-dasharray', '5,5');
+                dragLine.setAttribute('class', 'drag-line');
+                canvas.appendChild(dragLine);
+                
+                logEvent(`🖱️ Iniciando drag desde P${planet.id} (${planet.ships} naves)`);
+            });
+            
+            // Mouse move global - actualizar línea de drag
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDragging || !dragLine) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const svgRect = canvas.viewBox.baseVal;
+                const scaleX = svgRect.width / rect.width;
+                const scaleY = svgRect.height / rect.height;
+                
+                const mouseX = (e.clientX - rect.left) * scaleX;
+                const mouseY = (e.clientY - rect.top) * scaleY;
+                
+                dragLine.setAttribute('x2', mouseX);
+                dragLine.setAttribute('y2', mouseY);
+            });
+            
+            // Mouse up global - finalizar drag y lanzar nave
+            canvas.addEventListener('mouseup', (e) => {
+                if (!isDragging) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const svgRect = canvas.viewBox.baseVal;
+                const scaleX = svgRect.width / rect.width;
+                const scaleY = svgRect.height / rect.height;
+                
+                const mouseX = (e.clientX - rect.left) * scaleX;
+                const mouseY = (e.clientY - rect.top) * scaleY;
+                
+                // Verificar si se soltó sobre un planeta destino
+                const targetPlanet = findPlanetAtPosition(mouseX, mouseY);
+                
+                if (targetPlanet && targetPlanet.id !== dragStartPlanet.id) {
+                    // Lanzar nave hacia planeta destino
+                    launchInteractiveFleet(dragStartPlanet, targetPlanet);
+                } else {
+                    // Lanzar nave hacia posición del mouse
+                    launchInteractiveFleetToPosition(dragStartPlanet, mouseX, mouseY);
+                }
+                
+                // Limpiar drag
+                finalizeDrag();
+            });
+        }
+        
+        /**
+         * Encontrar planeta en posición específica
+         */
+        function findPlanetAtPosition(x, y) {
+            return planets.find(planet => {
+                const dx = x - planet.x;
+                const dy = y - planet.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                return distance <= planet.radius + 10; // Un poco de margen
+            });
+        }
+        
+        /**
+         * Lanzar flota hacia planeta destino
+         */
+        function launchInteractiveFleet(fromPlanet, toPlanet) {
+            if (fromPlanet.ships <= 0) return;
+            
+            const shipsToSend = Math.min(5, Math.floor(fromPlanet.ships / 2));
+            
+            const ship = createOrientedShipToTarget(fromPlanet, toPlanet, fromPlanet.color);
+            testFleets.push(ship);
+            
+            // Reducir naves del planeta origen
+            fromPlanet.ships -= shipsToSend;
+            fromPlanet.text.textContent = fromPlanet.ships;
+            
+            logEvent(`🚀 Nave lanzada: P${fromPlanet.id} → P${toPlanet.id} (${shipsToSend} naves)`);
+        }
+        
+        /**
+         * Lanzar flota hacia posición específica
+         */
+        function launchInteractiveFleetToPosition(fromPlanet, targetX, targetY) {
+            if (fromPlanet.ships <= 0) return;
+            
+            const shipsToSend = Math.min(5, Math.floor(fromPlanet.ships / 2));
+            
+            // Crear "planeta virtual" en la posición del mouse
+            const virtualTarget = { x: targetX, y: targetY };
+            const ship = createOrientedShipToTarget(fromPlanet, virtualTarget, fromPlanet.color);
+            testFleets.push(ship);
+            
+            // Reducir naves del planeta origen
+            fromPlanet.ships -= shipsToSend;
+            fromPlanet.text.textContent = fromPlanet.ships;
+            
+            logEvent(`🚀 Nave lanzada: P${fromPlanet.id} → (${Math.round(targetX)}, ${Math.round(targetY)}) (${shipsToSend} naves)`);
+        }
+        
+        /**
+         * Finalizar operación de drag
+         */
+        function finalizeDrag() {
+            isDragging = false;
+            
+            if (dragStartPlanet) {
+                dragStartPlanet.group.style.cursor = 'grab';
+                dragStartPlanet = null;
+            }
+            
+            if (dragLine && dragLine.parentNode) {
+                dragLine.parentNode.removeChild(dragLine);
+                dragLine = null;
+            }
+        }
+        
+        /**
+         * Test interactivo con drag and drop
+         */
+        window.startInteractiveTest = function() {
+            try {
+                logEvent('🖱️ Iniciando test interactivo...');
+                
+                // Limpiar canvas
+                const canvas = document.getElementById('gameCanvas');
+                while (canvas.firstChild) {
+                    canvas.removeChild(canvas.firstChild);
+                }
+                
+                // Activar modo interactivo
+                interactiveMode = true;
+                testFleets = [];
+                
+                // Crear planetas interactivos
+                createInteractivePlanets(6);
+                
+                gameStatusEl.textContent = 'Modo Interactivo';
+                gameStatusEl.className = 'debug-value status-ok';
+                
+                // Actualizar estado del modo
+                modeStatusEl.textContent = 'Interactivo';
+                modeStatusEl.className = 'debug-value status-ok';
+                
+                // Iniciar animación continua
+                if (updateInterval) clearInterval(updateInterval);
+                updateInterval = setInterval(() => {
+                    // Animar naves existentes
+                    if (testFleets.length > 0) {
+                        animateAllShips();
+                    }
+                    
+                    // Actualizar análisis
+                    analyzeDOMState();
+                    checkHito1ACriteria();
+                }, 50);
+                
+                logEvent('✅ Modo interactivo activado');
+                logEvent('🖱️ Arrastra desde planetas VERDES para lanzar naves');
+                logEvent('🎯 Suelta sobre otro planeta o en espacio vacío');
+                
+            } catch (error) {
+                console.error('Error en test interactivo:', error);
+                logEvent(`❌ Error: ${error.message}`);
+                gameStatusEl.textContent = 'Error';
+                gameStatusEl.className = 'debug-value status-error';
+            }
+        };
+    </script>
+</body>
+</html> 

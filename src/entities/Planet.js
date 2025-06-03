@@ -160,7 +160,7 @@ export class Planet {
     }
 
     /**
-     * Enviar flota a otro planeta (MEJORADO con targeting flexible)
+     * Enviar flota a otro planeta (SIMPLIFICADO COMO EN TEST-HITO1A)
      */
     sendFleet(targetPlanet, percentage = 0.5, targetClickX = null, targetClickY = null) {
         if (this.owner === 'neutral' || this.ships <= 1) {
@@ -175,23 +175,16 @@ export class Planet {
         // Reducir naves del planeta
         this.ships -= shipsToSend;
 
-        // Calcular posición de salida en el borde del planeta hacia el objetivo
-        const dx = targetPlanet.x - this.x;
-        const dy = targetPlanet.y - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        // 🎯 SIMPLIFICADO: Usar coordenadas directas como en test-hito1a
+        // Posición de salida: centro del planeta origen
+        const startX = this.x;
+        const startY = this.y;
         
-        // Normalizar dirección
-        const dirX = dx / distance;
-        const dirY = dy / distance;
-        
-        // Posición de salida en el borde del planeta
-        const startX = this.x + (dirX * this.radius);
-        const startY = this.y + (dirY * this.radius);
-        
-        // 🎯 NUEVO: Usar punto de llegada flexible
-        const targetPoint = targetPlanet.getFlexibleTargetPoint(this.x, this.y, targetClickX, targetClickY);
+        // Posición de destino: centro del planeta destino
+        const targetX = targetPlanet.x;
+        const targetY = targetPlanet.y;
 
-        // Crear datos de la flota
+        // Crear datos de la flota (EXACTAMENTE como en test-hito1a)
         const fleetData = {
             id: `fleet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             ships: shipsToSend,
@@ -200,15 +193,15 @@ export class Planet {
             toPlanet: targetPlanet.id,
             startX: startX,
             startY: startY,
-            targetX: targetPoint.x,
-            targetY: targetPoint.y,
+            targetX: targetX,
+            targetY: targetY,
             launchTime: Date.now()
         };
 
         // Emitir evento de lanzamiento
         eventBus.emit(GAME_EVENTS.FLEET_LAUNCHED, fleetData);
 
-        console.log(`🚀 Flota enviada desde ${this.id} a ${targetPlanet.id}: ${shipsToSend} naves (${Math.floor(percentage*100)}%)`);
+        console.log(`🚀 Flota enviada desde ${this.id} a ${targetPlanet.id}: ${shipsToSend} naves (${Math.floor(percentage*100)}%) - (${startX},${startY}) → (${targetX},${targetY})`);
         return fleetData;
     }
 
@@ -351,37 +344,6 @@ export class Planet {
                 colliderMultiplier = 1.5;
         }
         return this.radius * colliderMultiplier;
-    }
-
-    /**
-     * Calcular punto de llegada flexible (NUEVO)
-     * Permite envío a cualquier punto dentro del collider sin forzar al centro
-     */
-    getFlexibleTargetPoint(sourceX, sourceY, targetClickX = null, targetClickY = null) {
-        // Si se especifica un punto de click específico dentro del collider, usarlo
-        if (targetClickX !== null && targetClickY !== null && this.containsPoint(targetClickX, targetClickY)) {
-            return { x: targetClickX, y: targetClickY };
-        }
-        
-        // Si no, calcular punto en el borde hacia la fuente
-        const dx = sourceX - this.x;
-        const dy = sourceY - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance === 0) {
-            // Si están en la misma posición, usar el centro
-            return { x: this.x, y: this.y };
-        }
-        
-        // Normalizar dirección
-        const dirX = dx / distance;
-        const dirY = dy / distance;
-        
-        // Punto en el borde del planeta hacia la fuente
-        const targetX = this.x - (dirX * this.radius);
-        const targetY = this.y - (dirY * this.radius);
-        
-        return { x: targetX, y: targetY };
     }
 
     /**
