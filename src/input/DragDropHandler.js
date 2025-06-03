@@ -1,6 +1,7 @@
 /**
- * 🎯 GALCON GAME - DRAG & DROP HANDLER
+ * 🎯 GALCON GAME - DRAG & DROP HANDLER (CANVAS 2D ONLY)
  * Sistema de drag & drop para envío de flotas estilo Galcon
+ * Optimizado para Canvas 2D únicamente
  */
 
 import eventBus, { GAME_EVENTS } from '../core/EventBus.js';
@@ -19,13 +20,16 @@ export class DragDropHandler {
         this.dragStartX = 0;
         this.dragStartY = 0;
         
-        // Elementos visuales
+        // 🎮 Canvas 2D únicamente
+        this.overlaySystem = null;
+        
+        // Elementos visuales Canvas
         this.previewLines = []; // Array de líneas desde múltiples planetas
         this.targetHighlight = null;
         
         // Configuración
         this.config = {
-            dragThreshold: 15, // Aumentado para evitar conflictos
+            dragThreshold: 15,
             lineColor: '#ffaa00',
             lineWidth: 2,
             lineOpacity: 0.7,
@@ -34,7 +38,31 @@ export class DragDropHandler {
         };
         
         this.setupEventListeners();
-        console.log('🎯 DragDropHandler inicializado');
+        console.log('🎯 DragDropHandler inicializado para Canvas 2D');
+    }
+
+    /**
+     * 🎮 Configurar sistema de overlay Canvas
+     */
+    setupOverlaySystem() {
+        // Esperar a que el overlay esté disponible
+        const checkOverlay = () => {
+            if (window.canvasOverlay) {
+                this.overlaySystem = window.canvasOverlay;
+                console.log('🎮 DragDropHandler: Sistema de overlay Canvas conectado');
+                return true;
+            }
+            return false;
+        };
+        
+        if (!checkOverlay()) {
+            // Reintentar cada 100ms hasta que esté disponible
+            const retryInterval = setInterval(() => {
+                if (checkOverlay()) {
+                    clearInterval(retryInterval);
+                }
+            }, 100);
+        }
     }
 
     /**
@@ -45,6 +73,9 @@ export class DragDropHandler {
         const setupListeners = () => {
             const canvas = document.getElementById('gameCanvas');
             if (canvas) {
+                // Configurar sistema de overlay
+                this.setupOverlaySystem();
+                
                 // Usar eventos con mayor prioridad para drag & drop
                 canvas.addEventListener('mousedown', this.onMouseDown.bind(this), true);
                 canvas.addEventListener('mousemove', this.onMouseMove.bind(this), true);
@@ -66,15 +97,14 @@ export class DragDropHandler {
      * Manejar mouse down
      */
     onMouseDown(event) {
-        console.log(`🖱️ CLICK DETECTADO en DragDropHandler`); // Log básico para verificar
+        console.log(`🖱️ CLICK DETECTADO en DragDropHandler`);
         
         if (event.button !== 0) return; // Solo botón izquierdo
 
-        // Obtener posición relativa al canvas
-        const canvas = document.getElementById('gameCanvas');
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
+        // Obtener coordenadas Canvas
+        const coords = this.getMouseCoordinates(event);
+        const x = coords.x;
+        const y = coords.y;
 
         this.dragStartX = x;
         this.dragStartY = y;
@@ -109,6 +139,20 @@ export class DragDropHandler {
     }
 
     /**
+     * Obtener coordenadas del mouse para Canvas 2D
+     */
+    getMouseCoordinates(event) {
+        const canvas = document.getElementById('gameCanvas');
+        const rect = canvas.getBoundingClientRect();
+        
+        // Canvas 2D: coordenadas directas
+        return {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top
+        };
+    }
+
+    /**
      * Preparar para drag (no iniciar aún)
      */
     prepareForDrag(x, y) {
@@ -121,11 +165,10 @@ export class DragDropHandler {
      * Manejar movimiento del mouse
      */
     onMouseMove(event) {
-        // Obtener posición actual
-        const canvas = document.getElementById('gameCanvas');
-        const rect = canvas.getBoundingClientRect();
-        this.currentX = event.clientX - rect.left;
-        this.currentY = event.clientY - rect.top;
+        // Obtener coordenadas Canvas
+        const coords = this.getMouseCoordinates(event);
+        this.currentX = coords.x;
+        this.currentY = coords.y;
 
         // Si no estamos dragging, verificar si debemos iniciar
         if (!this.isDragging) {
@@ -208,55 +251,52 @@ export class DragDropHandler {
     }
 
     /**
-     * Crear elementos visuales para el preview
+     * Crear elementos visuales para el preview (Canvas 2D únicamente)
      */
     createPreviewElements() {
-        const svg = document.getElementById('gameCanvas');
-        if (!svg) return;
-
-        // Crear líneas desde todos los planetas seleccionados
+        if (!this.overlaySystem) {
+            console.warn('⚠️ Sistema de overlay no disponible');
+            return;
+        }
+        
         const selectedPlanets = this.selectionSystem.getSelectedPlanets();
         const playerPlanets = selectedPlanets.filter(p => p.owner === 'player');
         
+        // Limpiar líneas existentes
+        this.overlaySystem.clearDragLines();
+        
+        // Crear líneas desde todos los planetas seleccionados
         this.previewLines = [];
-        
         playerPlanets.forEach((planet, index) => {
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            line.setAttribute('stroke', this.config.selectedLineColor);
-            line.setAttribute('stroke-width', this.config.selectedLineWidth);
-            line.setAttribute('stroke-opacity', this.config.lineOpacity);
-            line.setAttribute('stroke-dasharray', '8,4');
-            line.style.pointerEvents = 'none';
-            line.setAttribute('data-planet-id', planet.id);
-            
-            // Añadir efecto de pulso escalonado
-            line.style.animation = `dragLinePulse 1.5s ease-in-out infinite ${index * 0.1}s`;
-            
-            svg.appendChild(line);
-            this.previewLines.push(line);
+            const lineId = `drag-line-${planet.id}`;
+            this.previewLines.push({ id: lineId, planetId: planet.id });
         });
-
-        // Crear highlight del objetivo
-        this.targetHighlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        this.targetHighlight.setAttribute('fill', 'none');
-        this.targetHighlight.setAttribute('stroke', '#ffaa00');
-        this.targetHighlight.setAttribute('stroke-width', 4);
-        this.targetHighlight.setAttribute('stroke-opacity', 0.8);
-        this.targetHighlight.style.display = 'none';
-        this.targetHighlight.style.pointerEvents = 'none';
         
-        svg.appendChild(this.targetHighlight);
-        
-        console.log(`🎯 Creadas ${this.previewLines.length} líneas de preview convergentes`);
+        console.log(`🎮 Canvas: Creadas ${this.previewLines.length} líneas de preview`);
     }
 
     /**
-     * Actualizar preview visual del drag
+     * Verificar planeta objetivo
+     */
+    checkTargetPlanet() {
+        const targetPlanet = this.gameEngine.getPlanetAtPosition(this.currentX, this.currentY);
+        
+        if (targetPlanet && targetPlanet.owner !== 'player') {
+            this.targetPlanet = targetPlanet;
+        } else {
+            this.targetPlanet = null;
+        }
+        
+        // Actualizar highlight del objetivo
+        this.updateTargetHighlight();
+    }
+
+    /**
+     * Actualizar preview visual del drag (Canvas 2D únicamente)
      */
     updateDragPreview() {
-        if (this.previewLines.length === 0) return;
-
-        // Obtener planetas seleccionados
+        if (!this.overlaySystem) return;
+        
         const selectedPlanets = this.selectionSystem.getSelectedPlanets();
         const playerPlanets = selectedPlanets.filter(p => p.owner === 'player');
         
@@ -264,246 +304,148 @@ export class DragDropHandler {
         let targetX, targetY;
         
         if (this.targetPlanet && this.targetPlanet.x && this.targetPlanet.y) {
-            // Si hay objetivo válido, las líneas convergen al planeta
             targetX = this.targetPlanet.x;
             targetY = this.targetPlanet.y;
         } else {
-            // Si no hay objetivo, las líneas van al cursor
             targetX = this.currentX;
             targetY = this.currentY;
         }
         
-        // Validar que las coordenadas sean números válidos
-        if (isNaN(targetX) || isNaN(targetY) || targetX === undefined || targetY === undefined) {
-            console.warn(`⚠️ Coordenadas de destino inválidas: (${targetX}, ${targetY})`);
-            return;
-        }
-        
-        this.previewLines.forEach((line, index) => {
-            if (index < playerPlanets.length) {
-                const planet = playerPlanets[index];
-                
-                // Validar coordenadas del planeta origen
-                if (!planet.x || !planet.y || isNaN(planet.x) || isNaN(planet.y)) {
-                    console.warn(`⚠️ Planeta ${planet.id} tiene coordenadas inválidas: (${planet.x}, ${planet.y})`);
-                    return;
-                }
-                
-                // Línea desde el planeta hasta el objetivo/cursor (CONVERGENCIA)
-                line.setAttribute('x1', planet.x);
-                line.setAttribute('y1', planet.y);
-                line.setAttribute('x2', targetX);
-                line.setAttribute('y2', targetY);
-                
-                // Si hay objetivo válido, hacer las líneas más visibles y convergentes
-                if (this.targetPlanet) {
-                    line.setAttribute('stroke-opacity', 0.9);
-                    line.setAttribute('stroke-width', this.config.selectedLineWidth + 1);
-                    line.setAttribute('stroke-dasharray', '12,6'); // Líneas más marcadas
-                } else {
-                    // Calcular distancia para ajustar opacidad cuando no hay objetivo
-                    const distance = Math.sqrt(
-                        Math.pow(targetX - planet.x, 2) + 
-                        Math.pow(targetY - planet.y, 2)
-                    );
-                    const opacity = Math.min(0.8, Math.max(0.3, 1 - distance / 500));
-                    line.setAttribute('stroke-opacity', opacity);
-                    line.setAttribute('stroke-width', this.config.selectedLineWidth);
-                    line.setAttribute('stroke-dasharray', '8,4'); // Líneas normales
-                }
-            }
+        // Actualizar líneas
+        playerPlanets.forEach((planet, index) => {
+            const lineId = `drag-line-${planet.id}`;
+            
+            // Configurar opciones de línea
+            const options = {
+                color: this.targetPlanet ? '#ff6666' : this.config.selectedLineColor,
+                width: this.targetPlanet ? this.config.selectedLineWidth + 1 : this.config.selectedLineWidth,
+                opacity: this.targetPlanet ? 0.9 : 0.7,
+                dashArray: this.targetPlanet ? [12, 6] : [8, 4],
+                animation: 'pulse'
+            };
+            
+            this.overlaySystem.addDragLine(lineId, planet.x, planet.y, targetX, targetY, options);
         });
     }
 
     /**
-     * Verificar si estamos sobre un planeta objetivo válido
-     */
-    checkTargetPlanet() {
-        const planet = this.gameEngine.getPlanetAtPosition(this.currentX, this.currentY);
-        
-        // Solo considerar planetas que no sean del jugador como objetivos válidos
-        // Y que tengan propiedades válidas
-        let validTarget = null;
-        if (planet && planet.owner !== 'player' && planet.id && planet.x && planet.y && planet.radius) {
-            validTarget = planet;
-        }
-        
-        if (validTarget !== this.targetPlanet) {
-            this.targetPlanet = validTarget;
-            this.updateTargetHighlight();
-            
-            // Log para debug
-            if (this.targetPlanet) {
-                console.log(`🎯 Objetivo válido detectado: ${this.targetPlanet.id} (${this.targetPlanet.owner}) en (${this.targetPlanet.x}, ${this.targetPlanet.y})`);
-            }
-        }
-    }
-
-    /**
-     * Actualizar highlight del objetivo
+     * Actualizar highlight del objetivo (Canvas 2D únicamente)
      */
     updateTargetHighlight() {
-        if (!this.targetHighlight) return;
-
-        if (this.targetPlanet && this.targetPlanet.x && this.targetPlanet.y && this.targetPlanet.radius) {
-            // Mostrar highlight en el planeta objetivo
-            this.targetHighlight.setAttribute('cx', this.targetPlanet.x);
-            this.targetHighlight.setAttribute('cy', this.targetPlanet.y);
-            this.targetHighlight.setAttribute('r', this.targetPlanet.radius + 15);
-            this.targetHighlight.style.display = 'block';
+        if (!this.overlaySystem) return;
+        
+        if (this.targetPlanet) {
+            const options = {
+                color: '#ff6666',
+                width: 4,
+                opacity: 0.8,
+                animation: 'pulse'
+            };
             
-            // Cambiar color según tipo de objetivo
-            const color = this.targetPlanet.owner === 'neutral' ? '#ffaa00' : '#ff6666';
-            this.targetHighlight.setAttribute('stroke', color);
-            this.targetHighlight.setAttribute('stroke-width', 5);
-            
-            // Animación de pulso más intensa cuando hay objetivo
-            this.targetHighlight.style.animation = 'dragTargetPulse 0.4s ease-in-out infinite alternate';
-            
-            // Cambiar color de TODAS las líneas cuando hay objetivo válido
-            this.previewLines.forEach(line => {
-                line.setAttribute('stroke', color);
-            });
+            this.overlaySystem.addTargetHighlight(
+                'target-highlight',
+                this.targetPlanet.x,
+                this.targetPlanet.y,
+                this.targetPlanet.radius + 10,
+                options
+            );
         } else {
-            // Ocultar highlight
-            this.targetHighlight.style.display = 'none';
-            
-            // Restaurar color original de las líneas
-            this.previewLines.forEach(line => {
-                line.setAttribute('stroke', this.config.selectedLineColor);
-            });
+            this.overlaySystem.removeTargetHighlight('target-highlight');
         }
     }
 
     /**
-     * Completar drag & drop (MEJORADO con targeting flexible)
+     * Completar drag & drop
      */
     completeDragDrop() {
-        // Validación estricta del objetivo
-        if (!this.targetPlanet || !this.targetPlanet.id || !this.targetPlanet.x || !this.targetPlanet.y) {
-            console.log('🎯 Drag & drop cancelado - objetivo inválido o incompleto');
+        if (!this.targetPlanet) {
+            console.log('❌ No hay planeta objetivo válido');
             return;
         }
 
-        // Obtener planetas seleccionados del jugador
-        const selectedPlanets = this.selectionSystem.getSelectedPlanets();
-        const playerPlanets = selectedPlanets.filter(p => p.owner === 'player');
-        
-        if (playerPlanets.length === 0) {
-            console.log('🎯 Drag & drop cancelado - no hay planetas del jugador seleccionados');
-            return;
+        console.log(`🎯 Completando drag & drop hacia ${this.targetPlanet.id}`);
+
+        // Obtener porcentaje del selector
+        let percentage = 0.8; // Default
+        if (this.gameEngine.percentageSelector) {
+            percentage = this.gameEngine.percentageSelector.getCurrentFactor();
         }
 
-        console.log(`🚀 Enviando flotas desde ${playerPlanets.length} planetas a ${this.targetPlanet.id} (${this.targetPlanet.owner})`);
-        
-        // 🎯 NUEVO: Pasar coordenadas del mouse para targeting flexible
-        // Usar las coordenadas actuales del mouse como punto de llegada preferido
-        const canvas = document.getElementById('gameCanvas');
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = this.currentX;
-        const mouseY = this.currentY;
-        
-        console.log(`🎯 Targeting flexible: enviando a coordenadas (${mouseX}, ${mouseY}) en planeta ${this.targetPlanet.id}`);
-        
-        // Usar el método del GameEngine con coordenadas de targeting
-        this.gameEngine.sendFleetFromSelected(this.targetPlanet.id, null, mouseX, mouseY);
+        // Enviar flotas desde planetas seleccionados
+        this.gameEngine.sendFleetFromSelected(
+            this.targetPlanet.id,
+            percentage,
+            this.currentX,
+            this.currentY
+        );
 
-        // Efecto visual de confirmación
+        // Mostrar efecto de lanzamiento
         this.showLaunchEffect();
-        
-        // Emitir evento de envío masivo
+
+        // Emitir evento
         eventBus.emit('dragdrop:complete', {
-            fromPlanets: playerPlanets.map(p => p.id),
             targetPlanet: this.targetPlanet.id,
-            targetCoords: { x: mouseX, y: mouseY },
-            fleetsLaunched: playerPlanets.length
+            selectedPlanets: this.selectionSystem.getSelectedPlanets().length,
+            percentage: percentage
         });
-        
-        console.log(`🏁 Drag & drop completado: flotas enviadas desde ${playerPlanets.length} planetas`);
+
+        console.log(`✅ Drag & drop completado hacia ${this.targetPlanet.id} con ${percentage * 100}% de flotas`);
     }
 
     /**
-     * Mostrar efecto visual de lanzamiento
+     * Mostrar efecto de lanzamiento (Canvas 2D únicamente)
      */
     showLaunchEffect() {
-        if (!this.targetPlanet || !this.targetPlanet.x || !this.targetPlanet.y || !this.targetPlanet.radius) {
-            console.error('❌ No se puede mostrar efecto: planeta objetivo inválido');
-            return;
-        }
-
-        const svg = document.getElementById('gameCanvas');
-        if (!svg) return;
+        if (!this.overlaySystem) return;
         
-        // Efecto en el objetivo
-        const targetEffect = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        targetEffect.setAttribute('cx', this.targetPlanet.x);
-        targetEffect.setAttribute('cy', this.targetPlanet.y);
-        targetEffect.setAttribute('r', this.targetPlanet.radius);
-        targetEffect.setAttribute('fill', 'none');
-        targetEffect.setAttribute('stroke', '#00ff88');
-        targetEffect.setAttribute('stroke-width', 5);
-        targetEffect.setAttribute('stroke-opacity', 0.9);
-        targetEffect.style.pointerEvents = 'none';
-        targetEffect.style.animation = 'launchConfirmation 0.8s ease-out forwards';
-        
-        svg.appendChild(targetEffect);
-        
-        // Efectos en planetas de origen
         const selectedPlanets = this.selectionSystem.getSelectedPlanets();
         const playerPlanets = selectedPlanets.filter(p => p.owner === 'player');
         
+        // Crear efectos de lanzamiento desde cada planeta
         playerPlanets.forEach((planet, index) => {
+            const effectId = `launch-effect-${planet.id}`;
+            
+            // Línea de lanzamiento con animación
+            const options = {
+                color: '#00ff88',
+                width: 5,
+                opacity: 1.0,
+                animation: 'launch'
+            };
+            
+            this.overlaySystem.addDragLine(
+                effectId,
+                planet.x,
+                planet.y,
+                this.targetPlanet.x,
+                this.targetPlanet.y,
+                options
+            );
+            
+            // Remover efecto después de 1 segundo
             setTimeout(() => {
-                const originEffect = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                originEffect.setAttribute('cx', planet.x);
-                originEffect.setAttribute('cy', planet.y);
-                originEffect.setAttribute('r', planet.radius + 5);
-                originEffect.setAttribute('fill', 'none');
-                originEffect.setAttribute('stroke', '#00ff88');
-                originEffect.setAttribute('stroke-width', 3);
-                originEffect.setAttribute('stroke-opacity', 0.7);
-                originEffect.style.pointerEvents = 'none';
-                originEffect.style.animation = 'launchConfirmation 0.6s ease-out forwards';
-                
-                svg.appendChild(originEffect);
-                
-                setTimeout(() => {
-                    if (originEffect.parentNode) {
-                        originEffect.parentNode.removeChild(originEffect);
-                    }
-                }, 600);
-            }, index * 100); // Escalonar efectos
+                this.overlaySystem.removeDragLine(effectId);
+            }, 1000);
         });
-        
-        // Remover efecto del objetivo
-        setTimeout(() => {
-            if (targetEffect.parentNode) {
-                targetEffect.parentNode.removeChild(targetEffect);
-            }
-        }, 800);
     }
 
     /**
-     * Resetear estado del drag
+     * Resetear estado del drag (Canvas 2D únicamente)
      */
     resetDragState() {
         this.isDragging = false;
         this.dragStartPlanet = null;
         this.targetPlanet = null;
         
-        // Limpiar líneas de preview
-        this.previewLines.forEach(line => {
-            if (line.parentNode) {
-                line.parentNode.removeChild(line);
-            }
-        });
+        // Limpiar elementos visuales
+        if (this.overlaySystem) {
+            this.overlaySystem.clearDragLines();
+            this.overlaySystem.removeTargetHighlight('target-highlight');
+        }
+        
         this.previewLines = [];
         
-        // Limpiar highlight del objetivo
-        if (this.targetHighlight && this.targetHighlight.parentNode) {
-            this.targetHighlight.parentNode.removeChild(this.targetHighlight);
-            this.targetHighlight = null;
-        }
+        console.log('🎯 Estado de drag reseteado');
     }
 
     /**
@@ -533,9 +475,11 @@ export class DragDropHandler {
     getDebugInfo() {
         return {
             isDragging: this.isDragging,
-            previewLinesCount: this.previewLines.length,
+            isCanvasMode: this.isCanvasMode,
+            hasOverlaySystem: !!this.overlaySystem,
             targetPlanet: this.targetPlanet?.id || null,
-            hasTargetHighlight: !!this.targetHighlight
+            previewLines: this.previewLines.length,
+            currentPosition: { x: this.currentX, y: this.currentY }
         };
     }
 

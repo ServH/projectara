@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Galcon Game - Canvas 2D Performance Test</title>
+    
+    <!-- CSS del juego -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/ui-styles.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    
+    <style>
+        .performance-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff88;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            z-index: 1000;
+            min-width: 200px;
+        }
+        
+        .performance-title {
+            color: #ffaa00;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .performance-metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .performance-value {
+            font-weight: bold;
+        }
+        
+        .performance-value.good { color: #00ff88; }
+        .performance-value.warning { color: #ffaa00; }
+        .performance-value.bad { color: #ff4444; }
+        
+        .renderer-switch {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff88;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            z-index: 1000;
+        }
+        
+        .switch-button {
+            background: #333;
+            color: #00ff88;
+            border: 1px solid #00ff88;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        .switch-button:hover {
+            background: #00ff88;
+            color: #000;
+        }
+        
+        .switch-button.active {
+            background: #00ff88;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Panel de cambio de renderer -->
+    <div class="renderer-switch">
+        <div style="margin-bottom: 10px; font-weight: bold;">🎨 RENDERER TEST</div>
+        <button class="switch-button active" id="canvasBtn">Canvas 2D</button>
+        <button class="switch-button" id="svgBtn">SVG DOM</button>
+        <div style="margin-top: 10px; font-size: 10px;">
+            Presiona F5 para reiniciar con el renderer seleccionado
+        </div>
+    </div>
+
+    <!-- Panel de información de rendimiento -->
+    <div class="performance-info">
+        <div class="performance-title">📊 PERFORMANCE METRICS</div>
+        <div class="performance-metric">
+            <span>Renderer:</span>
+            <span class="performance-value" id="rendererType">Canvas 2D</span>
+        </div>
+        <div class="performance-metric">
+            <span>FPS:</span>
+            <span class="performance-value" id="fpsValue">-</span>
+        </div>
+        <div class="performance-metric">
+            <span>Frame Time:</span>
+            <span class="performance-value" id="frameTimeValue">-</span>
+        </div>
+        <div class="performance-metric">
+            <span>Render Time:</span>
+            <span class="performance-value" id="renderTimeValue">-</span>
+        </div>
+        <div class="performance-metric">
+            <span>Flotas:</span>
+            <span class="performance-value" id="fleetsValue">-</span>
+        </div>
+        <div class="performance-metric">
+            <span>Planetas:</span>
+            <span class="performance-value" id="planetsValue">-</span>
+        </div>
+        <div class="performance-metric">
+            <span>Culled:</span>
+            <span class="performance-value" id="culledValue">-</span>
+        </div>
+    </div>
+
+    <!-- Pantalla de carga -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-title">🚀 GALCON CANVAS TEST</div>
+        <div class="loading-subtitle">Performance Comparison</div>
+        <div class="loading-spinner"></div>
+        <div class="loading-progress">
+            <div id="loadingProgressBar" class="loading-progress-bar"></div>
+        </div>
+        <div id="loadingStatus" class="loading-status">Inicializando Canvas 2D...</div>
+    </div>
+
+    <!-- Barra superior - HUD -->
+    <div class="top-bar" style="display: none;" id="topBar">
+        <div class="game-title">
+            <span>🚀</span>
+            <span>GALCON CANVAS TEST</span>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stat-group">
+                <div class="stat-label">Planetas</div>
+                <div class="stat-value" id="hud-planets">-</div>
+            </div>
+            <div class="stat-group">
+                <div class="stat-label">Flotas</div>
+                <div class="stat-value" id="hud-fleets">-</div>
+            </div>
+            <div class="stat-group">
+                <div class="stat-label">Porcentaje</div>
+                <div class="stat-value" id="hud-percentage" style="color: #00ff88;">50%</div>
+            </div>
+            <div class="stat-group">
+                <div class="stat-label">FPS</div>
+                <div class="stat-value" id="hud-fps">-</div>
+            </div>
+        </div>
+        
+        <div class="game-status">
+            <div class="status-indicator" id="statusIndicator"></div>
+            <span id="hud-state">Canvas 2D Active</span>
+        </div>
+    </div>
+
+    <!-- Área de juego -->
+    <div class="game-area">
+        <!-- Canvas se crea dinámicamente aquí -->
+    </div>
+
+    <!-- Barra inferior - Controles -->
+    <div class="bottom-bar">
+        <div class="controls-left">
+            <div class="control-group">
+                <span class="control-key">Canvas 2D</span>
+                <span>Renderizado optimizado</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">F1</span>
+                <span>Debug</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">F5</span>
+                <span>Reiniciar</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">F6</span>
+                <span>Cambiar a SVG</span>
+            </div>
+        </div>
+        
+        <div class="selection-info">
+            <span>Renderer:</span>
+            <span class="selected-count" id="rendererStatus">Canvas 2D</span>
+        </div>
+        
+        <div class="controls-right">
+            <div class="control-group">
+                <span class="control-key">Movimiento</span>
+                <span>Orgánico preservado</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Efectos</span>
+                <span>Trails y animaciones</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Optimización</span>
+                <span>Culling + LOD + Cache</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de debug -->
+    <div id="debugPanel" class="debug-panel hidden">
+        <div class="debug-title">🐛 CANVAS DEBUG INFO</div>
+        <div id="debugContent"></div>
+    </div>
+
+    <script type="module">
+        // Configurar renderer preferido
+        const urlParams = new URLSearchParams(window.location.search);
+        const preferredRenderer = urlParams.get('renderer') || 'canvas';
+        
+        // Actualizar UI según renderer
+        document.getElementById('rendererType').textContent = 
+            preferredRenderer === 'canvas' ? 'Canvas 2D' : 'SVG DOM';
+        document.getElementById('rendererStatus').textContent = 
+            preferredRenderer === 'canvas' ? 'Canvas 2D' : 'SVG DOM';
+        document.getElementById('hud-state').textContent = 
+            preferredRenderer === 'canvas' ? 'Canvas 2D Active' : 'SVG DOM Active';
+        
+        // Configurar botones
+        const canvasBtn = document.getElementById('canvasBtn');
+        const svgBtn = document.getElementById('svgBtn');
+        
+        if (preferredRenderer === 'canvas') {
+            canvasBtn.classList.add('active');
+            svgBtn.classList.remove('active');
+        } else {
+            svgBtn.classList.add('active');
+            canvasBtn.classList.remove('active');
+        }
+        
+        canvasBtn.addEventListener('click', () => {
+            window.location.href = '?renderer=canvas';
+        });
+        
+        svgBtn.addEventListener('click', () => {
+            window.location.href = '?renderer=svg';
+        });
+        
+        // Tecla F6 para cambiar renderer
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'F6') {
+                event.preventDefault();
+                const newRenderer = preferredRenderer === 'canvas' ? 'svg' : 'canvas';
+                window.location.href = `?renderer=${newRenderer}`;
+            }
+        });
+        
+        // Cargar GameLoader con configuración de renderer
+        import('./src/ui/GameLoader.js').then(({ GameLoader }) => {
+            // Configurar renderer preferido globalmente
+            window.PREFERRED_RENDERER = preferredRenderer;
+            
+            const gameLoader = new GameLoader();
+            gameLoader.load();
+            
+            // Configurar monitoreo de rendimiento
+            setupPerformanceMonitoring();
+        });
+        
+        function setupPerformanceMonitoring() {
+            let frameCount = 0;
+            let lastTime = performance.now();
+            let fps = 0;
+            
+            function updatePerformanceMetrics() {
+                frameCount++;
+                const currentTime = performance.now();
+                
+                if (currentTime - lastTime >= 1000) {
+                    fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+                    frameCount = 0;
+                    lastTime = currentTime;
+                    
+                    // Actualizar UI
+                    const fpsElement = document.getElementById('fpsValue');
+                    fpsElement.textContent = fps;
+                    
+                    if (fps >= 55) {
+                        fpsElement.className = 'performance-value good';
+                    } else if (fps >= 30) {
+                        fpsElement.className = 'performance-value warning';
+                    } else {
+                        fpsElement.className = 'performance-value bad';
+                    }
+                    
+                    // Actualizar HUD
+                    const hudFps = document.getElementById('hud-fps');
+                    if (hudFps) {
+                        hudFps.textContent = fps;
+                    }
+                }
+                
+                requestAnimationFrame(updatePerformanceMetrics);
+            }
+            
+            updatePerformanceMetrics();
+        }
+    </script>
+</body>
+</html> 

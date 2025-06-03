@@ -1,7 +1,7 @@
 /**
- * 🎯 GALCON GAME - SELECTION SYSTEM
- * Sistema de selección múltiple con drag selection estilo Galcon
- * MILESTONE 2.1: Controles Galcon auténticos añadidos
+ * 🎯 GALCON GAME - SELECTION SYSTEM (CANVAS 2D ONLY)
+ * Sistema de selección de planetas con controles estilo Galcon
+ * Optimizado para Canvas 2D únicamente
  */
 
 import eventBus, { GAME_EVENTS } from '../core/EventBus.js';
@@ -11,36 +11,67 @@ export class SelectionSystem {
         this.gameEngine = gameEngine;
         this.selectedPlanets = new Set();
         
-        // Estado de selección por drag
+        // 🎮 Canvas 2D únicamente
+        this.overlaySystem = null;
+        
+        // Estado de drag selection
         this.isDragging = false;
         this.dragStartX = 0;
         this.dragStartY = 0;
         this.dragCurrentX = 0;
         this.dragCurrentY = 0;
         
-        // 🎛️ NUEVOS CONTROLES GALCON
-        this.lastClickTime = 0;
-        this.doubleClickThreshold = 300; // ms para doble clic
-        this.lastClickedPlanet = null;
-        
-        // Configuración
+        // 🎛️ Configuración de controles Galcon
         this.config = {
-            multiSelectKey: 'ctrlKey',
-            selectAllKey: 'shiftKey', // 🎛️ NUEVO: Shift para seleccionar todos
-            dragThreshold: 5,
-            selectionBoxColor: '#00ff88',
-            selectionBoxOpacity: 0.2,
-            selectionBorderColor: '#00ff88',
-            selectionBorderWidth: 2
+            multiSelectKey: 'ctrlKey', // Ctrl para multi-selección
+            selectAllKey: 'shiftKey',  // Shift para seleccionar todos
+            doubleClickThreshold: 300  // ms para detectar doble clic
         };
         
-        // Elementos visuales
-        this.selectionBox = null;
+        // 🎛️ Estado para doble clic
+        this.lastClickTime = 0;
+        this.lastClickedPlanet = null;
         
-        // Esperar a que el canvas esté listo
         this.initializeWhenReady();
+        console.log('🎯 SelectionSystem inicializado para Canvas 2D');
+    }
+
+    /**
+     * 🎮 Configurar sistema de overlay Canvas
+     */
+    setupOverlaySystem() {
+        // Esperar a que el overlay esté disponible
+        const checkOverlay = () => {
+            if (window.canvasOverlay) {
+                this.overlaySystem = window.canvasOverlay;
+                console.log('🎮 SelectionSystem: Sistema de overlay Canvas conectado');
+                return true;
+            }
+            return false;
+        };
         
-        console.log('🎯 SelectionSystem inicializado con controles Galcon');
+        if (!checkOverlay()) {
+            // Reintentar cada 100ms hasta que esté disponible
+            const retryInterval = setInterval(() => {
+                if (checkOverlay()) {
+                    clearInterval(retryInterval);
+                }
+            }, 100);
+        }
+    }
+
+    /**
+     * Obtener coordenadas del mouse para Canvas 2D
+     */
+    getMouseCoordinates(event) {
+        const canvas = document.getElementById('gameCanvas');
+        const rect = canvas.getBoundingClientRect();
+        
+        // Canvas 2D: coordenadas directas
+        return {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top
+        };
     }
 
     /**
@@ -50,9 +81,9 @@ export class SelectionSystem {
         const checkCanvas = () => {
             const canvas = document.getElementById('gameCanvas');
             if (canvas) {
-                this.createSelectionBox();
+                this.setupOverlaySystem();
                 this.setupEventListeners();
-                console.log('🎯 SelectionSystem configurado con canvas');
+                console.log('🎯 SelectionSystem configurado');
             } else {
                 setTimeout(checkCanvas, 100);
             }
@@ -61,72 +92,32 @@ export class SelectionSystem {
     }
 
     /**
-     * Crear elemento visual para la caja de selección
-     */
-    createSelectionBox() {
-        const svg = document.getElementById('gameCanvas');
-        if (!svg) {
-            console.warn('⚠️ Canvas no encontrado para crear selection box');
-            return;
-        }
-
-        this.selectionBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        this.selectionBox.setAttribute('class', 'selection-box');
-        this.selectionBox.setAttribute('fill', this.config.selectionBoxColor);
-        this.selectionBox.setAttribute('fill-opacity', this.config.selectionBoxOpacity);
-        this.selectionBox.setAttribute('stroke', this.config.selectionBorderColor);
-        this.selectionBox.setAttribute('stroke-width', this.config.selectionBorderWidth);
-        this.selectionBox.setAttribute('stroke-dasharray', '5,5');
-        this.selectionBox.style.display = 'none';
-        this.selectionBox.style.pointerEvents = 'none';
-        
-        svg.appendChild(this.selectionBox);
-        console.log('📦 Caja de selección creada');
-    }
-
-    /**
      * Configurar event listeners
      */
     setupEventListeners() {
         const canvas = document.getElementById('gameCanvas');
-        if (!canvas) {
-            console.warn('⚠️ Canvas no encontrado para event listeners');
-            return;
-        }
-
-        // Usar el SVG canvas directamente
+        
         canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
         canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
         canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
-        
-        // 🎛️ NUEVO: Clic derecho para envío rápido
         canvas.addEventListener('contextmenu', this.onRightClick.bind(this));
         
+        // Eventos de teclado
         document.addEventListener('keydown', this.onKeyDown.bind(this));
         
-        eventBus.on(GAME_EVENTS.PLANET_SELECTED, this.onPlanetSelected.bind(this));
-        eventBus.on(GAME_EVENTS.PLANET_DESELECTED, this.onPlanetDeselected.bind(this));
-        
-        // 🎛️ NUEVO: Escuchar eventos de porcentaje
-        eventBus.on('selection:getCount', this.getSelectedCount.bind(this));
-        
-        console.log('🎮 Event listeners configurados con controles Galcon');
+        console.log('🎯 Event listeners configurados');
     }
 
     /**
-     * 🎛️ NUEVO: Manejar clic derecho (envío rápido)
+     * Manejar clic derecho
      */
     onRightClick(event) {
-        event.preventDefault(); // Prevenir menú contextual
+        event.preventDefault();
         
-        if (this.selectedPlanets.size === 0) return;
-        
-        // Obtener posición del clic
-        const canvas = document.getElementById('gameCanvas');
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        
+        const coords = this.getMouseCoordinates(event);
+        const x = coords.x;
+        const y = coords.y;
+
         const targetPlanet = this.gameEngine.getPlanetAtPosition(x, y);
         
         if (targetPlanet && targetPlanet.owner !== 'player') {
@@ -145,11 +136,9 @@ export class SelectionSystem {
         // Verificar si el DragDropHandler está manejando este evento
         if (event.defaultPrevented) return;
 
-        // Obtener posición relativa al SVG
-        const svg = document.getElementById('gameCanvas');
-        const rect = svg.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
+        const coords = this.getMouseCoordinates(event);
+        const x = coords.x;
+        const y = coords.y;
 
         console.log(`🖱️ Mouse down en: ${x}, ${y}`);
 
@@ -159,7 +148,7 @@ export class SelectionSystem {
             console.log(`🪐 Planeta clickeado: ${clickedPlanet.id} (${clickedPlanet.owner})`);
             this.handlePlanetClick(clickedPlanet, event);
         } else {
-            console.log('🎯 Iniciando drag selection');
+            // Iniciar selección por área
             this.startDragSelection(x, y, event);
         }
     }
@@ -215,32 +204,29 @@ export class SelectionSystem {
     }
 
     /**
-     * Mostrar feedback visual de ataque
+     * 🎮 ADAPTADO: Mostrar feedback visual de ataque
      */
     showAttackFeedback(targetPlanet) {
-        const svg = document.getElementById('gameCanvas');
-        if (!svg) return;
-        
-        // Crear efecto de pulso en el objetivo
-        const effect = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        effect.setAttribute('cx', targetPlanet.x);
-        effect.setAttribute('cy', targetPlanet.y);
-        effect.setAttribute('r', targetPlanet.radius + 5);
-        effect.setAttribute('fill', 'none');
-        effect.setAttribute('stroke', '#ffaa00');
-        effect.setAttribute('stroke-width', 3);
-        effect.setAttribute('stroke-opacity', 0.8);
-        effect.style.pointerEvents = 'none';
-        effect.style.animation = 'attackFeedback 0.8s ease-out forwards';
-        
-        svg.appendChild(effect);
-        
-        // Remover después de la animación
-        setTimeout(() => {
-            if (effect.parentNode) {
-                effect.parentNode.removeChild(effect);
-            }
-        }, 800);
+        if (this.overlaySystem) {
+            // Canvas: usar overlay system
+            this.overlaySystem.addTargetHighlight(
+                'attack-feedback',
+                targetPlanet.x,
+                targetPlanet.y,
+                targetPlanet.radius + 5,
+                {
+                    color: '#ffaa00',
+                    width: 3,
+                    opacity: 0.8,
+                    animation: 'pulse'
+                }
+            );
+            
+            // Remover después de un tiempo
+            setTimeout(() => {
+                this.overlaySystem.removeTargetHighlight('attack-feedback');
+            }, 800);
+        }
     }
 
     /**
@@ -274,11 +260,9 @@ export class SelectionSystem {
         
         if (!this.isDragging) return;
 
-        // Obtener posición actual
-        const svg = document.getElementById('gameCanvas');
-        const rect = svg.getBoundingClientRect();
-        this.dragCurrentX = event.clientX - rect.left;
-        this.dragCurrentY = event.clientY - rect.top;
+        const coords = this.getMouseCoordinates(event);
+        this.dragCurrentX = coords.x;
+        this.dragCurrentY = coords.y;
 
         this.updateSelectionBox();
         this.updateDragSelection();
@@ -301,67 +285,76 @@ export class SelectionSystem {
     }
 
     /**
-     * Actualizar caja de selección visual
+     * 🎮 ADAPTADO: Actualizar caja de selección visual
      */
     updateSelectionBox() {
-        if (!this.selectionBox) return;
-
         const minX = Math.min(this.dragStartX, this.dragCurrentX);
         const minY = Math.min(this.dragStartY, this.dragCurrentY);
         const width = Math.abs(this.dragCurrentX - this.dragStartX);
         const height = Math.abs(this.dragCurrentY - this.dragStartY);
 
-        this.selectionBox.setAttribute('x', minX);
-        this.selectionBox.setAttribute('y', minY);
-        this.selectionBox.setAttribute('width', width);
-        this.selectionBox.setAttribute('height', height);
-        this.selectionBox.style.display = 'block';
-    }
-
-    /**
-     * Ocultar caja de selección
-     */
-    hideSelectionBox() {
-        if (this.selectionBox) {
-            this.selectionBox.style.display = 'none';
+        if (this.overlaySystem) {
+            // Canvas: usar overlay system
+            this.overlaySystem.addSelectionBox('drag-selection', minX, minY, width, height, {
+                color: '#00ff88',
+                borderWidth: 2,
+                fillOpacity: 0.1,
+                borderOpacity: 0.8
+            });
         }
     }
 
     /**
-     * Actualizar selección durante el drag
+     * 🎮 ADAPTADO: Ocultar caja de selección
+     */
+    hideSelectionBox() {
+        if (this.overlaySystem) {
+            // Canvas: remover del overlay system
+            this.overlaySystem.removeSelectionBox('drag-selection');
+        }
+    }
+
+    /**
+     * Actualizar selección durante drag
      */
     updateDragSelection() {
-        const selectionRect = this.getSelectionRect();
-        const planetsInSelection = this.getPlanetsInRect(selectionRect);
+        const rect = this.getSelectionRect();
+        const planetsInRect = this.getPlanetsInRect(rect);
         
-        this.previewSelection(planetsInSelection);
+        // Preview de selección
+        this.previewSelection(planetsInRect);
     }
 
     /**
      * Finalizar selección por drag
      */
     finalizeDragSelection(event) {
-        const selectionRect = this.getSelectionRect();
-        const planetsInSelection = this.getPlanetsInRect(selectionRect);
+        const rect = this.getSelectionRect();
+        const planetsInRect = this.getPlanetsInRect(rect);
         
         const isMultiSelect = event[this.config.multiSelectKey];
         
-        if (planetsInSelection.length > 0) {
-            if (isMultiSelect) {
-                planetsInSelection.forEach(planet => {
-                    if (planet.owner === 'player') {
-                        this.addToSelection(planet);
-                    }
-                });
-            } else {
-                this.clearSelection();
-                planetsInSelection.forEach(planet => {
-                    if (planet.owner === 'player') {
-                        this.addToSelection(planet);
-                    }
-                });
-            }
+        if (isMultiSelect) {
+            // Añadir a selección existente
+            planetsInRect.forEach(planet => {
+                if (planet.owner === 'player') {
+                    this.addToSelection(planet);
+                }
+            });
+        } else {
+            // Reemplazar selección
+            this.clearSelection();
+            planetsInRect.forEach(planet => {
+                if (planet.owner === 'player') {
+                    this.addToSelection(planet);
+                }
+            });
         }
+
+        eventBus.emit(GAME_EVENTS.SELECTION_END, {
+            selectedCount: this.selectedPlanets.size,
+            rect: rect
+        });
     }
 
     /**
@@ -377,42 +370,34 @@ export class SelectionSystem {
     }
 
     /**
-     * Obtener planetas dentro del rectángulo
+     * Obtener planetas en rectángulo
      */
     getPlanetsInRect(rect) {
-        const planetsInRect = [];
-        
-        this.gameEngine.planets.forEach(planet => {
-            if (this.isPlanetInRect(planet, rect)) {
-                planetsInRect.push(planet);
-            }
-        });
-        
-        return planetsInRect;
+        const allPlanets = this.gameEngine.getAllPlanets();
+        return allPlanets.filter(planet => this.isPlanetInRect(planet, rect));
     }
 
     /**
-     * Verificar si un planeta está dentro del rectángulo
+     * Verificar si planeta está en rectángulo
      */
     isPlanetInRect(planet, rect) {
         const planetCenterX = planet.x;
         const planetCenterY = planet.y;
-        
-        return (
-            planetCenterX >= rect.x &&
-            planetCenterX <= rect.x + rect.width &&
-            planetCenterY >= rect.y &&
-            planetCenterY <= rect.y + rect.height
-        );
+        const planetRadius = planet.radius;
+
+        // Verificar si el centro del planeta está dentro del rectángulo
+        // O si el rectángulo intersecta con el círculo del planeta
+        return (planetCenterX >= rect.x - planetRadius &&
+                planetCenterX <= rect.x + rect.width + planetRadius &&
+                planetCenterY >= rect.y - planetRadius &&
+                planetCenterY <= rect.y + rect.height + planetRadius);
     }
 
     /**
-     * Preview de selección
+     * Preview de selección (visual feedback)
      */
     previewSelection(planets) {
-        eventBus.emit('selection:preview', {
-            planets: planets.map(p => p.id)
-        });
+        // TODO: Implementar preview visual de planetas que serán seleccionados
     }
 
     /**
@@ -435,71 +420,71 @@ export class SelectionSystem {
     }
 
     /**
-     * Añadir planeta a la selección
+     * Añadir planeta a selección
      */
     addToSelection(planet) {
         if (planet.owner !== 'player') {
-            console.log(`⚠️ Intentando seleccionar planeta ${planet.id} que no es del jugador (owner: ${planet.owner})`);
+            console.log(`⚠️ No se puede seleccionar planeta ${planet.id}: no es del jugador`);
             return;
         }
-        
-        this.selectedPlanets.add(planet.id);
-        planet.setSelected(true);
-        
-        // 🎛️ NUEVO: Emitir evento de cambio de selección
-        eventBus.emit('selection:changed', {
-            selectedCount: this.selectedPlanets.size,
-            action: 'add',
-            planetId: planet.id
-        });
-        
-        console.log(`🎯 Planeta ${planet.id} seleccionado. Total seleccionados: ${this.selectedPlanets.size}`);
+
+        if (!this.selectedPlanets.has(planet.id)) {
+            this.selectedPlanets.add(planet.id);
+            
+            // Marcar planeta como seleccionado
+            planet.isSelected = true;
+            
+            eventBus.emit(GAME_EVENTS.PLANET_SELECTED, {
+                planetId: planet.id,
+                totalSelected: this.selectedPlanets.size
+            });
+            
+            console.log(`✅ Planeta ${planet.id} añadido a selección (total: ${this.selectedPlanets.size})`);
+        }
     }
 
     /**
-     * Remover planeta de la selección
+     * Remover planeta de selección
      */
     removeFromSelection(planet) {
-        this.selectedPlanets.delete(planet.id);
-        planet.setSelected(false);
-        
-        // 🎛️ NUEVO: Emitir evento de cambio de selección
-        eventBus.emit('selection:changed', {
-            selectedCount: this.selectedPlanets.size,
-            action: 'remove',
-            planetId: planet.id
-        });
-        
-        console.log(`🎯 Planeta ${planet.id} deseleccionado. Total seleccionados: ${this.selectedPlanets.size}`);
+        if (this.selectedPlanets.has(planet.id)) {
+            this.selectedPlanets.delete(planet.id);
+            
+            // Desmarcar planeta
+            planet.isSelected = false;
+            
+            eventBus.emit(GAME_EVENTS.PLANET_DESELECTED, {
+                planetId: planet.id,
+                totalSelected: this.selectedPlanets.size
+            });
+            
+            console.log(`❌ Planeta ${planet.id} removido de selección (total: ${this.selectedPlanets.size})`);
+        }
     }
 
     /**
-     * Limpiar toda la selección
+     * Limpiar selección
      */
     clearSelection() {
         const previousCount = this.selectedPlanets.size;
         
+        // Desmarcar todos los planetas seleccionados
         this.selectedPlanets.forEach(planetId => {
             const planet = this.gameEngine.getPlanet(planetId);
             if (planet) {
-                planet.setSelected(false);
+                planet.isSelected = false;
             }
         });
         
         this.selectedPlanets.clear();
         
-        // 🎛️ NUEVO: Emitir evento de cambio de selección
-        eventBus.emit('selection:changed', {
-            selectedCount: 0,
-            action: 'clear',
-            previousCount
-        });
-        
-        eventBus.emit(GAME_EVENTS.SELECTION_CLEAR, {
-            clearedCount: previousCount
-        });
-        
-        console.log(`🎯 Selección limpiada. ${previousCount} planetas deseleccionados`);
+        if (previousCount > 0) {
+            eventBus.emit(GAME_EVENTS.SELECTION_CLEARED, {
+                previousCount: previousCount
+            });
+            
+            console.log(`🧹 Selección limpiada (${previousCount} planetas deseleccionados)`);
+        }
     }
 
     /**
@@ -507,9 +492,6 @@ export class SelectionSystem {
      */
     onKeyDown(event) {
         switch (event.key) {
-            case 'Escape':
-                this.clearSelection();
-                break;
             case 'a':
             case 'A':
                 if (event.ctrlKey || event.metaKey) {
@@ -517,31 +499,29 @@ export class SelectionSystem {
                     this.selectAllPlayerPlanets();
                 }
                 break;
+            case 'Escape':
+                this.clearSelection();
+                break;
         }
     }
 
     /**
-     * Seleccionar todos los planetas del jugador
+     * 🎛️ NUEVO: Seleccionar todos los planetas del jugador
      */
     selectAllPlayerPlanets() {
-        console.log('🎯 Iniciando selección de todos los planetas del jugador...');
+        const allPlanets = this.gameEngine.getAllPlanets();
+        const playerPlanets = allPlanets.filter(p => p.owner === 'player');
         
         this.clearSelection();
-        
-        let playerPlanetsCount = 0;
-        this.gameEngine.planets.forEach(planet => {
-            if (planet.owner === 'player') {
-                playerPlanetsCount++;
-                console.log(`🪐 Encontrado planeta del jugador: ${planet.id} en (${planet.x}, ${planet.y})`);
-                this.addToSelection(planet);
-            }
+        playerPlanets.forEach(planet => {
+            this.addToSelection(planet);
         });
         
-        console.log(`🎯 Seleccionados todos los planetas del jugador: ${this.selectedPlanets.size}/${playerPlanetsCount} planetas`);
+        console.log(`🎯 Seleccionados todos los planetas del jugador: ${playerPlanets.length}`);
     }
 
     /**
-     * 🎛️ NUEVO: Obtener número de planetas seleccionados
+     * Obtener número de planetas seleccionados
      */
     getSelectedCount() {
         return this.selectedPlanets.size;
@@ -551,25 +531,25 @@ export class SelectionSystem {
      * Event handlers
      */
     onPlanetSelected(data) {
-        // Manejar evento de selección si es necesario
+        // Manejar selección de planeta
     }
 
     onPlanetDeselected(data) {
-        // Manejar evento de deselección si es necesario
+        // Manejar deselección de planeta
     }
 
     /**
      * Obtener planetas seleccionados
      */
     getSelectedPlanets() {
-        const selected = [];
+        const selectedPlanetsArray = [];
         this.selectedPlanets.forEach(planetId => {
             const planet = this.gameEngine.getPlanet(planetId);
             if (planet) {
-                selected.push(planet);
+                selectedPlanetsArray.push(planet);
             }
         });
-        return selected;
+        return selectedPlanetsArray;
     }
 
     /**
@@ -580,23 +560,19 @@ export class SelectionSystem {
             selectedCount: this.selectedPlanets.size,
             selectedPlanets: Array.from(this.selectedPlanets),
             isDragging: this.isDragging,
-            dragStart: { x: this.dragStartX, y: this.dragStartY },
-            dragCurrent: { x: this.dragCurrentX, y: this.dragCurrentY },
-            lastClickTime: this.lastClickTime,
-            lastClickedPlanet: this.lastClickedPlanet
+            dragPosition: {
+                startX: this.dragStartX,
+                startY: this.dragStartY,
+                currentX: this.dragCurrentX,
+                currentY: this.dragCurrentY
+            }
         };
     }
 
     /**
-     * Destruir el sistema
+     * Destruir sistema
      */
     destroy() {
-        this.clearSelection();
-        
-        if (this.selectionBox) {
-            this.selectionBox.remove();
-        }
-        
         const canvas = document.getElementById('gameCanvas');
         if (canvas) {
             canvas.removeEventListener('mousedown', this.onMouseDown);
@@ -606,6 +582,14 @@ export class SelectionSystem {
         }
         
         document.removeEventListener('keydown', this.onKeyDown);
+        
+        // Limpiar selección
+        this.clearSelection();
+        
+        // Limpiar caja de selección
+        if (this.overlaySystem) {
+            this.overlaySystem.removeSelectionBox('drag-selection');
+        }
         
         console.log('💥 SelectionSystem destruido');
     }

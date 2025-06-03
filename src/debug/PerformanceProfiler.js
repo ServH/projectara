@@ -1,249 +1,79 @@
 /**
- * 📊 GALCON GAME - PERFORMANCE PROFILER
- * Sistema de profiling para medir y analizar rendimiento
- * MILESTONE 2.2: Optimizaciones de Rendimiento
+ * 📊 PERFORMANCE PROFILER - HITO 2.5 OPTIMIZACIÓN
+ * Sistema de medición de rendimiento para identificar bottlenecks
+ * y establecer métricas baseline del sistema orgánico
  */
 
 export class PerformanceProfiler {
     constructor() {
-        // Métricas de rendimiento
-        this.metrics = {
-            fps: {
-                current: 0,
-                average: 0,
-                min: Infinity,
-                max: 0,
-                samples: [],
-                maxSamples: 60 // 1 segundo a 60fps
-            },
-            frameTime: {
-                current: 0,
-                average: 0,
-                min: Infinity,
-                max: 0,
-                samples: []
-            },
-            renderTime: {
-                current: 0,
-                average: 0,
-                total: 0,
-                calls: 0
-            },
-            updateTime: {
-                current: 0,
-                average: 0,
-                total: 0,
-                calls: 0
-            },
-            memory: {
-                used: 0,
-                total: 0,
-                jsHeapSizeUsed: 0,
-                jsHeapSizeTotal: 0
-            },
-            objects: {
-                planets: 0,
-                fleets: 0,
-                svgElements: 0,
-                eventListeners: 0
-            }
+        this.isEnabled = true;
+        this.measurements = new Map();
+        this.frameMetrics = {
+            fps: 0,
+            frameTime: 0,
+            renderTime: 0,
+            updateTime: 0,
+            lastFrameTime: performance.now()
         };
         
-        // Timers para medición
-        this.timers = new Map();
-        this.lastFrameTime = performance.now();
-        this.frameCount = 0;
+        // Métricas de memoria
+        this.memoryMetrics = {
+            heapUsed: 0,
+            heapTotal: 0,
+            heapLimit: 0,
+            lastMeasurement: 0
+        };
+        
+        // Métricas del juego
+        this.gameMetrics = {
+            activeFleets: 0,
+            activePlanets: 0,
+            totalShips: 0,
+            domElements: 0,
+            svgOperations: 0
+        };
+        
+        // Historial para análisis de tendencias
+        this.history = {
+            fps: [],
+            renderTime: [],
+            updateTime: [],
+            memoryUsage: [],
+            maxHistorySize: 100
+        };
+        
+        // Alertas de rendimiento
+        this.alerts = {
+            lowFPS: 45,
+            highRenderTime: 20,
+            highMemoryGrowth: 50,
+            enabled: true
+        };
+        
+        // Contadores de operaciones
+        this.operationCounters = {
+            mathOperations: 0,
+            domUpdates: 0,
+            svgCreations: 0,
+            svgUpdates: 0,
+            fleetUpdates: 0,
+            planetUpdates: 0
+        };
+        
         this.startTime = performance.now();
+        this.setupMemoryMonitoring();
         
-        // Estado del profiler
-        this.isEnabled = false;
-        this.isRecording = false;
-        this.recordingData = [];
-        
-        // Referencias para cleanup
-        this.intervalId = null;
-        
-        console.log('📊 PerformanceProfiler inicializado');
+        console.log('📊 PerformanceProfiler inicializado - Hito 2.5');
     }
 
     /**
-     * Iniciar profiling
+     * Configurar monitoreo de memoria
      */
-    start() {
-        this.isEnabled = true;
-        this.startTime = performance.now();
-        this.lastFrameTime = this.startTime;
-        
-        // Actualizar métricas cada 100ms
-        this.intervalId = setInterval(() => {
+    setupMemoryMonitoring() {
+        if (performance.memory) {
+            setInterval(() => {
             this.updateMemoryMetrics();
-            this.updateObjectCounts();
-        }, 100);
-        
-        console.log('📊 Profiling iniciado');
-    }
-
-    /**
-     * Detener profiling
-     */
-    stop() {
-        this.isEnabled = false;
-        
-        if (this.intervalId) {
-            clearInterval(this.intervalId);
-            this.intervalId = null;
-        }
-        
-        console.log('📊 Profiling detenido');
-    }
-
-    /**
-     * Medir tiempo de frame (llamar al inicio de cada frame)
-     */
-    startFrame() {
-        if (!this.isEnabled) return;
-        
-        const now = performance.now();
-        const frameTime = now - this.lastFrameTime;
-        
-        // Actualizar métricas de frame
-        this.updateFrameMetrics(frameTime);
-        
-        this.lastFrameTime = now;
-        this.frameCount++;
-        
-        // Iniciar timer para frame completo
-        this.startTimer('frame');
-    }
-
-    /**
-     * Finalizar medición de frame
-     */
-    endFrame() {
-        if (!this.isEnabled) return;
-        
-        this.endTimer('frame');
-    }
-
-    /**
-     * Iniciar timer personalizado
-     */
-    startTimer(name) {
-        if (!this.isEnabled) return;
-        
-        this.timers.set(name, {
-            start: performance.now(),
-            end: null
-        });
-    }
-
-    /**
-     * Finalizar timer y registrar tiempo
-     */
-    endTimer(name) {
-        if (!this.isEnabled) return;
-        
-        const timer = this.timers.get(name);
-        if (!timer) {
-            console.warn(`⚠️ Timer '${name}' no encontrado`);
-            return 0;
-        }
-        
-        timer.end = performance.now();
-        const duration = timer.end - timer.start;
-        
-        // Actualizar métricas específicas
-        this.updateTimerMetrics(name, duration);
-        
-        this.timers.delete(name);
-        return duration;
-    }
-
-    /**
-     * Medir tiempo de renderizado
-     */
-    measureRenderTime(renderFunction) {
-        if (!this.isEnabled) {
-            return renderFunction();
-        }
-        
-        this.startTimer('render');
-        const result = renderFunction();
-        const duration = this.endTimer('render');
-        
-        // Actualizar métricas de render
-        this.metrics.renderTime.current = duration;
-        this.metrics.renderTime.total += duration;
-        this.metrics.renderTime.calls++;
-        this.metrics.renderTime.average = this.metrics.renderTime.total / this.metrics.renderTime.calls;
-        
-        return result;
-    }
-
-    /**
-     * Medir tiempo de actualización
-     */
-    measureUpdateTime(updateFunction) {
-        if (!this.isEnabled) {
-            return updateFunction();
-        }
-        
-        this.startTimer('update');
-        const result = updateFunction();
-        const duration = this.endTimer('update');
-        
-        // Actualizar métricas de update
-        this.metrics.updateTime.current = duration;
-        this.metrics.updateTime.total += duration;
-        this.metrics.updateTime.calls++;
-        this.metrics.updateTime.average = this.metrics.updateTime.total / this.metrics.updateTime.calls;
-        
-        return result;
-    }
-
-    /**
-     * Actualizar métricas de frame
-     */
-    updateFrameMetrics(frameTime) {
-        const fps = 1000 / frameTime;
-        
-        // FPS
-        this.metrics.fps.current = fps;
-        this.metrics.fps.samples.push(fps);
-        
-        if (this.metrics.fps.samples.length > this.metrics.fps.maxSamples) {
-            this.metrics.fps.samples.shift();
-        }
-        
-        this.metrics.fps.average = this.metrics.fps.samples.reduce((a, b) => a + b, 0) / this.metrics.fps.samples.length;
-        this.metrics.fps.min = Math.min(this.metrics.fps.min, fps);
-        this.metrics.fps.max = Math.max(this.metrics.fps.max, fps);
-        
-        // Frame Time
-        this.metrics.frameTime.current = frameTime;
-        this.metrics.frameTime.samples.push(frameTime);
-        
-        if (this.metrics.frameTime.samples.length > this.metrics.fps.maxSamples) {
-            this.metrics.frameTime.samples.shift();
-        }
-        
-        this.metrics.frameTime.average = this.metrics.frameTime.samples.reduce((a, b) => a + b, 0) / this.metrics.frameTime.samples.length;
-        this.metrics.frameTime.min = Math.min(this.metrics.frameTime.min, frameTime);
-        this.metrics.frameTime.max = Math.max(this.metrics.frameTime.max, frameTime);
-    }
-
-    /**
-     * Actualizar métricas de timers específicos
-     */
-    updateTimerMetrics(name, duration) {
-        // Registrar en recording si está activo
-        if (this.isRecording) {
-            this.recordingData.push({
-                timestamp: performance.now(),
-                timer: name,
-                duration: duration,
-                fps: this.metrics.fps.current
-            });
+            }, 1000); // Cada segundo
         }
     }
 
@@ -252,185 +82,417 @@ export class PerformanceProfiler {
      */
     updateMemoryMetrics() {
         if (performance.memory) {
-            this.metrics.memory.jsHeapSizeUsed = performance.memory.usedJSHeapSize;
-            this.metrics.memory.jsHeapSizeTotal = performance.memory.totalJSHeapSize;
-            this.metrics.memory.used = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024 * 100) / 100; // MB
-            this.metrics.memory.total = Math.round(performance.memory.totalJSHeapSize / 1024 / 1024 * 100) / 100; // MB
+            this.memoryMetrics.heapUsed = performance.memory.usedJSHeapSize / 1024 / 1024; // MB
+            this.memoryMetrics.heapTotal = performance.memory.totalJSHeapSize / 1024 / 1024; // MB
+            this.memoryMetrics.heapLimit = performance.memory.jsHeapSizeLimit / 1024 / 1024; // MB
+            this.memoryMetrics.lastMeasurement = performance.now();
+            
+            // Añadir al historial
+            this.addToHistory('memoryUsage', this.memoryMetrics.heapUsed);
+            
+            // Verificar alertas de memoria
+            this.checkMemoryAlerts();
         }
     }
 
     /**
-     * Actualizar conteo de objetos
+     * Medir tiempo de frame completo
      */
-    updateObjectCounts() {
-        // Contar elementos SVG
-        const svg = document.getElementById('gameCanvas');
-        if (svg) {
-            this.metrics.objects.svgElements = svg.querySelectorAll('*').length;
+    measureFrame() {
+        const now = performance.now();
+        const frameTime = now - this.frameMetrics.lastFrameTime;
+        
+        this.frameMetrics.frameTime = frameTime;
+        this.frameMetrics.fps = 1000 / frameTime;
+        this.frameMetrics.lastFrameTime = now;
+        
+        // Añadir al historial
+        this.addToHistory('fps', this.frameMetrics.fps);
+        
+        // Verificar alertas de FPS
+        this.checkFPSAlerts();
+    }
+
+    /**
+     * Medir tiempo de renderizado
+     */
+    measureRenderTime(renderFunction) {
+        const startTime = performance.now();
+        
+        renderFunction();
+        
+        const endTime = performance.now();
+        this.frameMetrics.renderTime = endTime - startTime;
+        
+        // Añadir al historial
+        this.addToHistory('renderTime', this.frameMetrics.renderTime);
+        
+        // Verificar alertas de renderizado
+        this.checkRenderAlerts();
+    }
+
+    /**
+     * Medir tiempo de actualización de lógica
+     */
+    measureUpdateTime(updateFunction) {
+        const startTime = performance.now();
+        
+        updateFunction();
+        
+        const endTime = performance.now();
+        this.frameMetrics.updateTime = endTime - startTime;
+        
+        // Añadir al historial
+        this.addToHistory('updateTime', this.frameMetrics.updateTime);
+    }
+
+    /**
+     * Medir operación específica
+     */
+    measureOperation(name, operation) {
+        if (!this.isEnabled) {
+            return operation();
         }
         
-        // Estos se actualizarán desde GameEngine
-        // this.metrics.objects.planets = gameEngine.planets.size;
-        // this.metrics.objects.fleets = gameEngine.fleets.size;
+        const startTime = performance.now();
+        const result = operation();
+        const endTime = performance.now();
+        
+        const duration = endTime - startTime;
+        
+        if (!this.measurements.has(name)) {
+            this.measurements.set(name, {
+                count: 0,
+                totalTime: 0,
+                averageTime: 0,
+                minTime: Infinity,
+                maxTime: 0,
+                lastTime: 0
+            });
+        }
+        
+        const measurement = this.measurements.get(name);
+        measurement.count++;
+        measurement.totalTime += duration;
+        measurement.averageTime = measurement.totalTime / measurement.count;
+        measurement.minTime = Math.min(measurement.minTime, duration);
+        measurement.maxTime = Math.max(measurement.maxTime, duration);
+        measurement.lastTime = duration;
+        
+        return result;
     }
 
     /**
-     * Actualizar conteos desde GameEngine
+     * Incrementar contador de operación
      */
-    updateGameObjectCounts(planets, fleets) {
-        this.metrics.objects.planets = planets;
-        this.metrics.objects.fleets = fleets;
+    incrementCounter(counterName) {
+        if (this.operationCounters.hasOwnProperty(counterName)) {
+            this.operationCounters[counterName]++;
+        }
     }
 
     /**
-     * Iniciar grabación detallada
+     * Actualizar métricas del juego
      */
-    startRecording() {
-        this.isRecording = true;
-        this.recordingData = [];
-        console.log('📊 Grabación de profiling iniciada');
+    updateGameMetrics(gameEngine) {
+        this.gameMetrics.activeFleets = gameEngine.fleets ? gameEngine.fleets.size : 0;
+        this.gameMetrics.activePlanets = gameEngine.planets ? gameEngine.planets.size : 0;
+        
+        // Calcular total de naves
+        let totalShips = 0;
+        if (gameEngine.fleets) {
+            gameEngine.fleets.forEach(fleet => {
+                totalShips += fleet.ships || 1;
+            });
+        }
+        this.gameMetrics.totalShips = totalShips;
+        
+        // Contar elementos DOM
+        const gameCanvas = document.getElementById('gameCanvas');
+        if (gameCanvas) {
+            this.gameMetrics.domElements = gameCanvas.querySelectorAll('*').length;
+        }
     }
 
     /**
-     * Detener grabación
+     * Añadir valor al historial
      */
-    stopRecording() {
-        this.isRecording = false;
-        console.log(`📊 Grabación detenida. ${this.recordingData.length} muestras registradas`);
-        return this.recordingData;
+    addToHistory(metric, value) {
+        if (!this.history[metric]) {
+            this.history[metric] = [];
+        }
+        
+        this.history[metric].push({
+            value: value,
+            timestamp: performance.now()
+        });
+        
+        // Mantener tamaño máximo del historial
+        if (this.history[metric].length > this.history.maxHistorySize) {
+            this.history[metric].shift();
+        }
     }
 
     /**
-     * Generar reporte de rendimiento
+     * Verificar alertas de FPS
      */
-    generateReport() {
+    checkFPSAlerts() {
+        if (!this.alerts.enabled) return;
+        
+        if (this.frameMetrics.fps < this.alerts.lowFPS) {
+            console.warn(`⚠️ FPS bajo detectado: ${this.frameMetrics.fps.toFixed(1)} FPS`);
+        }
+    }
+
+    /**
+     * Verificar alertas de renderizado
+     */
+    checkRenderAlerts() {
+        if (!this.alerts.enabled) return;
+        
+        if (this.frameMetrics.renderTime > this.alerts.highRenderTime) {
+            console.warn(`⚠️ Tiempo de renderizado alto: ${this.frameMetrics.renderTime.toFixed(2)}ms`);
+        }
+    }
+
+    /**
+     * Verificar alertas de memoria
+     */
+    checkMemoryAlerts() {
+        if (!this.alerts.enabled || this.history.memoryUsage.length < 10) return;
+        
+        const recent = this.history.memoryUsage.slice(-10);
+        const growth = recent[recent.length - 1].value - recent[0].value;
+        
+        if (growth > this.alerts.highMemoryGrowth) {
+            console.warn(`⚠️ Crecimiento de memoria alto: +${growth.toFixed(1)}MB en los últimos 10 segundos`);
+        }
+    }
+
+    /**
+     * Obtener reporte completo de rendimiento
+     */
+    getPerformanceReport() {
         const uptime = (performance.now() - this.startTime) / 1000;
         
-        const report = {
-            timestamp: new Date().toISOString(),
-            uptime: Math.round(uptime * 100) / 100,
-            frameCount: this.frameCount,
-            
-            performance: {
-                fps: {
-                    current: Math.round(this.metrics.fps.current * 100) / 100,
-                    average: Math.round(this.metrics.fps.average * 100) / 100,
-                    min: Math.round(this.metrics.fps.min * 100) / 100,
-                    max: Math.round(this.metrics.fps.max * 100) / 100
-                },
-                frameTime: {
-                    current: Math.round(this.metrics.frameTime.current * 100) / 100,
-                    average: Math.round(this.metrics.frameTime.average * 100) / 100,
-                    min: Math.round(this.metrics.frameTime.min * 100) / 100,
-                    max: Math.round(this.metrics.frameTime.max * 100) / 100
-                },
-                renderTime: {
-                    current: Math.round(this.metrics.renderTime.current * 100) / 100,
-                    average: Math.round(this.metrics.renderTime.average * 100) / 100,
-                    totalCalls: this.metrics.renderTime.calls
-                },
-                updateTime: {
-                    current: Math.round(this.metrics.updateTime.current * 100) / 100,
-                    average: Math.round(this.metrics.updateTime.average * 100) / 100,
-                    totalCalls: this.metrics.updateTime.calls
-                }
-            },
-            
-            memory: {
-                used: this.metrics.memory.used,
-                total: this.metrics.memory.total,
-                usagePercent: Math.round((this.metrics.memory.used / this.metrics.memory.total) * 100)
-            },
-            
-            objects: {
-                planets: this.metrics.objects.planets,
-                fleets: this.metrics.objects.fleets,
-                svgElements: this.metrics.objects.svgElements,
-                total: this.metrics.objects.planets + this.metrics.objects.fleets
-            },
-            
-            analysis: this.analyzePerformance()
+        return {
+            uptime: uptime,
+            frameMetrics: { ...this.frameMetrics },
+            memoryMetrics: { ...this.memoryMetrics },
+            gameMetrics: { ...this.gameMetrics },
+            operationCounters: { ...this.operationCounters },
+            measurements: this.getMeasurementsSummary(),
+            averages: this.calculateAverages(),
+            bottlenecks: this.identifyBottlenecks()
         };
+    }
+
+    /**
+     * Obtener resumen de mediciones
+     */
+    getMeasurementsSummary() {
+        const summary = {};
+        
+        this.measurements.forEach((measurement, name) => {
+            summary[name] = {
+                count: measurement.count,
+                averageTime: parseFloat(measurement.averageTime.toFixed(3)),
+                minTime: parseFloat(measurement.minTime.toFixed(3)),
+                maxTime: parseFloat(measurement.maxTime.toFixed(3)),
+                totalTime: parseFloat(measurement.totalTime.toFixed(3))
+            };
+        });
+        
+        return summary;
+    }
+
+    /**
+     * Calcular promedios del historial
+     */
+    calculateAverages() {
+        const averages = {};
+        
+        Object.keys(this.history).forEach(metric => {
+            if (metric === 'maxHistorySize') return;
+            
+            const values = this.history[metric];
+            if (values.length > 0) {
+                const sum = values.reduce((acc, item) => acc + item.value, 0);
+                averages[metric] = parseFloat((sum / values.length).toFixed(2));
+            }
+        });
+        
+        return averages;
+    }
+
+    /**
+     * Identificar bottlenecks principales
+     */
+    identifyBottlenecks() {
+        const bottlenecks = [];
+        
+        // Analizar FPS
+        if (this.frameMetrics.fps < 50) {
+            bottlenecks.push({
+                type: 'FPS',
+                severity: 'HIGH',
+                description: `FPS bajo: ${this.frameMetrics.fps.toFixed(1)}`,
+                recommendation: 'Reducir complejidad visual o optimizar renderizado'
+            });
+        }
+        
+        // Analizar tiempo de renderizado
+        if (this.frameMetrics.renderTime > 15) {
+            bottlenecks.push({
+                type: 'RENDER',
+                severity: 'MEDIUM',
+                description: `Tiempo de renderizado alto: ${this.frameMetrics.renderTime.toFixed(2)}ms`,
+                recommendation: 'Optimizar operaciones DOM o implementar LOD'
+            });
+        }
+        
+        // Analizar operaciones costosas
+        this.measurements.forEach((measurement, name) => {
+            if (measurement.averageTime > 5) {
+                bottlenecks.push({
+                    type: 'OPERATION',
+                    severity: 'MEDIUM',
+                    description: `Operación lenta: ${name} (${measurement.averageTime.toFixed(2)}ms promedio)`,
+                    recommendation: 'Optimizar algoritmo o implementar cache'
+                });
+        }
+        });
+        
+        // Analizar memoria
+        if (this.memoryMetrics.heapUsed > 100) {
+            bottlenecks.push({
+                type: 'MEMORY',
+                severity: 'LOW',
+                description: `Uso de memoria alto: ${this.memoryMetrics.heapUsed.toFixed(1)}MB`,
+                recommendation: 'Implementar object pooling o limpiar referencias'
+            });
+        }
+        
+        return bottlenecks;
+        }
+        
+    /**
+     * Generar reporte de optimización
+     */
+    generateOptimizationReport() {
+        const report = this.getPerformanceReport();
+        
+        console.group('📊 REPORTE DE OPTIMIZACIÓN - HITO 2.5');
+        console.log('⏱️ Tiempo de ejecución:', `${report.uptime.toFixed(1)}s`);
+        console.log('🖼️ FPS promedio:', report.averages.fps?.toFixed(1) || 'N/A');
+        console.log('🎨 Tiempo de renderizado promedio:', `${report.averages.renderTime?.toFixed(2) || 'N/A'}ms`);
+        console.log('💾 Uso de memoria:', `${report.memoryMetrics.heapUsed.toFixed(1)}MB`);
+        console.log('🚀 Flotas activas:', report.gameMetrics.activeFleets);
+        console.log('🌍 Planetas activos:', report.gameMetrics.activePlanets);
+        console.log('⚡ Total de naves:', report.gameMetrics.totalShips);
+        console.log('🏗️ Elementos DOM:', report.gameMetrics.domElements);
+        
+        if (report.bottlenecks.length > 0) {
+            console.group('⚠️ BOTTLENECKS IDENTIFICADOS:');
+            report.bottlenecks.forEach(bottleneck => {
+                console.warn(`${bottleneck.type}: ${bottleneck.description}`);
+                console.log(`💡 Recomendación: ${bottleneck.recommendation}`);
+            });
+            console.groupEnd();
+        } else {
+            console.log('✅ No se detectaron bottlenecks significativos');
+        }
+        
+        console.groupEnd();
         
         return report;
     }
 
     /**
-     * Analizar rendimiento y generar recomendaciones
-     */
-    analyzePerformance() {
-        const analysis = {
-            status: 'good',
-            issues: [],
-            recommendations: []
-        };
-        
-        // Analizar FPS
-        if (this.metrics.fps.average < 30) {
-            analysis.status = 'critical';
-            analysis.issues.push('FPS muy bajo (< 30)');
-            analysis.recommendations.push('Implementar object pooling urgente');
-            analysis.recommendations.push('Activar culling de objetos fuera de pantalla');
-        } else if (this.metrics.fps.average < 50) {
-            analysis.status = 'warning';
-            analysis.issues.push('FPS subóptimo (< 50)');
-            analysis.recommendations.push('Optimizar renderer SVG');
-        }
-        
-        // Analizar tiempo de frame
-        if (this.metrics.frameTime.average > 16.67) {
-            analysis.issues.push('Tiempo de frame alto (> 16.67ms)');
-            analysis.recommendations.push('Optimizar loop principal del juego');
-        }
-        
-        // Analizar memoria
-        if (this.metrics.memory.used > 100) {
-            analysis.issues.push('Uso de memoria alto (> 100MB)');
-            analysis.recommendations.push('Implementar garbage collection automático');
-        }
-        
-        // Analizar objetos SVG
-        if (this.metrics.objects.svgElements > 200) {
-            analysis.issues.push('Muchos elementos SVG (> 200)');
-            analysis.recommendations.push('Implementar object pooling para SVG');
-        }
-        
-        return analysis;
-    }
-
-    /**
-     * Obtener métricas actuales
-     */
-    getMetrics() {
-        return this.metrics;
-    }
-
-    /**
-     * Reset de métricas
+     * Resetear métricas
      */
     reset() {
-        this.metrics.fps.samples = [];
-        this.metrics.frameTime.samples = [];
-        this.metrics.fps.min = Infinity;
-        this.metrics.frameTime.min = Infinity;
-        this.metrics.fps.max = 0;
-        this.metrics.frameTime.max = 0;
-        this.metrics.renderTime.total = 0;
-        this.metrics.renderTime.calls = 0;
-        this.metrics.updateTime.total = 0;
-        this.metrics.updateTime.calls = 0;
-        this.frameCount = 0;
+        this.measurements.clear();
+        this.history.fps = [];
+        this.history.renderTime = [];
+        this.history.updateTime = [];
+        this.history.memoryUsage = [];
+        
+        Object.keys(this.operationCounters).forEach(key => {
+            this.operationCounters[key] = 0;
+        });
+        
         this.startTime = performance.now();
         
-        console.log('📊 Métricas de profiling reseteadas');
+        console.log('📊 Métricas de rendimiento reseteadas');
     }
 
     /**
-     * Destruir profiler
+     * Habilitar/deshabilitar profiling
+     */
+    setEnabled(enabled) {
+        this.isEnabled = enabled;
+        console.log(`📊 Profiling ${enabled ? 'habilitado' : 'deshabilitado'}`);
+    }
+
+    /**
+     * Iniciar el profiler
+     */
+    start() {
+        this.isEnabled = true;
+        this.startTime = performance.now();
+        console.log('📊 PerformanceProfiler iniciado');
+    }
+
+    /**
+     * Detener el profiler
+     */
+    stop() {
+        this.isEnabled = false;
+        console.log('📊 PerformanceProfiler detenido');
+    }
+
+    /**
+     * Iniciar medición de frame
+     */
+    startFrame() {
+        this.frameStartTime = performance.now();
+    }
+
+    /**
+     * Finalizar medición de frame
+     */
+    endFrame() {
+        if (this.frameStartTime) {
+            const now = performance.now();
+            const frameTime = now - this.frameStartTime;
+            
+            this.frameMetrics.frameTime = frameTime;
+            this.frameMetrics.fps = 1000 / frameTime;
+            this.frameMetrics.lastFrameTime = now;
+            
+            // Añadir al historial
+            this.addToHistory('fps', this.frameMetrics.fps);
+            
+            // Verificar alertas de FPS
+            this.checkFPSAlerts();
+        }
+    }
+
+    /**
+     * Actualizar conteos de objetos del juego
+     */
+    updateGameObjectCounts(planetCount, fleetCount) {
+        this.gameMetrics.activePlanets = planetCount;
+        this.gameMetrics.activeFleets = fleetCount;
+    }
+
+    /**
+     * Destruir el profiler y limpiar recursos
      */
     destroy() {
         this.stop();
-        this.timers.clear();
+        this.reset();
         console.log('💥 PerformanceProfiler destruido');
     }
 }

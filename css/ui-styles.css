@@ -1,0 +1,379 @@
+/* 🎨 GALCON GAME - UI STYLES (OPTIMIZADO)
+ * Estilos separados del index.html para mejor rendimiento
+ * Eliminados backdrop-filter costosos y animaciones problemáticas
+ */
+
+/* Reset y base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: radial-gradient(ellipse at center, #000033 0%, #000011 70%, #000000 100%);
+    color: #ffffff;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Barra superior - HUD */
+.top-bar {
+    height: 60px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 20, 40, 0.8) 100%);
+    border-bottom: 2px solid rgba(0, 255, 136, 0.3);
+    /* OPTIMIZACIÓN: Eliminado backdrop-filter costoso */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 1000;
+    box-shadow: 0 2px 20px rgba(0, 255, 136, 0.2);
+}
+
+.game-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #00ff88;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stats-container {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+}
+
+.stat-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.stat-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: bold;
+    color: #00ff88;
+    text-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+}
+
+.game-status {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 14px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00ff88;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    animation: pulse-optimized 2s ease-in-out infinite;
+}
+
+.status-indicator.paused {
+    background: #ffaa00;
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
+}
+
+/* Área de juego */
+.game-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+#gameCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Barra inferior - Controles */
+.bottom-bar {
+    height: 50px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 20, 40, 0.8) 100%);
+    border-top: 2px solid rgba(0, 255, 136, 0.3);
+    /* OPTIMIZACIÓN: Eliminado backdrop-filter costoso */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 1000;
+    box-shadow: 0 -2px 20px rgba(0, 255, 136, 0.2);
+}
+
+.controls-left, .controls-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.control-key {
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    color: #00ff88;
+    font-weight: bold;
+}
+
+.selection-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+}
+
+.selected-count {
+    background: rgba(0, 255, 136, 0.2);
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    border-radius: 15px;
+    padding: 4px 12px;
+    color: #00ff88;
+    font-weight: bold;
+}
+
+/* Pantalla de carga */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(ellipse at center, #000033 0%, #000011 70%, #000000 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #00ff88;
+    z-index: 9999;
+    transition: opacity 0.5s ease;
+}
+
+.loading-screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-title {
+    font-size: 3em;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-shadow: 0 0 20px #00ff88;
+    animation: pulse-optimized 2s ease-in-out infinite;
+}
+
+.loading-subtitle {
+    font-size: 1.2em;
+    margin-bottom: 40px;
+    opacity: 0.8;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(0, 255, 136, 0.3);
+    border-top: 3px solid #00ff88;
+    border-radius: 50%;
+    animation: spin-optimized 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+.loading-progress {
+    width: 300px;
+    height: 4px;
+    background: rgba(0, 255, 136, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.loading-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #00ff88, #00ffaa);
+    width: 0%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px #00ff88;
+}
+
+.loading-status {
+    font-size: 0.9em;
+    opacity: 0.7;
+    min-height: 20px;
+}
+
+/* Panel de debug */
+.debug-panel {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    width: 400px;
+    max-height: calc(100vh - 140px);
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid #ff6666;
+    border-radius: 8px;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #ffffff;
+    overflow-y: auto;
+    z-index: 2000;
+    /* OPTIMIZACIÓN: Eliminado backdrop-filter costoso */
+}
+
+.debug-panel.hidden {
+    display: none;
+}
+
+.debug-title {
+    color: #ff6666;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 14px;
+}
+
+.debug-panel pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* ANIMACIONES OPTIMIZADAS */
+/* OPTIMIZACIÓN: Eliminadas animaciones problemáticas con calc() y attr() */
+
+@keyframes spin-optimized {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse-optimized {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* OPTIMIZACIÓN: Animaciones de efectos simplificadas sin calc() */
+@keyframes attack-feedback {
+    0% {
+        stroke-opacity: 0.8;
+        transform: scale(1);
+    }
+    50% {
+        stroke-opacity: 1;
+        transform: scale(1.5);
+    }
+    100% {
+        stroke-opacity: 0;
+        transform: scale(2);
+    }
+}
+
+@keyframes conquest-effect {
+    0% {
+        stroke-opacity: 1;
+        stroke-width: 2;
+        transform: scale(1);
+    }
+    100% {
+        stroke-opacity: 0;
+        stroke-width: 8;
+        transform: scale(2.5);
+    }
+}
+
+@keyframes launch-confirmation {
+    0% {
+        stroke-opacity: 0.8;
+        transform: scale(1);
+    }
+    100% {
+        stroke-opacity: 0;
+        transform: scale(2);
+    }
+}
+
+@keyframes drag-target-pulse {
+    0% {
+        stroke-opacity: 0.6;
+        stroke-width: 3;
+    }
+    100% {
+        stroke-opacity: 1;
+        stroke-width: 5;
+    }
+}
+
+@keyframes drag-line-pulse {
+    0% {
+        stroke-opacity: 0.4;
+    }
+    50% {
+        stroke-opacity: 0.8;
+    }
+    100% {
+        stroke-opacity: 0.4;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .top-bar {
+        height: 50px;
+        padding: 0 15px;
+    }
+    
+    .game-title {
+        font-size: 18px;
+    }
+    
+    .stats-container {
+        gap: 15px;
+    }
+    
+    .stat-value {
+        font-size: 14px;
+    }
+    
+    .bottom-bar {
+        height: 45px;
+        padding: 0 15px;
+    }
+    
+    .control-group {
+        font-size: 11px;
+        gap: 6px;
+    }
+    
+    .debug-panel {
+        width: calc(100vw - 40px);
+        right: 20px;
+        left: 20px;
+    }
+} 

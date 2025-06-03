@@ -3,32 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚀 Galcon Game - Canvas 2D</title>
+    <title>🚀 Galcon Game - Space Conquest</title>
     
-    <!-- CSS del juego -->
+    <!-- OPTIMIZACIÓN: CSS separado para mejor caching y parsing -->
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/ui-styles.css">
     
-    <!-- Favicon -->
+    <!-- Favicon optimizado -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    
+    <!-- OPTIMIZACIÓN: Preload de módulos críticos -->
+    <link rel="modulepreload" href="src/ui/GameLoader.js">
+    <link rel="modulepreload" href="src/core/GameEngine.js">
+    <link rel="modulepreload" href="src/visual/Renderer.js">
 </head>
 <body>
     <!-- Pantalla de carga -->
     <div id="loadingScreen" class="loading-screen">
-        <div class="loading-title">🚀 GALCON CANVAS 2D</div>
-        <div class="loading-subtitle">Renderizado Optimizado</div>
+        <div class="loading-title">🚀 GALCON</div>
+        <div class="loading-subtitle">Space Conquest Game</div>
         <div class="loading-spinner"></div>
         <div class="loading-progress">
             <div id="loadingProgressBar" class="loading-progress-bar"></div>
         </div>
-        <div id="loadingStatus" class="loading-status">Inicializando Canvas 2D...</div>
+        <div id="loadingStatus" class="loading-status">Inicializando sistemas...</div>
     </div>
 
     <!-- Barra superior - HUD -->
     <div class="top-bar" style="display: none;" id="topBar">
         <div class="game-title">
             <span>🚀</span>
-            <span>GALCON CANVAS 2D</span>
+            <span>GALCON</span>
         </div>
         
         <div class="stats-container">
@@ -52,7 +57,7 @@
         
         <div class="game-status">
             <div class="status-indicator" id="statusIndicator"></div>
-            <span id="hud-state">Canvas 2D Active</span>
+            <span id="hud-state">-</span>
         </div>
     </div>
 
@@ -65,20 +70,24 @@
     <div class="bottom-bar">
         <div class="controls-left">
             <div class="control-group">
-                <span class="control-key">Click</span>
-                <span>Seleccionar planeta</span>
-            </div>
-            <div class="control-group">
                 <span class="control-key">Drag</span>
-                <span>Enviar flotas</span>
+                <span>Seleccionar múltiple</span>
             </div>
             <div class="control-group">
                 <span class="control-key">Ctrl+Click</span>
-                <span>Multi-selección</span>
+                <span>Añadir/quitar selección</span>
             </div>
             <div class="control-group">
                 <span class="control-key">Shift+Click</span>
                 <span>Seleccionar todos</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Doble Click</span>
+                <span>Seleccionar todos</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Clic Derecho</span>
+                <span>Envío rápido</span>
             </div>
         </div>
         
@@ -89,39 +98,42 @@
         
         <div class="controls-right">
             <div class="control-group">
-                <span class="control-key">Click Derecho</span>
-                <span>Ataque rápido</span>
+                <span class="control-key">1-4</span>
+                <span>Porcentaje (25%, 50%, 75%, 100%)</span>
             </div>
             <div class="control-group">
-                <span class="control-key">Doble Click</span>
-                <span>Seleccionar todos</span>
+                <span class="control-key">Rueda</span>
+                <span>Cambiar porcentaje</span>
             </div>
             <div class="control-group">
-                <span class="control-key">Esc</span>
-                <span>Deseleccionar</span>
+                <span class="control-key">F1</span>
+                <span>Debug</span>
             </div>
             <div class="control-group">
-                <span class="control-key">F1-F7</span>
-                <span>Debug/Benchmark</span>
+                <span class="control-key">F5</span>
+                <span>Reiniciar</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">ESC</span>
+                <span>Pausa</span>
             </div>
         </div>
     </div>
 
     <!-- Panel de debug -->
     <div id="debugPanel" class="debug-panel hidden">
-        <div class="debug-title">🐛 CANVAS DEBUG INFO</div>
+        <div class="debug-title">🐛 DEBUG INFO</div>
         <div id="debugContent"></div>
     </div>
 
+    <!-- OPTIMIZACIÓN: JavaScript separado y modular -->
     <script type="module">
-        // Cargar GameLoader con Canvas 2D forzado
-        import('./src/ui/GameLoader.js').then(({ GameLoader }) => {
-            // Forzar Canvas 2D como renderer único
-            window.PREFERRED_RENDERER = 'canvas';
-            
-            const gameLoader = new GameLoader();
-            gameLoader.load();
-        });
+        // OPTIMIZACIÓN: Importación dinámica del GameLoader optimizado
+        import { GameLoader } from './src/ui/GameLoader.js';
+        
+        // OPTIMIZACIÓN: Inicialización simplificada sin código inline
+        const gameLoader = new GameLoader();
+        gameLoader.load();
     </script>
 </body>
 </html> 

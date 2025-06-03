@@ -1,107 +1,54 @@
 /**
- * 🎮 GALCON GAME - GAME ENGINE (REFACTORIZADO FASE 1)
- * Motor principal del juego con arquitectura modular optimizada
- * HITO 2.5: Optimización crítica para 60 FPS estables
- * 
- * OPTIMIZACIONES APLICADAS:
- * - ❌ Eliminados 85+ console.log del loop crítico
- * - ⚡ Optimizado gameLoop y update
- * - 🧪 Separados métodos de testing
- * - 📊 Cacheadas estadísticas y validaciones
- * - 🗺️ Optimizado spatial grid
+ * 🎮 GALCON GAME - GAME ENGINE
+ * Motor principal del juego con arquitectura modular
+ * MILESTONE 2.1: Integración de PercentageSelector
+ * MILESTONE 2.2: Integración de Sistemas de Optimización
+ * HITO 2: Sistema de formación orgánica integrado
  */
 
 import eventBus, { GAME_EVENTS } from './EventBus.js';
 import Planet from '../entities/Planet.js';
 import Fleet from '../entities/Fleet.js';
 import AISystem from '../systems/AISystem.js';
-import PercentageSelector from '../ui/PercentageSelector.js';
-import FleetRedirectionSystem from '../systems/FleetRedirectionSystem.js';
-import PerformanceProfiler from '../debug/PerformanceProfiler.js';
-import CullingSystem from '../visual/CullingSystem.js';
-import MemoryManager from '../systems/MemoryManager.js';
-import SpatialGrid from '../systems/SpatialGrid.js';
-import FleetPhysics from '../systems/FleetPhysics.js';
+import PercentageSelector from '../ui/PercentageSelector.js'; // 🎛️ MILESTONE 2.1
+import FleetRedirectionSystem from '../systems/FleetRedirectionSystem.js'; // 🔄 MILESTONE 2.1
+import PerformanceProfiler from '../debug/PerformanceProfiler.js'; // 📊 MILESTONE 2.2
+import CullingSystem from '../visual/CullingSystem.js'; // 👁️ MILESTONE 2.2
+import MemoryManager from '../systems/MemoryManager.js'; // 🧠 MILESTONE 2.2
+import SpatialGrid from '../systems/SpatialGrid.js'; // 🗺️ MILESTONE 2.2
+import SVGPool from '../visual/SVGPool.js'; // 🏊 MILESTONE 2.2
+import FleetPhysics from '../systems/FleetPhysics.js'; // 🐦 MILESTONE 2.2
 import { GAME_CONFIG } from '../config/GameConfig.js';
 import { BALANCE_CONFIG } from '../config/BalanceConfig.js';
-import { FleetFormationSystem } from '../systems/FleetFormationSystem.js';
+import { FleetFormationSystem } from '../systems/FleetFormationSystem.js'; // 🌊 HITO 2: Nuevo sistema
 
 export class GameEngine {
     constructor() {
         this.isRunning = false;
         this.isPaused = false;
-        this.gameState = 'menu';
+        this.gameState = 'menu'; // menu, playing, paused, ended
         
         // Entidades del juego
         this.planets = new Map();
         this.fleets = new Map();
         this.players = new Map();
         
-        // Sistemas del juego
+        // Sistemas del juego - MILESTONE 2.1
         this.aiSystem = null;
         this.percentageSelector = null;
         this.fleetRedirectionSystem = null;
-        this.fleetFormationSystem = null;
+        this.fleetFormationSystem = null; // 🌊 HITO 2: Sistema de formación orgánica
         
-        // Sistemas de optimización
+        // 📊 MILESTONE 2.2: Sistemas de optimización
         this.performanceProfiler = null;
         this.cullingSystem = null;
         this.memoryManager = null;
         this.spatialGrid = null;
+        this.svgPool = null;
         this.fleetPhysics = null;
         
-        // 🚀 OPTIMIZACIÓN: Cache de configuración
-        this.config = this.initializeConfig();
-        
-        // 🚀 OPTIMIZACIÓN: Cache de colores de propietarios
-        this.ownerColors = {
-            player: '#00ff88',
-            enemy: '#ff4444',
-            neutral: '#ffaa00',
-            ai: '#ff4444'
-        };
-        
-        // Sistema de tiempo optimizado
-        this.lastFrameTime = 0;
-        this.deltaTime = 0;
-        this.gameTime = 0;
-        this.frameCount = 0;
-        
-        // 🚀 OPTIMIZACIÓN: Cache de estadísticas (actualizar cada 30 frames)
-        this.statsUpdateCounter = 0;
-        this.statsUpdateInterval = 30;
-        this.stats = {
-            fps: 0,
-            planetsCount: 0,
-            fleetsCount: 0,
-            gameTime: 0,
-            renderTime: 0,
-            updateTime: 0,
-            memoryUsage: 0
-        };
-        
-        // 🚀 OPTIMIZACIÓN: Cache de validaciones
-        this.validationCache = {
-            lastPlanetCheck: 0,
-            playerPlanetsCount: 0,
-            aiPlanetsCount: 0
-        };
-        
-        // 🚀 OPTIMIZACIÓN: Flags de debug (solo en desarrollo)
-        this.debugMode = false; // Cambiar a true solo para debugging
-        
-        this.setupEventListeners();
-        
-        if (this.debugMode) {
-            console.log('🎮 GameEngine inicializado con optimizaciones Canvas 2D');
-        }
-    }
-
-    /**
-     * 🚀 OPTIMIZACIÓN: Inicializar configuración con fallbacks
-     */
-    initializeConfig() {
-        const defaultConfig = {
+        // Configuración del juego usando nueva configuración
+        this.config = {
             world: {
                 width: window.innerWidth,
                 height: window.innerHeight,
@@ -109,7 +56,7 @@ export class GameEngine {
                 minPlanetDistance: 80
             },
             gameplay: {
-                fleetSendPercentage: 0.8,
+                fleetSendPercentage: 0.8, // Más agresivo
                 gameSpeed: 1.0,
                 planetGrowthRate: 0.5,
                 maxPlanetShips: 100
@@ -117,11 +64,12 @@ export class GameEngine {
             performance: {
                 targetFPS: 60,
                 maxFleets: 100,
-                enableProfiling: true,
-                enableCulling: true,
-                enableSpatialGrid: true,
-                enableMemoryManager: true,
-                enableFleetPhysics: false,
+                enableProfiling: true, // 📊 MILESTONE 2.2
+                enableCulling: true,   // 👁️ MILESTONE 2.2
+                enableSpatialGrid: true, // 🗺️ MILESTONE 2.2
+                enableMemoryManager: true, // 🧠 MILESTONE 2.2
+                enableSVGPool: true,   // 🏊 MILESTONE 2.2
+                enableFleetPhysics: false, // 🐦 MILESTONE 2.2 (experimental)
                 maxPlanets: 50
             }
         };
@@ -129,17 +77,34 @@ export class GameEngine {
         // Intentar usar configuraciones externas si están disponibles
         try {
             if (typeof GAME_CONFIG !== 'undefined') {
-                defaultConfig.world = { ...defaultConfig.world, ...GAME_CONFIG.world };
-                defaultConfig.gameplay = { ...defaultConfig.gameplay, ...GAME_CONFIG.gameplay };
-                defaultConfig.performance = { ...defaultConfig.performance, ...GAME_CONFIG.performance };
+                this.config.world = { ...this.config.world, ...GAME_CONFIG.world };
+                this.config.gameplay = { ...this.config.gameplay, ...GAME_CONFIG.gameplay };
+                this.config.performance = { ...this.config.performance, ...GAME_CONFIG.performance };
             }
         } catch (error) {
-            if (this.debugMode) {
             console.warn('⚠️ Usando configuración por defecto:', error.message);
         }
-        }
         
-        return defaultConfig;
+        // Sistema de tiempo
+        this.lastFrameTime = 0;
+        this.deltaTime = 0;
+        this.gameTime = 0;
+        this.frameCount = 0;
+        
+        // Estadísticas
+        this.stats = {
+            fps: 0,
+            planetsCount: 0,
+            fleetsCount: 0,
+            gameTime: 0,
+            // 📊 MILESTONE 2.2: Estadísticas de rendimiento
+            renderTime: 0,
+            updateTime: 0,
+            memoryUsage: 0
+        };
+        
+        this.setupEventListeners();
+        console.log('🎮 GameEngine inicializado con PercentageSelector');
     }
 
     /**
@@ -153,6 +118,8 @@ export class GameEngine {
         eventBus.on(GAME_EVENTS.GAME_PAUSE, this.pause.bind(this));
         eventBus.on(GAME_EVENTS.GAME_RESUME, this.resume.bind(this));
         eventBus.on(GAME_EVENTS.GAME_RESET, this.reset.bind(this));
+        
+        // 🎛️ NUEVO: Eventos del PercentageSelector
         eventBus.on('percentage:changed', this.onPercentageChanged.bind(this));
         eventBus.on('selection:getCount', this.getSelectedPlanetsCount.bind(this));
     }
@@ -161,9 +128,7 @@ export class GameEngine {
      * Inicializar el juego
      */
     init() {
-        if (this.debugMode) {
         console.log('🚀 Inicializando GameEngine...');
-        }
         
         this.createPlayers();
         this.generateWorld();
@@ -171,10 +136,7 @@ export class GameEngine {
         this.startGameLoop();
         
         this.gameState = 'playing';
-        
-        if (this.debugMode) {
         console.log('✅ GameEngine inicializado correctamente');
-        }
         
         return this;
     }
@@ -186,21 +148,22 @@ export class GameEngine {
         // Inicializar sistema de IA
         this.aiSystem = new AISystem(this);
         
-        // Inicializar PercentageSelector
+        // 🎛️ MILESTONE 2.1: Inicializar PercentageSelector con referencia al GameEngine
         this.percentageSelector = new PercentageSelector(this);
         
-        // Inicializar FleetRedirectionSystem
+        // 🔄 MILESTONE 2.1: Inicializar FleetRedirectionSystem
         this.fleetRedirectionSystem = new FleetRedirectionSystem(this);
         
-        // Inicializar FleetFormationSystem
+        // 🌊 HITO 2: Inicializar FleetFormationSystem
         this.fleetFormationSystem = new FleetFormationSystem();
         
-        // Inicializar sistemas de optimización
+        // 📊 MILESTONE 2.2: Inicializar PerformanceProfiler
         if (this.config.performance.enableProfiling) {
             this.performanceProfiler = new PerformanceProfiler();
             this.performanceProfiler.start();
         }
         
+        // 👁️ MILESTONE 2.2: Inicializar CullingSystem con dimensiones del mundo
         if (this.config.performance.enableCulling) {
             this.cullingSystem = new CullingSystem(
                 this.config.world.width, 
@@ -208,25 +171,31 @@ export class GameEngine {
             );
         }
         
+        // 🧠 MILESTONE 2.2: Inicializar MemoryManager
         if (this.config.performance.enableMemoryManager) {
             this.memoryManager = new MemoryManager();
         }
         
+        // 🗺️ MILESTONE 2.2: Inicializar SpatialGrid con dimensiones del mundo
         if (this.config.performance.enableSpatialGrid) {
             this.spatialGrid = new SpatialGrid(
                 this.config.world.width, 
                 this.config.world.height,
-                100
+                100 // Tamaño de celda
             );
         }
         
+        // 🏊 MILESTONE 2.2: Inicializar SVGPool
+        if (this.config.performance.enableSVGPool) {
+            this.svgPool = new SVGPool();
+        }
+        
+        // 🐦 MILESTONE 2.2: Inicializar FleetPhysics (experimental)
         if (this.config.performance.enableFleetPhysics) {
             this.fleetPhysics = new FleetPhysics();
         }
         
-        if (this.debugMode) {
-            console.log('🤖 Sistemas del juego inicializados con optimizaciones Canvas 2D');
-        }
+        console.log('🤖 Sistemas del juego inicializados con optimizaciones del Milestone 2.2');
     }
 
     /**
@@ -247,23 +216,51 @@ export class GameEngine {
             isHuman: false
         });
 
-        if (this.debugMode) {
         console.log('👥 Jugadores creados');
-        }
     }
 
     /**
-     * 🚀 OPTIMIZACIÓN: Generar mundo con dimensiones optimizadas
+     * Generar mundo con planetas
      */
     generateWorld() {
-        if (this.debugMode) {
         console.log('🌍 Generando mundo...');
+        
+        // Obtener dimensiones del canvas SVG
+        const gameCanvas = document.getElementById('gameCanvas');
+        let width = 800;  // Valor por defecto
+        let height = 600; // Valor por defecto
+        
+        if (gameCanvas) {
+            // Intentar obtener dimensiones del viewBox del SVG
+            const viewBox = gameCanvas.getAttribute('viewBox');
+            if (viewBox) {
+                const [x, y, w, h] = viewBox.split(' ').map(Number);
+                width = w;
+                height = h;
+                console.log(`📐 Usando dimensiones del viewBox SVG: ${width}x${height}`);
+            } else {
+                // Fallback: usar dimensiones del elemento
+                const rect = gameCanvas.getBoundingClientRect();
+                width = rect.width || 800;
+                height = rect.height || 600;
+                console.log(`📐 Usando dimensiones del elemento SVG: ${width}x${height}`);
+            }
+        } else {
+            // Fallback: intentar obtener del área de juego
+            const gameArea = document.querySelector('.game-area');
+            if (gameArea) {
+                const rect = gameArea.getBoundingClientRect();
+                width = rect.width || 800;
+                height = rect.height || 600;
+                console.log(`📐 Usando dimensiones del área de juego: ${width}x${height}`);
+            } else {
+                console.log(`📐 Usando dimensiones por defecto: ${width}x${height}`);
+            }
         }
         
-        // 🚀 OPTIMIZACIÓN: Cache de dimensiones
-        const dimensions = this.getWorldDimensions();
-        this.config.world.width = dimensions.width;
-        this.config.world.height = dimensions.height;
+        // Actualizar configuración con dimensiones reales
+        this.config.world.width = width;
+        this.config.world.height = height;
         
         const { planetCount, minPlanetDistance } = this.config.world;
         const planetSizes = ['small', 'medium', 'large', 'huge'];
@@ -271,12 +268,7 @@ export class GameEngine {
         
         this.planets.clear();
         
-        const positions = this.generatePlanetPositions(
-            planetCount, 
-            dimensions.width, 
-            dimensions.height, 
-            minPlanetDistance
-        );
+        const positions = this.generatePlanetPositions(planetCount, width, height, minPlanetDistance);
         
         positions.forEach((pos, index) => {
             const size = this.weightedRandomSelect(planetSizes, sizeWeights);
@@ -292,42 +284,8 @@ export class GameEngine {
             this.planets.set(planet.id, planet);
         });
         
-        if (this.debugMode) {
-            console.log(`🪐 ${planetCount} planetas generados en área ${dimensions.width}x${dimensions.height}`);
-        }
-        
-        this.updateStatsCache();
-    }
-
-    /**
-     * 🚀 OPTIMIZACIÓN: Obtener dimensiones del mundo con cache
-     */
-    getWorldDimensions() {
-        const gameCanvas = document.getElementById('gameCanvas');
-        let width = 800;
-        let height = 600;
-        
-        if (gameCanvas) {
-            const viewBox = gameCanvas.getAttribute('viewBox');
-            if (viewBox) {
-                const [x, y, w, h] = viewBox.split(' ').map(Number);
-                width = w;
-                height = h;
-            } else {
-                const rect = gameCanvas.getBoundingClientRect();
-                width = rect.width || 800;
-                height = rect.height || 600;
-            }
-        } else {
-            const gameArea = document.querySelector('.game-area');
-            if (gameArea) {
-                const rect = gameArea.getBoundingClientRect();
-                width = rect.width || 800;
-                height = rect.height || 600;
-            }
-        }
-        
-        return { width, height };
+        console.log(`🪐 ${planetCount} planetas generados en área ${width}x${height}`);
+        this.updateStats();
     }
 
     /**
@@ -401,12 +359,12 @@ export class GameEngine {
     }
 
     /**
-     * 🚀 OPTIMIZACIÓN: Loop principal optimizado
+     * Loop principal del juego
      */
     gameLoop() {
         if (!this.isRunning) return;
         
-        // Iniciar medición de frame (solo si profiling está habilitado)
+        // 📊 NUEVO: Iniciar medición de frame
         if (this.performanceProfiler) {
             this.performanceProfiler.startFrame();
         }
@@ -417,12 +375,12 @@ export class GameEngine {
         this.gameTime += this.deltaTime;
         this.frameCount++;
         
-        // 🚀 OPTIMIZACIÓN: Actualizar FPS cada 60 frames en lugar de cada frame
+        // Actualizar FPS cada segundo
         if (this.frameCount % 60 === 0) {
             this.stats.fps = Math.round(1000 / this.deltaTime);
         }
         
-        // Medir tiempo de actualización
+        // 📊 NUEVO: Medir tiempo de actualización
         if (this.performanceProfiler) {
             this.performanceProfiler.measureUpdateTime(() => {
                 this.update(this.deltaTime);
@@ -431,9 +389,11 @@ export class GameEngine {
             this.update(this.deltaTime);
         }
         
-        // Finalizar medición de frame
+        // 📊 NUEVO: Finalizar medición de frame
         if (this.performanceProfiler) {
             this.performanceProfiler.endFrame();
+            
+            // Actualizar conteos de objetos para el profiler
             this.performanceProfiler.updateGameObjectCounts(
                 this.planets.size,
                 this.fleets.size
@@ -444,43 +404,46 @@ export class GameEngine {
     }
 
     /**
-     * 🚀 OPTIMIZACIÓN: Update optimizado sin logs críticos
+     * Actualizar estado del juego
      */
     update(deltaTime) {
+        // Convertir deltaTime a segundos y limitar
         const dt = Math.min(deltaTime / 1000, 1/30);
         
         if (this.isPaused) return;
         
-        // 🚀 OPTIMIZACIÓN: Spatial grid optimizado (solo limpiar si es necesario)
+        // 🗺️ MILESTONE 2.2: Limpiar spatial grid para nueva frame
         if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
             this.spatialGrid.clear();
         }
         
-        // Actualizar planetas
+        // Actualizar planetas (producción)
         for (const planet of this.planets.values()) {
             planet.update(dt);
             
+            // 🗺️ MILESTONE 2.2: Insertar planeta en spatial grid
             if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
                 this.spatialGrid.insert(planet);
             }
         }
         
-        // Actualizar flotas
+        // Actualizar flotas (movimiento)
         for (const fleet of this.fleets.values()) {
             fleet.update(dt);
             
+            // 🗺️ MILESTONE 2.2: Insertar flota en spatial grid
             if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
                 this.spatialGrid.insert(fleet);
             }
         }
         
-        // Actualizar física de flotas (experimental)
+        // 🐦 MILESTONE 2.2: Actualizar física de flotas (experimental)
         if (this.config.performance.enableFleetPhysics && this.fleetPhysics) {
             const activeFleets = Array.from(this.fleets.values()).filter(f => !f.hasArrived);
             this.fleetPhysics.updateFleetPhysics(activeFleets, dt);
         }
         
-        // Actualizar cache del spatial grid
+        // 🗺️ MILESTONE 2.2: Actualizar cache del spatial grid
         if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
             this.spatialGrid.updateCache();
         }
@@ -493,15 +456,15 @@ export class GameEngine {
             this.aiSystem.update(dt);
         }
         
-        // 🚀 OPTIMIZACIÓN: Verificar condiciones de victoria con cache
-        this.checkWinConditionsOptimized();
+        // Verificar condiciones de victoria
+        this.checkWinConditions();
         
-        // 🚀 OPTIMIZACIÓN: Actualizar estadísticas solo cada N frames
-        this.updateStatsOptimized();
+        // Actualizar estadísticas
+        this.updateStats();
     }
 
     /**
-     * 🚀 OPTIMIZACIÓN: Limpiar flotas sin logs
+     * Limpiar flotas que han llegado
      */
     cleanupArrivedFleets() {
         const fleetsToRemove = [];
@@ -510,8 +473,9 @@ export class GameEngine {
             if (fleet.hasArrived) {
                 fleetsToRemove.push(id);
                 
+                // 🧠 MILESTONE 2.2: Programar limpieza con MemoryManager
                 if (this.config.performance.enableMemoryManager && this.memoryManager) {
-                    this.memoryManager.scheduleCleanup(fleet, 1000);
+                    this.memoryManager.scheduleCleanup(fleet, 1000); // Limpiar después de 1 segundo
                 }
             }
         });
@@ -522,21 +486,11 @@ export class GameEngine {
     }
 
     /**
-     * 🚀 OPTIMIZACIÓN: Verificar condiciones de victoria con cache
+     * Verificar condiciones de victoria
      */
-    checkWinConditionsOptimized() {
-        // Solo verificar cada 60 frames para optimizar
-        if (this.frameCount % 60 !== 0) return;
-        
-        const now = this.gameTime;
-        if (now - this.validationCache.lastPlanetCheck < 1000) return; // Máximo una vez por segundo
-        
+    checkWinConditions() {
         const playerPlanets = Array.from(this.planets.values()).filter(p => p.owner === 'player');
         const aiPlanets = Array.from(this.planets.values()).filter(p => p.owner === 'ai');
-        
-        this.validationCache.lastPlanetCheck = now;
-        this.validationCache.playerPlanetsCount = playerPlanets.length;
-        this.validationCache.aiPlanetsCount = aiPlanets.length;
         
         if (playerPlanets.length === 0) {
             this.endGame('ai');
@@ -551,35 +505,37 @@ export class GameEngine {
     endGame(winner) {
         this.gameState = 'ended';
         eventBus.emit(GAME_EVENTS.GAME_END, { winner });
-        
-        if (this.debugMode) {
         console.log(`🏆 Juego terminado. Ganador: ${winner}`);
-        }
     }
 
     /**
-     * 🚀 OPTIMIZACIÓN: Enviar flotas sin logs críticos
+     * 🎛️ MEJORADO: Enviar flotas desde planetas seleccionados con porcentaje dinámico y targeting flexible
      */
     sendFleetFromSelected(targetPlanetId, percentage = null, targetClickX = null, targetClickY = null) {
+        console.log(`🚀 sendFleetFromSelected llamado: targetPlanet=${targetPlanetId}, percentage=${percentage}, clickPos=(${targetClickX}, ${targetClickY})`);
+        
         const targetPlanet = this.planets.get(targetPlanetId);
         if (!targetPlanet) {
-            if (this.debugMode) {
             console.error(`❌ Planeta objetivo ${targetPlanetId} no encontrado`);
-            }
             return;
         }
+        
+        console.log(`🎯 Planeta objetivo: ${targetPlanet.id} (${targetPlanet.owner})`);
         
         const selectedPlanets = Array.from(this.planets.values())
             .filter(p => p.isSelected && p.owner === 'player');
         
+        console.log(`🪐 Planetas seleccionados encontrados: ${selectedPlanets.length}`);
+        selectedPlanets.forEach(p => {
+            console.log(`  - ${p.id}: ${p.ships} naves, seleccionado: ${p.isSelected}`);
+        });
+        
         if (selectedPlanets.length === 0) {
-            if (this.debugMode) {
             console.warn('⚠️ No hay planetas seleccionados del jugador');
-            }
             return;
         }
         
-        // Determinar porcentaje de envío
+        // 🎛️ NUEVO: Usar porcentaje del PercentageSelector si no se especifica
         let sendPercentage;
         if (percentage !== null) {
             sendPercentage = percentage;
@@ -589,27 +545,67 @@ export class GameEngine {
             sendPercentage = this.config.gameplay.fleetSendPercentage;
         }
         
+        console.log(`📊 Porcentaje de envío: ${Math.round(sendPercentage * 100)}%`);
+        
         let totalFleetsSent = 0;
         selectedPlanets.forEach(planet => {
             if (planet.ships > 1) {
+                console.log(`🚀 Enviando flota desde ${planet.id} (${planet.ships} naves)`);
+                
+                // 🎯 NUEVO: Pasar coordenadas de click para targeting flexible
                 const fleetData = planet.sendFleet(targetPlanet, sendPercentage, targetClickX, targetClickY);
                 
                 if (fleetData) {
                     totalFleetsSent++;
+                    console.log(`✅ Flota enviada: ${fleetData.ships} naves`);
+                } else {
+                    console.log(`❌ No se pudo enviar flota desde ${planet.id}`);
                 }
+            } else {
+                console.log(`⚠️ Planeta ${planet.id} no tiene suficientes naves (${planet.ships})`);
             }
         });
         
-        if (this.debugMode && totalFleetsSent > 0) {
-            console.log(`🏁 ${totalFleetsSent} flotas enviadas a ${targetPlanet.id}`);
-                }
+        console.log(`🏁 Total de flotas enviadas: ${totalFleetsSent}/${selectedPlanets.length}`);
     }
 
     /**
-     * Obtener color del propietario (con cache)
+     * 🧪 MÉTODO PARA TESTING: Crear flota directamente
+     * Usado por los tests de optimización para crear flotas sin planetas
+     */
+    createFleet(sourceX, sourceY, targetX, targetY, ships, owner) {
+        const fleetData = {
+            id: `fleet-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            x: sourceX,
+            y: sourceY,
+            targetX: targetX,
+            targetY: targetY,
+            ships: ships,
+            owner: owner,
+            color: this.getOwnerColor(owner),
+            speed: 50, // Velocidad por defecto
+            fromPlanet: null,
+            toPlanet: null
+        };
+
+        const fleet = new Fleet(fleetData);
+        this.fleets.set(fleet.id, fleet);
+        
+        console.log(`🧪 Flota de test creada: ${fleet.id} (${ships} naves de ${owner})`);
+        return fleet;
+    }
+
+    /**
+     * Obtener color del propietario
      */
     getOwnerColor(owner) {
-        return this.ownerColors[owner] || '#ffffff';
+        const colors = {
+            player: '#00ff88',
+            enemy: '#ff4444',
+            neutral: '#ffaa00',
+            ai: '#ff4444'
+        };
+        return colors[owner] || '#ffffff';
     }
 
     /**
@@ -620,23 +616,19 @@ export class GameEngine {
     }
 
     /**
-     * Obtener todos los planetas
-     */
-    getAllPlanets() {
-        return Array.from(this.planets.values());
-    }
-
-    /**
-     * 🚀 OPTIMIZACIÓN: Obtener planeta en posición sin logs
+     * Obtener planeta en posición
      */
     getPlanetAtPosition(x, y) {
+        // Validar coordenadas de entrada
         if (isNaN(x) || isNaN(y) || x === undefined || y === undefined) {
+            console.warn(`⚠️ Coordenadas de entrada no válidas: (${x}, ${y})`);
             return null;
         }
         
+        // Buscar el planeta más cercano dentro del radio de clic
         let closestPlanet = null;
         let closestDistance = Infinity;
-        const clickRadius = 25;
+        const clickRadius = 25; // Radio de clic en píxeles
         
         for (const planet of this.planets.values()) {
             const distance = Math.sqrt(
@@ -644,6 +636,7 @@ export class GameEngine {
                 Math.pow(planet.y - y, 2)
             );
             
+            // Verificar si está dentro del radio de clic (radio del planeta + margen)
             const totalRadius = planet.radius + clickRadius;
             
             if (distance <= totalRadius && distance < closestDistance) {
@@ -656,69 +649,82 @@ export class GameEngine {
     }
 
     /**
-     * Event handler para cambios de porcentaje (sin logs)
+     * 🎛️ NUEVO: Event handler para cambios de porcentaje
      */
     onPercentageChanged(data) {
-        // Lógica sin logs para optimización
+        console.log(`🎛️ Porcentaje cambiado: ${data.oldPercentage}% → ${data.newPercentage}%`);
     }
 
     /**
-     * Obtener número de planetas seleccionados
+     * 🎛️ NUEVO: Obtener número de planetas seleccionados
      */
     getSelectedPlanetsCount() {
-        return Array.from(this.planets.values())
+        const selectedCount = Array.from(this.planets.values())
             .filter(p => p.isSelected && p.owner === 'player').length;
+        return selectedCount;
     }
 
     /**
-     * 🚀 OPTIMIZACIÓN: Event handlers sin logs críticos
+     * Event handlers
      */
     onFleetLaunched(data) {
-        // Usar sistema de formación orgánica
+        console.log(`🚀 Procesando lanzamiento de flota: ${data.ships} naves desde ${data.fromPlanet} → ${data.toPlanet}`);
+        
+        // 🌊 HITO 2: Usar sistema de formación orgánica
         if (this.fleetFormationSystem && this.fleetFormationSystem.needsOrganicFormation(data)) {
+            // Crear formación orgánica con múltiples naves individuales
             const organicFleets = this.fleetFormationSystem.createOrganicFormation(data);
             
+            // Añadir cada nave individual al juego
             organicFleets.forEach(fleet => {
                 this.fleets.set(fleet.id, fleet);
             });
             
-            if (this.debugMode) {
-                console.log(`🌊 Formación orgánica: ${organicFleets.length} naves`);
-            }
+            console.log(`🌊 Formación orgánica creada: ${organicFleets.length} naves individuales para flota ${data.id}`);
         } else {
-        const fleet = new Fleet(data);
-        this.fleets.set(fleet.id, fleet);
-    }
-
+            // Crear flota única (para naves individuales o si el sistema no está disponible)
+            const fleet = new Fleet(data);
+            this.fleets.set(fleet.id, fleet);
+            console.log(`🚀 Flota única ${fleet.id} añadida al juego`);
+        }
+        
+        // Actualizar estadísticas
         this.stats.fleetsCount = this.fleets.size;
     }
-        
+
     onFleetArrived(data) {
+        console.log(`🎯 Flota llegó:`, data);
+        
         // Validar datos de la flota
         if (!data.toPlanet || !data.ships || !data.owner) {
-            if (this.debugMode) {
             console.error(`❌ Datos de flota inválidos:`, data);
-            }
             return;
         }
         
         const targetPlanet = this.planets.get(data.toPlanet);
         if (!targetPlanet) {
-            if (this.debugMode) {
             console.error(`❌ Planeta objetivo ${data.toPlanet} no encontrado`);
-            }
             return;
         }
         
-        // Procesar el ataque
+        console.log(`⚔️ Atacando planeta ${targetPlanet.id}: ${data.ships} naves de ${data.owner} vs ${targetPlanet.ships} naves de ${targetPlanet.owner}`);
+        
+        // Procesar el ataque (cada nave individual ataca por separado)
         const battleResult = targetPlanet.receiveAttack(data.ships, data.owner);
         
-        // Si el planeta fue conquistado, notificar a la IA
-        if (battleResult.conquered && battleResult.defenderOwner === 'ai' && this.aiSystem) {
+        console.log(`🏁 Resultado batalla:`, battleResult);
+        
+        // Si el planeta fue conquistado, actualizar estadísticas
+        if (battleResult.conquered) {
+            console.log(`🎉 ¡Planeta ${targetPlanet.id} conquistado por ${data.owner}!`);
+            
+            // Notificar a la IA si perdió un planeta
+            if (battleResult.defenderOwner === 'ai' && this.aiSystem) {
                 this.aiSystem.onPlanetLost(targetPlanet.id);
             }
+        }
         
-        // Limpiar la flota que llegó
+        // 🌊 HITO 2: Limpiar la flota que llegó (ahora son naves individuales)
         if (data.fleetId && this.fleets.has(data.fleetId)) {
             this.fleets.delete(data.fleetId);
             this.stats.fleetsCount = this.fleets.size;
@@ -726,9 +732,7 @@ export class GameEngine {
     }
 
     onPlanetConquered(data) {
-        if (this.debugMode) {
         console.log(`⚔️ Planeta ${data.planetId} conquistado: ${data.oldOwner} → ${data.newOwner}`);
-        }
     }
 
     /**
@@ -737,25 +741,19 @@ export class GameEngine {
     start() {
         this.gameState = 'playing';
         this.isPaused = false;
-        if (this.debugMode) {
         console.log('▶️ Juego iniciado');
-        }
     }
 
     pause() {
         this.isPaused = true;
         this.gameState = 'paused';
-        if (this.debugMode) {
         console.log('⏸️ Juego pausado');
-        }
     }
 
     resume() {
         this.isPaused = false;
         this.gameState = 'playing';
-        if (this.debugMode) {
         console.log('▶️ Juego reanudado');
-        }
     }
 
     reset() {
@@ -764,6 +762,7 @@ export class GameEngine {
         this.gameTime = 0;
         this.frameCount = 0;
         
+        // Reinicializar sistemas
         if (this.aiSystem) {
             this.aiSystem.destroy();
         }
@@ -771,27 +770,13 @@ export class GameEngine {
         this.generateWorld();
         this.initializeSystems();
         this.gameState = 'playing';
-        
-        if (this.debugMode) {
         console.log('🔄 Juego reiniciado');
     }
-    }
 
     /**
-     * 🚀 OPTIMIZACIÓN: Actualizar estadísticas solo cada N frames
+     * Actualizar estadísticas
      */
-    updateStatsOptimized() {
-        this.statsUpdateCounter++;
-        if (this.statsUpdateCounter >= this.statsUpdateInterval) {
-            this.updateStatsCache();
-            this.statsUpdateCounter = 0;
-        }
-    }
-
-    /**
-     * 🚀 OPTIMIZACIÓN: Cache de estadísticas
-     */
-    updateStatsCache() {
+    updateStats() {
         this.stats.fps = Math.round(1000 / this.deltaTime);
         this.stats.planetsCount = this.planets.size;
         this.stats.fleetsCount = this.fleets.size;
@@ -805,7 +790,7 @@ export class GameEngine {
         let planets = Array.from(this.planets.values());
         let fleets = Array.from(this.fleets.values());
         
-        // Aplicar culling si está habilitado
+        // 👁️ MILESTONE 2.2: Aplicar culling si está habilitado
         if (this.config.performance.enableCulling && this.cullingSystem) {
             planets = this.cullingSystem.cullPlanets(this.planets);
             fleets = this.cullingSystem.cullFleets(this.fleets);
@@ -816,6 +801,7 @@ export class GameEngine {
             fleets: fleets.map(f => f.getRenderData()),
             gameState: this.gameState,
             stats: this.stats,
+            // 👁️ MILESTONE 2.2: Incluir estadísticas de culling
             cullingStats: this.cullingSystem ? this.cullingSystem.getStats() : null
         };
     }
@@ -832,8 +818,7 @@ export class GameEngine {
             config: this.config,
             planetsCount: this.planets.size,
             fleetsCount: this.fleets.size,
-            players: Array.from(this.players.values()),
-            validationCache: this.validationCache
+            players: Array.from(this.players.values())
         };
     }
 
@@ -843,6 +828,7 @@ export class GameEngine {
     destroy() {
         this.isRunning = false;
         
+        // Limpiar sistemas
         if (this.aiSystem) {
             this.aiSystem.destroy();
         }
@@ -851,58 +837,12 @@ export class GameEngine {
             this.performanceProfiler.destroy();
         }
         
+        // Limpiar entidades
         this.planets.clear();
         this.fleets.clear();
         this.players.clear();
         
-        if (this.debugMode) {
-            console.log('💥 GameEngine destruido');
-        }
-        }
-        
-    // 🧪 MÉTODOS DE TESTING SEPARADOS (solo para desarrollo)
-    
-    /**
-     * 🧪 TESTING: Crear flota directamente (solo para tests)
-     */
-    createFleet(sourceX, sourceY, targetX, targetY, ships, owner) {
-        if (!this.debugMode) return null; // Solo en modo debug
-        
-        const fleetData = {
-            id: `fleet-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            x: sourceX,
-            y: sourceY,
-            targetX: targetX,
-            targetY: targetY,
-            ships: ships,
-            owner: owner,
-            color: this.getOwnerColor(owner),
-            speed: 50,
-            fromPlanet: null,
-            toPlanet: null
-        };
-
-        const fleet = new Fleet(fleetData);
-        this.fleets.set(fleet.id, fleet);
-        
-        console.log(`🧪 Flota de test creada: ${fleet.id} (${ships} naves de ${owner})`);
-        return fleet;
-        }
-        
-    /**
-     * 🧪 TESTING: Activar modo debug
-     */
-    enableDebugMode() {
-        this.debugMode = true;
-        console.log('🔧 Modo debug activado');
-    }
-
-    /**
-     * 🧪 TESTING: Desactivar modo debug
-     */
-    disableDebugMode() {
-        this.debugMode = false;
-        console.log('🔧 Modo debug desactivado');
+        console.log('💥 GameEngine destruido');
     }
 }
 

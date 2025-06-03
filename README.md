@@ -1,276 +1,156 @@
-# 🚀 PROJECT ARA - Galcon-Style Space Conquest Game
+# 🚀 GALCON GAME - Canvas 2D Optimized
 
-**Un juego de conquista espacial en tiempo real con ritmo frenético y mecánicas fluidas**
+Juego estilo Galcon con renderizado Canvas 2D optimizado y movimiento orgánico de flotas.
 
-![Project Status](https://img.shields.io/badge/Status-Active%20Development-green)
-![Version](https://img.shields.io/badge/Version-2.0.0-blue)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+## 🎮 Características Principales
 
----
+- **🎨 Canvas 2D**: Renderizado optimizado de alta performance
+- **🌊 Movimiento Orgánico**: Flotas con comportamiento natural y fluido
+- **🎯 Controles Galcon**: Drag & drop, selección múltiple, feedback visual
+- **⚡ Optimizaciones**: Culling, LOD, cache matemático, batch rendering
+- **🎛️ Interfaz Completa**: HUD, selección, efectos visuales
 
-## 🎮 Descripción
+## 📁 Estructura del Proyecto
 
-Project Ara es una implementación moderna del clásico juego Galcon, optimizada para **ritmo frenético** y **feedback inmediato**. Combina mecánicas simples con estrategia profunda, ofreciendo partidas rápidas e intensas.
-
-### ✨ Características Principales
-
-- 🪐 **Producción automática acelerada**: 2.5-8.0 naves/segundo
-- 🤖 **IA súper agresiva**: Decisiones cada 600ms
-- 🎯 **Drag & Drop intuitivo**: Envío de flotas arrastrando
-- ⚡ **Multiselección fluida**: Selección múltiple con feedback visual
-- 🎨 **Efectos visuales modernos**: Animaciones GPU-accelerated
-- 📱 **Responsive design**: Funciona en desktop y móvil
-
----
-
-## 🚀 Inicio Rápido
-
-### Instalación
-```bash
-# Clonar el repositorio
-git clone https://github.com/tu-usuario/project-ara.git
-cd project-ara
-
-# Servir localmente (Python)
-python -m http.server 8000
-
-# O con Node.js
-npx serve .
+```
+projectAra/
+├── index.html                    # Juego principal (Canvas 2D)
+├── css/
+│   ├── main.css                 # Estilos principales
+│   └── ui-styles.css            # Estilos de interfaz
+├── src/
+│   ├── core/
+│   │   ├── GameEngine.js        # Motor principal del juego
+│   │   └── EventBus.js          # Sistema de eventos
+│   ├── entities/
+│   │   ├── Planet.js            # Lógica de planetas
+│   │   └── Fleet.js             # Lógica de flotas
+│   ├── systems/
+│   │   ├── SelectionSystem.js   # Sistema de selección
+│   │   ├── AISystem.js          # Inteligencia artificial
+│   │   ├── FleetPhysics.js      # Física de flotas
+│   │   ├── FleetFormationSystem.js
+│   │   ├── FleetRedirectionSystem.js
+│   │   ├── MemoryManager.js
+│   │   └── SpatialGrid.js
+│   ├── input/
+│   │   └── DragDropHandler.js   # Drag & drop para Canvas
+│   ├── visual/
+│   │   ├── CanvasRenderer.js    # Renderer Canvas 2D ⭐
+│   │   └── CullingSystem.js     # Sistema de culling
+│   ├── ui/
+│   │   ├── GameLoader.js        # Cargador Canvas 2D
+│   │   ├── HUDManager.js        # Gestión de HUD
+│   │   └── PercentageSelector.js
+│   ├── config/
+│   │   ├── GameConfig.js
+│   │   ├── BalanceConfig.js
+│   │   └── OrganicMovementConfig.js
+│   └── debug/
+│       └── PerformanceProfiler.js
+└── _archive/                    # Archivos obsoletos y backups
+    ├── backups/
+    │   ├── entities/           # Backups de entities
+    │   ├── visual-svg/         # Archivos SVG obsoletos
+    │   └── html-svg/           # HTML con SVG
+    └── docs/
 ```
 
-### Jugar
-1. Abre `http://localhost:8000` en tu navegador
-2. Selecciona tus planetas (verdes) haciendo click o arrastrando
-3. Arrastra hacia planetas enemigos (rojos) o neutrales (grises) para atacar
-4. ¡Conquista toda la galaxia!
+## 🚀 Cómo Usar
 
----
+### Juego Principal
+```bash
+# Abrir index.html
+open http://localhost:8080/index.html
+```
 
-## 🎯 Controles
+## 🎮 Controles
 
-| Acción | Control |
-|--------|---------|
-| **Seleccionar planeta** | Click izquierdo |
-| **Selección múltiple** | Arrastrar para crear caja |
-| **Añadir a selección** | Ctrl + Click |
-| **Seleccionar todos** | Ctrl + A |
-| **Enviar flotas** | Arrastrar desde seleccionados al objetivo |
-| **Debug mode** | F1 |
-| **Reiniciar** | F5 |
-| **Pausar** | ESC o Espacio |
+- **🖱️ Clic**: Seleccionar planeta
+- **🖱️ Ctrl+Clic**: Selección múltiple
+- **🖱️ Shift+Clic**: Seleccionar todos los planetas
+- **🖱️ Doble Clic**: Seleccionar todos los planetas
+- **📦 Drag**: Selección por área
+- **🎯 Drag & Drop**: Enviar flotas con líneas visuales
+- **🖱️ Clic Derecho**: Envío rápido de flotas
+- **⌨️ Ctrl+A**: Seleccionar todos
+- **⌨️ Escape**: Limpiar selección
 
----
+## ⚡ Optimizaciones Canvas 2D
+
+### Renderizado
+- **Batch Rendering**: Agrupación por colores
+- **Viewport Culling**: Solo renderizar objetos visibles
+- **Level of Detail**: Reducir detalles según distancia
+- **Cache Matemático**: Precálculo de trigonometría
+
+### Interactividad
+- **Sistema de Overlay**: Elementos interactivos en Canvas
+- **Coordenadas Precisas**: Manejo correcto de eventos
+- **Feedback Visual**: Líneas y efectos en tiempo real
+
+### Memoria
+- **Object Pooling**: Reutilización de objetos
+- **Spatial Grid**: Optimización de colisiones
+- **Memory Manager**: Gestión automática de memoria
+
+## 🎨 Características Visuales
+
+- **🌊 Movimiento Orgánico**: Flotas con comportamiento natural
+- **✨ Efectos Visuales**: Trails, explosiones, partículas
+- **🎯 Feedback Interactivo**: Líneas de drag & drop
+- **🌟 Highlights**: Planetas objetivo resaltados
+- **📦 Selección Visual**: Cajas de selección animadas
+
+## 📊 Rendimiento
+
+### Canvas 2D Performance
+- **5000 flotas**: 60 FPS estables
+- **Memoria**: Uso optimizado con pooling
+- **CPU**: Carga reducida con culling y LOD
+
+### Métricas en Tiempo Real
+- FPS counter
+- Frame time
+- Render time
+- Objetos visibles/culled
+
+## 🐛 Debug
+
+- **F1**: Panel de debug
+- **F2**: Reporte de rendimiento
+- **F5**: Reiniciar juego
+- **F6**: Benchmark ligero
+- **F7**: Benchmark completo
 
 ## 🏗️ Arquitectura
 
-### Estructura del Proyecto
-```
-projectAra/
-├── src/
-│   ├── core/           # Sistemas fundamentales
-│   │   ├── GameEngine.js
-│   │   ├── EventBus.js
-│   │   └── ...
-│   ├── entities/       # Entidades del juego
-│   │   ├── Planet.js
-│   │   ├── Fleet.js
-│   │   └── ...
-│   ├── systems/        # Sistemas de juego
-│   │   ├── AISystem.js
-│   │   ├── SelectionSystem.js
-│   │   └── ...
-│   ├── input/          # Control del jugador
-│   │   ├── DragDropHandler.js
-│   │   └── ...
-│   └── config/         # Configuraciones
-│       ├── GameConfig.js
-│       └── BalanceConfig.js
-├── css/                # Estilos
-├── docs/               # Documentación
-└── assets/             # Recursos
-```
-
 ### Sistemas Principales
+1. **GameEngine**: Lógica central y coordinación
+2. **CanvasRenderer**: Renderizado optimizado
+3. **SelectionSystem**: Selección de planetas
+4. **DragDropHandler**: Interacción drag & drop
+5. **AISystem**: Inteligencia artificial
 
-#### 🎮 GameEngine
-- Loop principal a 60 FPS
-- Gestión de entidades
-- Sistema de eventos
-- Verificación de victoria
-
-#### 🪐 Planet System
-- Producción automática de naves
-- Capacidades variables por tamaño
-- Mecánicas de conquista
-- Efectos visuales
-
-#### 🤖 AI System
-- Decisiones cada 600ms
-- Múltiples estrategias
-- Evaluación de situaciones
-- Ataques coordinados
-
-#### 🎯 Input System
-- Multiselección fluida
-- Drag & Drop intuitivo
-- Feedback visual inmediato
-- Controles responsivos
-
----
-
-## ⚖️ Balance y Configuración
-
-### Producción de Naves
-```javascript
-// Velocidades por tamaño de planeta
-small:  2.5 naves/segundo
-medium: 4.0 naves/segundo
-large:  6.0 naves/segundo
-huge:   8.0 naves/segundo
+### Flujo de Datos
+```
+GameEngine → getRenderData() → CanvasRenderer → Canvas 2D
+     ↓
+SelectionSystem ← Mouse Events ← DragDropHandler
+     ↓
+EventBus → Sistemas → Actualización Estado
 ```
 
-### IA Comportamiento
-```javascript
-// Configuración de agresividad
-decisionInterval: 600ms     // Muy frecuente
-aggressiveness: 0.85        // Muy agresiva
-minShipsToAttack: 8         // Threshold bajo
-attackPercentage: 0.8       // 80% de naves
-```
+## 🔄 Próximas Mejoras
 
-### Personalización
-Todos los parámetros son configurables en:
-- `src/config/GameConfig.js` - Configuración general
-- `src/config/BalanceConfig.js` - Balance de mecánicas
+- [ ] Efectos de lanzamiento mejorados
+- [ ] Optimización de trails
+- [ ] Shaders para efectos avanzados
+- [ ] Multiplayer networking
+- [ ] Sonido y música
 
 ---
 
-## 📊 Métricas de Rendimiento
-
-### Objetivos
-- **FPS**: 60 constantes
-- **Planetas**: Soporte 50+ simultáneos
-- **Flotas**: Soporte 100+ simultáneas
-- **Respuesta**: < 100ms feedback visual
-- **Memoria**: < 100MB uso RAM
-
-### Optimizaciones
-- Hardware acceleration (GPU)
-- Efficient collision detection
-- Object pooling para flotas
-- Culling de elementos fuera de pantalla
-
----
-
-## 🛠️ Desarrollo
-
-### Requisitos
-- Navegador moderno con ES6+ support
-- Servidor web local para desarrollo
-- Editor con soporte JavaScript/ES6
-
-### Scripts de Desarrollo
-```bash
-# Servidor de desarrollo
-npm run dev
-
-# Linting
-npm run lint
-
-# Testing
-npm run test
-
-# Build para producción
-npm run build
-```
-
-### Estructura de Commits
-```
-feat: nueva característica
-fix: corrección de bug
-docs: actualización documentación
-style: cambios de estilo/formato
-refactor: refactorización de código
-test: añadir/modificar tests
-```
-
----
-
-## 📚 Documentación
-
-- [📁 Estructura del Proyecto](docs/PROJECT_STRUCTURE.md)
-- [🎯 Mecánicas Core](docs/MECHANICS_CORE.md)
-- [📝 Log de Desarrollo](docs/DEVELOPMENT_LOG.md)
-- [🔧 API Reference](docs/API_REFERENCE.md)
-
----
-
-## 🚀 Roadmap
-
-### ✅ Fase 1: Core Mechanics (Completada)
-- [x] Arquitectura modular
-- [x] Producción acelerada
-- [x] IA agresiva
-- [x] Drag & Drop
-- [x] Efectos visuales
-
-### 🔄 Fase 2: Polish & Optimization (En desarrollo)
-- [ ] Balanceo fino
-- [ ] Efectos de sonido
-- [ ] Optimización rendimiento
-- [ ] Testing extensivo
-
-### 📋 Fase 3: Advanced Features
-- [ ] Planetas especiales
-- [ ] Power-ups temporales
-- [ ] Modos de juego
-- [ ] Multijugador local
-
-### 🌟 Fase 4: Enhanced Experience
-- [ ] Campaña single-player
-- [ ] Editor de mapas
-- [ ] Achievements
-- [ ] Leaderboards
-
----
-
-## 🤝 Contribuir
-
-### Cómo Contribuir
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-### Guidelines
-- Seguir la arquitectura modular existente
-- Documentar nuevas características
-- Mantener compatibilidad con configuraciones
-- Añadir tests para nueva funcionalidad
-
----
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
-
----
-
-## 🙏 Agradecimientos
-
-- Inspirado en el clásico **Galcon** de Phil Hassey
-- Arquitectura basada en patrones modernos de game development
-- Comunidad de desarrolladores de juegos web
-
----
-
-## 📞 Contacto
-
-- **Proyecto**: [Project Ara](https://github.com/tu-usuario/project-ara)
-- **Issues**: [GitHub Issues](https://github.com/tu-usuario/project-ara/issues)
-- **Documentación**: [Wiki](https://github.com/tu-usuario/project-ara/wiki)
-
----
-
-**¡Conquista la galaxia! 🌌** 
+**Estado**: ✅ Canvas 2D optimizado y funcional
+**Rendimiento**: ⚡ 60 FPS con 5000+ objetos
+**Arquitectura**: 🎨 Canvas 2D puro 

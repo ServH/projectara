@@ -1,7 +1,7 @@
 /**
  * 🎨 GALCON GAME - VISUAL RENDERER
  * Sistema de renderizado SVG optimizado con object pooling
- * MILESTONE 2.2: Optimizaciones de Rendimiento
+ * MILESTONE 2.2: Optimizaciones de Rendimiento + HITO 2.5 INTEGRADO
  */
 
 import eventBus, { GAME_EVENTS } from '../core/EventBus.js';
@@ -20,22 +20,62 @@ export class Renderer {
         // 🏊 MILESTONE 2.2: Referencia al SVGPool del GameEngine
         this.svgPool = null;
         
-        // 📊 NUEVO: Pools de elementos para reutilización
+        // 🚀 HITO 2.5: OBJECT POOLING INTEGRADO - Reutilización de elementos SVG
         this.elementPools = {
             effects: [],
             trails: [],
-            maxPoolSize: 20
+            fleets: [],
+            planets: [],
+            maxPoolSize: 100
         };
         
-        // 📊 MILESTONE 2.2: Configuración de optimización
+        // 🧮 HITO 2.5: CACHE TRIGONOMÉTRICO INTEGRADO
+        this.mathCache = {
+            angles: new Map(),
+            sin: new Map(),
+            cos: new Map(),
+            cacheSize: 0,
+            maxCacheSize: 1000
+        };
+        
+        // ⚡ HITO 2.5: BATCH PROCESSING INTEGRADO
+        this.batchOperations = {
+            domUpdates: [],
+            transformUpdates: [],
+            styleUpdates: [],
+            maxBatchSize: 20
+        };
+        
+        // 📊 MILESTONE 2.2: Configuración de optimización + HITO 2.5
         this.optimizationConfig = {
             maxEffects: 10,         // Máximo 10 efectos simultáneos
             maxTrails: 15,          // Máximo 15 trails simultáneos
             cullDistance: 50,       // Distancia para culling
-            updateInterval: 2,      // Actualizar cada 2 frames
+            updateInterval: 2,      // Actualizar cada 2 frames (HITO 2.5)
             frameCounter: 0,
             enableBatching: true,   // Agrupar operaciones DOM
-            batchSize: 10          // Tamaño de lote para operaciones
+            batchSize: 10,          // Tamaño de lote para operaciones
+            // 🎯 HITO 2.5: Frame skipping y LOD
+            frameSkipping: {
+                enabled: true,
+                skipInterval: 2,
+                frameCounter: 0
+            },
+            culling: {
+                enabled: true,
+                margin: 50
+            }
+        };
+        
+        // 📊 HITO 2.5: Métricas de optimización integradas
+        this.optimizationMetrics = {
+            poolHits: 0,
+            poolMisses: 0,
+            cacheHits: 0,
+            cacheMisses: 0,
+            batchedOperations: 0,
+            skippedFrames: 0,
+            culledElements: 0
         };
         
         // Configuración visual
@@ -49,9 +89,10 @@ export class Renderer {
         };
         
         this.setupCanvas();
+        this.precomputeMathCache(); // 🧮 HITO 2.5: Precomputar cache
         this.setupEventListeners();
         
-        console.log('🎨 Renderer inicializado con optimizaciones del Milestone 2.2');
+        console.log('🎨 Renderer inicializado con optimizaciones del Milestone 2.2 + Hito 2.5');
     }
 
     /**
@@ -139,14 +180,20 @@ export class Renderer {
     }
 
     /**
-     * Loop principal de renderizado (OPTIMIZADO)
+     * Loop principal de renderizado (OPTIMIZADO CON HITO 2.5)
      */
     render() {
         if (!this.isRunning) return;
         
-        // 📊 MILESTONE 2.2: Frame skipping para optimización
-        this.optimizationConfig.frameCounter++;
-        const shouldUpdate = this.optimizationConfig.frameCounter % this.optimizationConfig.updateInterval === 0;
+        // 🎯 HITO 2.5: Frame skipping inteligente
+        this.optimizationConfig.frameSkipping.frameCounter++;
+        const shouldUpdate = this.optimizationConfig.frameSkipping.frameCounter % this.optimizationConfig.frameSkipping.skipInterval === 0;
+        
+        if (!shouldUpdate) {
+            this.optimizationMetrics.skippedFrames++;
+            requestAnimationFrame(() => this.render());
+            return;
+        }
         
         // 👁️ MILESTONE 2.2: Obtener datos optimizados con culling
         const renderData = this.gameEngine.getRenderData();
@@ -155,24 +202,24 @@ export class Renderer {
         if (this.gameEngine.performanceProfiler) {
             this.gameEngine.performanceProfiler.measureRenderTime(() => {
                 this.renderPlanetsOptimized(renderData.planets);
-                if (shouldUpdate) {
-                    this.renderFleetsOptimized(renderData.fleets);
-                    this.cleanupEffects();
-                }
+                this.renderFleetsOptimized(renderData.fleets);
+                this.cleanupEffects();
+                // ⚡ HITO 2.5: Ejecutar batches pendientes
+                this.executeAllBatches();
             });
         } else {
             this.renderPlanetsOptimized(renderData.planets);
-            if (shouldUpdate) {
-                this.renderFleetsOptimized(renderData.fleets);
-                this.cleanupEffects();
-            }
+            this.renderFleetsOptimized(renderData.fleets);
+            this.cleanupEffects();
+            // ⚡ HITO 2.5: Ejecutar batches pendientes
+            this.executeAllBatches();
         }
         
         requestAnimationFrame(() => this.render());
     }
 
     /**
-     * Renderizar planetas
+     * Renderizar planetas (OPTIMIZADO CON HITO 2.5)
      */
     renderPlanetsOptimized(planetsData) {
         // Crear un Set de IDs de planetas visibles para limpieza
@@ -185,15 +232,15 @@ export class Renderer {
         // Limpiar planetas que ya no están visibles
         this.planetElements.forEach((element, planetId) => {
             if (!visiblePlanetIds.has(planetId)) {
-                // 🔧 CORREGIDO: Usar método de limpieza inteligente
-                this.cleanupGroup(element);
+                // 🏊 HITO 2.5: Devolver al pool en lugar de eliminar
+                this.returnToPool('planets', element);
                 this.planetElements.delete(planetId);
             }
         });
     }
 
     /**
-     * Renderizar un planeta individual
+     * Renderizar un planeta individual (OPTIMIZADO CON HITO 2.5)
      */
     renderPlanet(planetData) {
         let planetGroup = this.planetElements.get(planetData.id);
@@ -204,130 +251,137 @@ export class Renderer {
             this.planetsGroup.appendChild(planetGroup);
         }
         
-        this.updatePlanetElement(planetGroup, planetData);
+        this.updatePlanetElementOptimized(planetGroup, planetData);
     }
 
     /**
-     * Crear elemento visual de planeta (OPTIMIZADO)
+     * Crear elemento visual de planeta (OPTIMIZADO CON POOLING)
      */
     createPlanetElement(planet) {
-        // 🔧 TEMPORAL: Crear elementos directamente sin pool para debug
-        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        // 🏊 HITO 2.5: Usar object pooling
+        const group = this.getPooledElement('planets', () => {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('class', 'planet');
+            
+            // Círculo principal del planeta
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('class', 'planet-body');
+            g.appendChild(circle);
+            
+            // 📊 OPTIMIZACIÓN: Solo crear glow si está habilitado
+            if (this.config.planetGlow) {
+                const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                glow.setAttribute('class', 'planet-glow');
+                glow.setAttribute('fill', 'none');
+                glow.style.display = 'none';
+                g.appendChild(glow);
+            }
+            
+            // Texto de naves
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('class', 'planet-ships planet-text');
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('dominant-baseline', 'central');
+            text.style.fontSize = '12px';
+            text.style.fontWeight = 'bold';
+            text.style.fill = '#ffffff';
+            text.style.pointerEvents = 'none';
+            g.appendChild(text);
+            
+            return g;
+        });
+        
         group.setAttribute('id', `planet-${planet.id}`);
-        group.setAttribute('class', `planet ${planet.owner}`);
-        
-        // Círculo principal del planeta
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.setAttribute('class', 'planet-body');
-        group.appendChild(circle);
-        
-        // 📊 OPTIMIZACIÓN: Solo crear glow si está habilitado
-        if (this.config.planetGlow) {
-            const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            glow.setAttribute('class', 'planet-glow');
-            glow.setAttribute('fill', 'none');
-            glow.style.display = 'none';
-            group.appendChild(glow);
-        }
-        
-        // 🔧 CORREGIDO: Siempre crear texto para debug
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('class', `planet-ships planet-text ${planet.owner}`);
-        text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('dominant-baseline', 'central');
-        text.style.fontSize = '12px';
-        text.style.fontWeight = 'bold';
-        text.style.fill = '#ffffff';
-        text.style.pointerEvents = 'none';
-        group.appendChild(text);
+        group.style.display = 'block';
         
         return group;
     }
 
     /**
-     * Actualizar elemento visual de planeta
+     * Actualizar elemento visual de planeta (OPTIMIZADO CON BATCHING)
      */
-    updatePlanetElement(planetGroup, planet) {
+    updatePlanetElementOptimized(planetGroup, planet) {
         const circle = planetGroup.querySelector('.planet-body');
-        const glow = planetGroup.querySelector('.planet-glow');  // Puede ser null si glow está desactivado
+        const glow = planetGroup.querySelector('.planet-glow');
         const text = planetGroup.querySelector('.planet-ships');
         
-        // 🔧 DEBUG: Verificar que los elementos existen
-        if (!circle) {
-            console.warn(`⚠️ No se encontró círculo para planeta ${planet.id}`);
-            return;
-        }
-        if (!text) {
-            console.warn(`⚠️ No se encontró texto para planeta ${planet.id}`);
-            return;
-        }
+        if (!circle || !text) return;
         
-        // 🔧 AÑADIDO: Actualizar clases CSS del grupo
-        planetGroup.setAttribute('class', `planet ${planet.owner}`);
-        
-        // Actualizar posición y tamaño
-        circle.setAttribute('cx', planet.x);
-        circle.setAttribute('cy', planet.y);
-        circle.setAttribute('r', planet.radius);
-        
-        // Aplicar colores directamente al atributo fill
-        circle.setAttribute('fill', planet.color);
-        circle.setAttribute('stroke', planet.color);
-        circle.setAttribute('stroke-width', '2');
-        circle.setAttribute('class', `planet-body ${planet.owner}`);
-        
-        // Solo actualizar glow si existe
-        if (glow && planet.isSelected) {
-            glow.setAttribute('cx', planet.x);
-            glow.setAttribute('cy', planet.y);
-            glow.setAttribute('r', planet.radius + 8);
-            glow.setAttribute('stroke', planet.color);
-            glow.setAttribute('stroke-width', 3);
-            glow.setAttribute('stroke-opacity', 0.6);
-            glow.style.display = 'block';
-            glow.style.animation = 'pulse 1.5s ease-in-out infinite';
-        } else if (glow) {
-            glow.style.display = 'none';
-        }
-        
-        // 🔧 CORREGIDO: Solo actualizar texto si existe
-        if (text) {
-            // 🔧 AÑADIDO: Actualizar clases CSS del texto
-            text.setAttribute('class', `planet-ships planet-text ${planet.owner}`);
+        // ⚡ HITO 2.5: Usar batch processing para operaciones DOM
+        this.addToBatch('domUpdates', () => {
+            // Actualizar posición y tamaño
+            circle.setAttribute('cx', planet.x);
+            circle.setAttribute('cy', planet.y);
+            circle.setAttribute('r', planet.radius);
+            
+            // Aplicar colores
+            circle.setAttribute('fill', planet.color);
+            circle.setAttribute('stroke', planet.color);
+            circle.setAttribute('stroke-width', '2');
+            
+            // Actualizar texto
             text.setAttribute('x', planet.x);
             text.setAttribute('y', planet.y);
-            text.textContent = Math.floor(planet.ships);
+            text.textContent = planet.ships || 0;
             
-            // 🔧 CORREGIDO: Aplicar color directamente
-            text.setAttribute('fill', '#ffffff');
-            text.setAttribute('stroke', 'none');
-            text.style.textShadow = `0 0 3px ${planet.color}`;
+            // Actualizar clases
+            planetGroup.setAttribute('class', `planet ${planet.owner}`);
+            text.setAttribute('class', `planet-ships planet-text ${planet.owner}`);
+        });
+        
+        // Solo actualizar glow si existe y está seleccionado
+        if (glow && planet.isSelected) {
+            this.addToBatch('styleUpdates', () => {
+                glow.setAttribute('cx', planet.x);
+                glow.setAttribute('cy', planet.y);
+                glow.setAttribute('r', planet.radius + 8);
+                glow.setAttribute('stroke', planet.color);
+                glow.setAttribute('stroke-width', 3);
+                glow.setAttribute('stroke-opacity', 0.6);
+                glow.style.display = 'block';
+                glow.style.animation = 'pulse 1.5s ease-in-out infinite';
+            });
+        } else if (glow) {
+            this.addToBatch('styleUpdates', () => {
+                glow.style.display = 'none';
+            });
         }
     }
 
     /**
-     * Renderizar flotas
+     * Renderizar flotas (OPTIMIZADO CON HITO 2.5)
      */
     renderFleetsOptimized(fleetsData) {
-        // Crear un Set de IDs de flotas visibles para limpieza
-        const visibleFleetIds = new Set(fleetsData.map(f => f.id));
+        // 👁️ HITO 2.5: Filtrar flotas visibles con viewport culling
+        const visibleFleets = fleetsData.filter(fleet => {
+            if (this.optimizationConfig.culling.enabled) {
+                if (!this.isInViewport(fleet.x, fleet.y, this.optimizationConfig.culling.margin)) {
+                    this.optimizationMetrics.culledElements++;
+                    return false;
+                }
+            }
+            return true;
+        });
         
-        fleetsData.forEach(fleetData => {
+        // Crear un Set de IDs de flotas visibles para limpieza
+        const visibleFleetIds = new Set(visibleFleets.map(f => f.id));
+        
+        visibleFleets.forEach(fleetData => {
             this.renderFleet(fleetData);
         });
         
         // Limpiar flotas que ya no están visibles
         this.fleetElements.forEach((element, fleetId) => {
             if (!visibleFleetIds.has(fleetId)) {
-                // 🔧 CORREGIDO: Usar método de limpieza inteligente
-                this.cleanupGroup(element);
+                // 🏊 HITO 2.5: Devolver al pool en lugar de eliminar
+                this.returnToPool('fleets', element);
                 this.fleetElements.delete(fleetId);
             }
         });
     }
 
     /**
-     * Renderizar una flota individual
+     * Renderizar una flota individual (OPTIMIZADO CON HITO 2.5)
      */
     renderFleet(fleetData) {
         let fleetGroup = this.fleetElements.get(fleetData.id);
@@ -338,50 +392,50 @@ export class Renderer {
             this.fleetsGroup.appendChild(fleetGroup);
         }
         
-        this.updateFleetElement(fleetGroup, fleetData);
+        this.updateFleetElementOptimized(fleetGroup, fleetData);
     }
 
     /**
-     * Crear elemento visual de flota (HITO 1A: EXACTAMENTE COMO EN TEST-HITO1A)
+     * Crear elemento visual de flota (OPTIMIZADO CON POOLING)
      */
     createFleetElement(fleet) {
-        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        // 🏊 HITO 2.5: Usar object pooling
+        const group = this.getPooledElement('fleets', () => {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('class', 'fleet');
+            
+            // 🎯 HITO 1A: Crear triángulo EXACTAMENTE como en test-hito1a.html
+            const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            
+            // 🎯 PUNTOS IDÉNTICOS al test-hito1a.html
+            const size = 8; // Mismo tamaño que en el test
+            const points = [
+                [size, 0],           // Punta hacia la derecha
+                [-size/2, -size/2],  // Esquina superior
+                [-size/2, size/2]    // Esquina inferior
+            ];
+            
+            const pointsStr = points.map(p => p.join(',')).join(' ');
+            triangle.setAttribute('points', pointsStr);
+            triangle.setAttribute('class', 'fleet-triangle');
+            
+            g.appendChild(triangle);
+            return g;
+        });
+        
         group.setAttribute('id', `fleet-${fleet.id}`);
-        group.setAttribute('class', `fleet ${fleet.owner}`);
-        
-        // 🎯 HITO 1A: Crear triángulo EXACTAMENTE como en test-hito1a.html
-        const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        
-        // 🎯 PUNTOS IDÉNTICOS al test-hito1a.html
-        // const points = [ [size, 0], [-size/2, -size/2], [-size/2, size/2] ];
-        const size = 8; // Mismo tamaño que en el test
-        const points = [
-            [size, 0],           // Punta hacia la derecha
-            [-size/2, -size/2],  // Esquina superior
-            [-size/2, size/2]    // Esquina inferior
-        ];
-        
-        const pointsStr = points.map(p => p.join(',')).join(' ');
-        triangle.setAttribute('points', pointsStr);
-        triangle.setAttribute('fill', fleet.color);
-        triangle.setAttribute('stroke', fleet.color);
-        triangle.setAttribute('stroke-width', '1');
-        triangle.setAttribute('class', 'fleet-triangle');
-        
-        group.appendChild(triangle);
+        group.style.display = 'block';
         
         return group;
     }
 
     /**
-     * Actualizar elemento visual de flota (HITO 1A: ORIENTACIÓN PERFECTA COMO EN TEST)
+     * Actualizar elemento visual de flota (OPTIMIZADO CON HITO 2.5)
      */
-    updateFleetElement(fleetGroup, fleet) {
+    updateFleetElementOptimized(fleetGroup, fleet) {
         const triangle = fleetGroup.querySelector('.fleet-triangle');
         
-        if (!triangle) {
-            return;
-        }
+        if (!triangle) return;
         
         // Verificar que las coordenadas sean válidas
         if (isNaN(fleet.x) || isNaN(fleet.y) || isNaN(fleet.targetX) || isNaN(fleet.targetY)) {
@@ -389,33 +443,47 @@ export class Renderer {
             return;
         }
         
-        // Calcular ángulo EXACTAMENTE como en test-hito1a.html
+        // 🧮 HITO 2.5: Calcular ángulo con cache trigonométrico
         const dx = fleet.targetX - fleet.x;
         const dy = fleet.targetY - fleet.y;
-        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        const angle = this.calculateAngleOptimized(dx, dy);
         
-        // Verificar que el ángulo sea válido
-        if (isNaN(angle)) {
-            triangle.setAttribute('transform', `translate(${fleet.x}, ${fleet.y}) rotate(0)`);
-        } else {
-            triangle.setAttribute('transform', `translate(${fleet.x}, ${fleet.y}) rotate(${angle})`);
-        }
+        // ⚡ HITO 2.5: Usar batch processing para operaciones DOM
+        this.addToBatch('transformUpdates', () => {
+            if (isNaN(angle)) {
+                triangle.setAttribute('transform', `translate(${fleet.x}, ${fleet.y}) rotate(0)`);
+            } else {
+                triangle.setAttribute('transform', `translate(${fleet.x}, ${fleet.y}) rotate(${angle})`);
+            }
+        });
         
-        // Aplicar colores
-        triangle.setAttribute('fill', fleet.color);
-        triangle.setAttribute('stroke', fleet.color);
-        triangle.setAttribute('stroke-width', '1');
-        triangle.style.display = 'block';
+        // 🌊 HITO 2: Efectos visuales orgánicos con batching
+        const baseColor = fleet.color;
+        const organicOpacity = fleet.organicIntensity ? 
+            (0.7 + 0.3 * fleet.organicIntensity) : 0.9;
         
-        // Actualizar clases CSS
-        fleetGroup.setAttribute('class', `fleet ${fleet.owner}`);
-        
-        // Ocultar si ha llegado
-        if (fleet.hasArrived) {
-            fleetGroup.style.display = 'none';
-        } else {
-            fleetGroup.style.display = 'block';
-        }
+        this.addToBatch('styleUpdates', () => {
+            triangle.setAttribute('fill', baseColor);
+            triangle.setAttribute('stroke', baseColor);
+            triangle.setAttribute('stroke-width', '1');
+            triangle.setAttribute('opacity', organicOpacity);
+            
+            // 🌊 HITO 2: Tamaño ligeramente variable para sensación de vida
+            if (fleet.personalAmplitude) {
+                const sizeVariation = 1 + (fleet.personalAmplitude * 0.3);
+                triangle.style.transform = `scale(${sizeVariation})`;
+            }
+            
+            // Actualizar clases CSS
+            fleetGroup.setAttribute('class', `fleet ${fleet.owner}`);
+            
+            // Ocultar si ha llegado
+            if (fleet.hasArrived) {
+                fleetGroup.style.display = 'none';
+            } else {
+                fleetGroup.style.display = 'block';
+            }
+        });
     }
 
     /**
@@ -569,9 +637,11 @@ export class Renderer {
         const pool = this.elementPools[type];
         
         if (pool && pool.length > 0) {
+            this.optimizationMetrics.poolHits++;
             return pool.pop();
         }
         
+        this.optimizationMetrics.poolMisses++;
         return createFunction();
     }
 
@@ -673,47 +743,92 @@ export class Renderer {
     }
 
     /**
-     * Obtener información de debug (MEJORADO con métricas de optimización)
+     * 📊 HITO 2.5: Obtener métricas de optimización
      */
-    getDebugInfo() {
+    getOptimizationMetrics() {
+        const poolEfficiency = this.optimizationMetrics.poolHits / 
+            (this.optimizationMetrics.poolHits + this.optimizationMetrics.poolMisses) * 100;
+        
+        const cacheEfficiency = this.optimizationMetrics.cacheHits / 
+            (this.optimizationMetrics.cacheHits + this.optimizationMetrics.cacheMisses) * 100;
+        
         return {
-            isRunning: this.isRunning,
-            elementCounts: {
-                planets: this.planetElements.size,
-                fleets: this.fleetElements.size,
-                effects: this.effectElements.size,
-                total: this.planetElements.size + this.fleetElements.size + this.effectElements.size
-            },
-            pools: {
+            ...this.optimizationMetrics,
+            poolEfficiency: poolEfficiency.toFixed(1) + '%',
+            cacheEfficiency: cacheEfficiency.toFixed(1) + '%',
+            activePools: {
+                fleets: this.elementPools.fleets.length,
+                planets: this.elementPools.planets.length,
                 effects: this.elementPools.effects.length,
                 trails: this.elementPools.trails.length
             },
-            optimization: {
-                frameCounter: this.optimizationConfig.frameCounter,
-                maxEffects: this.optimizationConfig.maxEffects,
-                maxTrails: this.optimizationConfig.maxTrails
-            },
-            config: this.config
+            activeElements: {
+                planets: this.planetElements.size,
+                fleets: this.fleetElements.size,
+                effects: this.effectElements.size
+            }
         };
     }
 
     /**
-     * Destruir el renderer
+     * 📊 MILESTONE 2.2: Obtener información de debug (ACTUALIZADO CON HITO 2.5)
+     */
+    getDebugInfo() {
+        const optimizationMetrics = this.getOptimizationMetrics();
+        
+        return {
+            isRunning: this.isRunning,
+            elements: {
+                planets: this.planetElements.size,
+                fleets: this.fleetElements.size,
+                effects: this.effectElements.size
+            },
+            pools: {
+                effects: this.elementPools.effects.length,
+                trails: this.elementPools.trails.length,
+                fleets: this.elementPools.fleets.length,
+                planets: this.elementPools.planets.length,
+                maxTrails: this.optimizationConfig.maxTrails
+            },
+            config: this.config,
+            optimizationMetrics: optimizationMetrics
+        };
+    }
+
+    /**
+     * 🧹 MILESTONE 2.2: Destruir renderer y limpiar recursos
      */
     destroy() {
         this.stop();
         
-        // Limpiar elementos
+        // Limpiar elementos activos
         this.planetElements.clear();
         this.fleetElements.clear();
         this.effectElements.clear();
+        
+        // 🏊 HITO 2.5: Limpiar pools
+        Object.keys(this.elementPools).forEach(poolType => {
+            if (poolType !== 'maxPoolSize') {
+                this.elementPools[poolType].forEach(element => {
+                    if (element.parentNode) {
+                        element.parentNode.removeChild(element);
+                    }
+                });
+                this.elementPools[poolType] = [];
+            }
+        });
+        
+        // 🧮 HITO 2.5: Limpiar caches
+        this.mathCache.angles.clear();
+        this.mathCache.sin.clear();
+        this.mathCache.cos.clear();
         
         // Limpiar canvas
         if (this.canvas) {
             this.canvas.innerHTML = '';
         }
         
-        console.log('💥 Renderer destruido');
+        console.log('🧹 Renderer destruido y recursos limpiados');
     }
 
     /**
@@ -794,6 +909,127 @@ export class Renderer {
             group.remove();
         }
         */
+    }
+
+    // 🧮 HITO 2.5: Precomputar cache de matemáticas
+    precomputeMathCache() {
+        console.log('🧮 Precomputando cache de matemáticas...');
+        
+        // Precomputar ángulos comunes (cada 5 grados)
+        for (let degrees = 0; degrees < 360; degrees += 5) {
+            const radians = degrees * (Math.PI / 180);
+            this.mathCache.sin.set(degrees, Math.sin(radians));
+            this.mathCache.cos.set(degrees, Math.cos(radians));
+        }
+        
+        console.log(`✅ Cache precomputado: ${this.mathCache.sin.size} valores`);
+    }
+
+    // 🧮 HITO 2.5: Calcular ángulo con cache
+    calculateAngleOptimized(dx, dy) {
+        // Crear clave única para el cálculo
+        const key = `${Math.round(dx * 10)},${Math.round(dy * 10)}`;
+        
+        if (this.mathCache.angles.has(key)) {
+            this.optimizationMetrics.cacheHits++;
+            return this.mathCache.angles.get(key);
+        }
+        
+        // Calcular y cachear
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        
+        // Mantener tamaño del cache
+        if (this.mathCache.cacheSize < this.mathCache.maxCacheSize) {
+            this.mathCache.angles.set(key, angle);
+            this.mathCache.cacheSize++;
+        }
+        
+        this.optimizationMetrics.cacheMisses++;
+        return angle;
+    }
+
+    // 🏊 HITO 2.5: Obtener elemento del pool o crear nuevo
+    getPooledElement(type, createFunction) {
+        const pool = this.elementPools[type];
+        
+        if (pool && pool.length > 0) {
+            this.optimizationMetrics.poolHits++;
+            return pool.pop();
+        }
+        
+        this.optimizationMetrics.poolMisses++;
+        return createFunction();
+    }
+
+    // 🏊 HITO 2.5: Devolver elemento al pool
+    returnToPool(type, element) {
+        const pool = this.elementPools[type];
+        
+        if (pool && pool.length < this.elementPools.maxPoolSize) {
+            // Limpiar elemento
+            element.style.display = 'none';
+            element.removeAttribute('transform');
+            
+            pool.push(element);
+        } else {
+            // Pool lleno, eliminar elemento
+            if (element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+        }
+    }
+
+    // ⚡ HITO 2.5: Añadir operación al batch
+    addToBatch(type, operation) {
+        const batch = this.batchOperations[type];
+        
+        if (batch) {
+            batch.push(operation);
+            
+            // Ejecutar batch si está lleno
+            if (batch.length >= this.batchOperations.maxBatchSize) {
+                this.executeBatch(type);
+            }
+        }
+    }
+
+    // ⚡ HITO 2.5: Ejecutar batch de operaciones
+    executeBatch(type) {
+        const batch = this.batchOperations[type];
+        
+        if (!batch || batch.length === 0) return;
+        
+        // Ejecutar todas las operaciones del batch
+        batch.forEach(operation => {
+            try {
+                operation();
+            } catch (error) {
+                console.warn('⚠️ Error en operación batch:', error);
+            }
+        });
+        
+        this.optimizationMetrics.batchedOperations += batch.length;
+        batch.length = 0; // Limpiar batch
+    }
+
+    // ⚡ HITO 2.5: Ejecutar todos los batches pendientes
+    executeAllBatches() {
+        Object.keys(this.batchOperations).forEach(type => {
+            if (type !== 'maxBatchSize') {
+                this.executeBatch(type);
+            }
+        });
+    }
+
+    // 👁️ HITO 2.5: Verificar si elemento está en viewport
+    isInViewport(x, y, margin = 0) {
+        const rect = this.canvas.getBoundingClientRect();
+        return (
+            x >= -margin &&
+            y >= -margin &&
+            x <= rect.width + margin &&
+            y <= rect.height + margin
+        );
     }
 }
 
