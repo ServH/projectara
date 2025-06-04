@@ -19,20 +19,20 @@ export const NAVIGATION_CONFIG = {
     arrivalSystem: {
         enabled: true,                  // Activar sistema de llegada realista
         baseRadius: {
-            min: 15,                    // Radio mínimo de entrada
-            max: 35,                    // Radio máximo de entrada
-            randomFactor: 0.7           // Factor de aleatoriedad (0-1)
+            min: 10,                    // Radio mínimo desde el borde
+            max: 25,                    // Radio máximo desde el borde
+            randomFactor: 0.8           // Factor de aleatoriedad (0-1) - MÁS variación
         },
-        spreadAngle: Math.PI * 0.3,    // Ángulo de dispersión para flotas grandes
+        spreadAngle: Math.PI * 0.6,    // Ángulo de dispersión MÁS AMPLIO para flotas grandes
         individualVariation: true      // Cada nave tiene su propio punto de llegada
     },
 
     // 🎨 Visualización de trayectorias
     visualization: {
         showTrajectories: true,         // Mostrar líneas de trayectoria
-        trajectoryOpacity: 0.4,         // Semi-transparente para no molestar
-        trajectoryColor: '#00aaff',     // Color azul distintivo
-        trajectoryWidth: 1.5,           // Grosor de línea
+        trajectoryOpacity: 0.8,         // Más opaco para mejor visibilidad
+        trajectoryColor: '#ffffff',     // Color BLANCO para máxima visibilidad
+        trajectoryWidth: 2,             // Más grueso para mejor visibilidad
         updateFrequency: 5,             // Actualizar visualización cada N frames
         fadeOutTime: 2000              // Tiempo de desvanecimiento (ms)
     },
@@ -58,11 +58,11 @@ export const NAVIGATION_CONFIG = {
 
     // 🐛 Debug y testing
     debug: {
-        enabled: false,                 // Activar logs de debug
-        visualizeDetection: false,      // Mostrar áreas de detección
-        logObstacles: false,           // Log cuando se detecten obstáculos
-        showCalculationTime: false,     // Mostrar tiempo de cálculos
-        highlightActiveFleets: false    // Resaltar flotas con navegación activa
+        enabled: true,                  // Activar logs de debug
+        visualizeDetection: true,       // Mostrar áreas de detección
+        logObstacles: true,             // Log cuando se detecten obstáculos
+        showCalculationTime: true,      // Mostrar tiempo de cálculos
+        highlightActiveFleets: true     // Resaltar flotas con navegación activa
     }
 };
 

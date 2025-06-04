@@ -23,13 +23,19 @@ export class Fleet {
         this.toPlanet = fleetData.toPlanet;
         
         // 🚀 OPTIMIZACIÓN: Flag de debug centralizado
-        this.debugMode = false; // Solo true para debugging
+        this.debugMode = false; // 🔧 DESACTIVADO: Reducir spam de logs
         
         // 🚀 OPTIMIZACIÓN: Validación optimizada de posiciones
         this.startX = this.validateCoordinate(fleetData.startX, 100);
         this.startY = this.validateCoordinate(fleetData.startY, 100);
         this.targetX = this.validateCoordinate(fleetData.targetX, 200);
         this.targetY = this.validateCoordinate(fleetData.targetY, 200);
+        
+        // 🎯 NUEVO: Sistema de llegada realista al borde del planeta
+        this.originalTargetX = this.targetX;
+        this.originalTargetY = this.targetY;
+        this.targetPlanet = fleetData.targetPlanet; // Referencia al planeta destino
+        this.arrivalPoint = null; // Se calculará dinámicamente
         
         this.x = this.startX;
         this.y = this.startY;
@@ -164,6 +170,16 @@ export class Fleet {
     update(deltaTime) {
         if (!this.isMoving || this.hasArrived) {
             return;
+        }
+
+        // 🎯 NUEVO: Calcular punto de llegada realista si no se ha hecho
+        if (!this.arrivalPoint) {
+            this.calculateArrivalPoint();
+            // Recalcular distancia y tiempo con el nuevo destino
+            this.distance = this.calculateDistance();
+            this.calculationCache.distance = this.distance;
+            this.travelTime = this.distance > 0 ? this.distance / this.speed : 0;
+            this.arrivalTime = this.launchTime + (this.travelTime * 1000);
         }
 
         const now = Date.now();
@@ -483,6 +499,57 @@ export class Fleet {
         this.progress = 1;
         this.arrive();
         console.log(`🔧 Fleet ${this.id}: Llegada forzada`);
+    }
+
+    /**
+     * 🎯 NUEVO: Calcular punto de llegada realista al borde del planeta
+     */
+    calculateArrivalPoint() {
+        if (this.arrivalPoint || !this.targetPlanet) {
+            return this.arrivalPoint;
+        }
+
+        const planetRadius = this.targetPlanet.radius || 30;
+        
+        // 🎯 CRÍTICO: Llegar al BORDE VISIBLE del planeta, no más lejos
+        const arrivalDistance = 2; // Muy cerca del borde visible
+        
+        // Calcular ángulo único para esta nave (basado en su ID para consistencia)
+        const fleetHash = this.id.split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+        }, 0);
+        
+        // 🎯 ARCO PEQUEÑO: Reducir la variación angular para que sea más concentrado
+        const baseAngle = (fleetHash % 360) * (Math.PI / 180);
+        const arcSize = Math.PI * 0.2; // Arco de 36 grados (más pequeño)
+        const randomVariation = ((fleetHash % 100) / 100 - 0.5) * arcSize; // ±18 grados
+        const finalAngle = baseAngle + randomVariation;
+        
+        // 🎯 RADIO MÍNIMO: Las naves llegan justo al borde
+        const arrivalRadius = planetRadius + arrivalDistance;
+        
+        // Calcular posición final
+        this.arrivalPoint = {
+            x: this.originalTargetX + Math.cos(finalAngle) * arrivalRadius,
+            y: this.originalTargetY + Math.sin(finalAngle) * arrivalRadius,
+            radius: 8, // Radio de tolerancia pequeño para llegada precisa
+            angle: finalAngle
+        };
+        
+        // Actualizar targetX y targetY para que la nave vaya al borde
+        this.targetX = this.arrivalPoint.x;
+        this.targetY = this.arrivalPoint.y;
+        
+        if (this.debugMode) {
+            console.log(`🎯 Punto de llegada calculado para ${this.id}:`, {
+                angle: (finalAngle * 180 / Math.PI).toFixed(1) + '°',
+                radius: arrivalRadius.toFixed(1),
+                position: `(${this.arrivalPoint.x.toFixed(1)}, ${this.arrivalPoint.y.toFixed(1)})`
+            });
+        }
+        
+        return this.arrivalPoint;
     }
 }
 

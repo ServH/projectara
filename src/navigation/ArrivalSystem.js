@@ -117,14 +117,11 @@ export class ArrivalSystem {
      */
     calculateBaseRadius(target) {
         const planetRadius = target.radius;
-        const minRadius = this.config.baseRadius.min;
-        const maxRadius = this.config.baseRadius.max;
         
-        // Radio base proporcional al tamaño del planeta
-        const baseRadius = Math.max(
-            minRadius,
-            Math.min(maxRadius, planetRadius + 20)
-        );
+        // 🎯 CAMBIO CRÍTICO: Las naves llegan al BORDE del planeta, no al centro
+        // Radio base = radio del planeta + distancia de llegada
+        const arrivalDistance = 15; // Distancia desde el borde del planeta
+        const baseRadius = planetRadius + arrivalDistance;
         
         return baseRadius;
     }

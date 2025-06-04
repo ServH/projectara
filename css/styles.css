@@ -1,0 +1,43 @@
+/* 🔧 BOTÓN TEMPORAL: Toggle líneas de trayectoria */
+.temp-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 20px;
+}
+
+.temp-button {
+    background: rgba(0, 255, 136, 0.2);
+    border: 2px solid #00ff88;
+    color: #00ff88;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.temp-button:hover {
+    background: rgba(0, 255, 136, 0.3);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+    transform: translateY(-2px);
+}
+
+.temp-button:active {
+    transform: translateY(0);
+}
+
+.temp-button.off {
+    background: rgba(255, 68, 68, 0.2);
+    border-color: #ff4444;
+    color: #ff4444;
+}
+
+.temp-button.off:hover {
+    background: rgba(255, 68, 68, 0.3);
+    box-shadow: 0 0 15px rgba(255, 68, 68, 0.5);
+} 

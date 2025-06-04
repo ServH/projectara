@@ -1,0 +1,60 @@
+# 🚀 GALCON GAME - .gitignore
+
+# Archivos del sistema
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencias
+node_modules/
+npm-debug.log
+yarn.lock
+package-lock.json
+
+# Archivos temporales
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Archivos de configuración local
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Archivos de backup
+*.bak
+*.backup
+*_backup.*
+
+# Archivos de testing temporal
+test-*.html
+benchmark-*.json
+performance-*.log
+
+# Cache
+.cache/
+*.cache
+
+# Archivos de distribución
+dist/
+build/ 

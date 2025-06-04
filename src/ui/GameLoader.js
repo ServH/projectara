@@ -142,6 +142,37 @@ export class GameLoader {
     }
 
     setupGlobalControls(gameEngine, selectionSystem, dragDropHandler) {
+        // 🔧 BOTÓN TEMPORAL: Toggle líneas de trayectoria
+        const toggleButton = document.getElementById('toggleTrajectories');
+        if (toggleButton) {
+            let trajectoriesEnabled = true;
+            
+            toggleButton.addEventListener('click', () => {
+                trajectoriesEnabled = !trajectoriesEnabled;
+                
+                // Actualizar configuración
+                if (gameEngine.navigationSystem) {
+                    gameEngine.navigationSystem.setVisualization(trajectoriesEnabled);
+                }
+                
+                // Actualizar botón
+                if (trajectoriesEnabled) {
+                    toggleButton.textContent = '🎨 Líneas: ON';
+                    toggleButton.classList.remove('off');
+                } else {
+                    toggleButton.textContent = '🎨 Líneas: OFF';
+                    toggleButton.classList.add('off');
+                    
+                    // Limpiar líneas existentes
+                    if (gameEngine.navigationSystem) {
+                        gameEngine.navigationSystem.clearVisualization();
+                    }
+                }
+                
+                console.log(`🎨 Trayectorias: ${trajectoriesEnabled ? 'ACTIVADAS' : 'DESACTIVADAS'}`);
+            });
+        }
+        
         // Manejar teclas globales
         document.addEventListener('keydown', (event) => {
             switch (event.key) {

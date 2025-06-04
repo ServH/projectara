@@ -13,6 +13,9 @@ export class NavigationSystem {
         this.gameEngine = gameEngine;
         this.canvasRenderer = canvasRenderer;
         
+        // 🔧 ARREGLO: Inicializar configuración
+        this.config = NAVIGATION_CONFIG;
+        
         // Subsistemas
         this.obstacleDetector = new ObstacleDetector(gameEngine);
         this.arrivalSystem = new ArrivalSystem();
@@ -20,6 +23,10 @@ export class NavigationSystem {
         // Control de actualizaciones
         this.frameCounter = 0;
         this.updateInterval = NAVIGATION_CONFIG.obstacleDetection.updateInterval;
+        
+        // 🔧 NUEVO: Control de logs para evitar spam
+        this.logCounter = 0;
+        this.logInterval = 60; // Log cada 60 frames (1 segundo a 60fps)
         
         // Batch processing para optimización
         this.fleetBatches = [];
@@ -41,33 +48,30 @@ export class NavigationSystem {
     }
 
     /**
-     * 🔄 Actualización principal del sistema
-     * Llamado desde el game loop principal
+     * 🔄 Actualizar sistema de navegación
      */
     update() {
-        this.frameCounter++;
+        if (!this.gameEngine) return;
         
-        // Actualizar solo cada N frames para optimización
-        if (this.frameCounter % this.updateInterval !== 0) {
-            return;
+        const fleets = this.gameEngine.getAllFleets();
+        const planets = this.gameEngine.getAllPlanets();
+        
+        // 🔧 REDUCIR SPAM: Solo log cada N frames
+        this.logCounter++;
+        if (this.config.debug.enabled && this.logCounter >= this.logInterval) {
+            console.log(`🧭 NavigationSystem procesando ${fleets.length} flotas y ${planets.length} planetas`);
+            this.logCounter = 0;
         }
-
-        const startTime = performance.now();
         
-        // Procesar navegación por lotes
-        this.processBatchNavigation();
+        // Procesar cada flota activa
+        fleets.forEach(fleet => {
+            if (fleet.isMoving && !fleet.hasArrived) {
+                this.processFleet(fleet, planets);
+            }
+        });
         
-        // Limpiar caches antiguos
-        this.cleanupCaches();
-        
-        // Actualizar estadísticas
-        const processingTime = performance.now() - startTime;
-        this.updateStats(processingTime);
-        
-        // Visualizar trayectorias si está habilitado
-        if (NAVIGATION_CONFIG.visualization.showTrajectories) {
-            this.updateTrajectoryVisualization();
-        }
+        // Actualizar visualización
+        this.updateVisualization(fleets);
     }
 
     /**
@@ -224,53 +228,86 @@ export class NavigationSystem {
     /**
      * 🎨 Actualizar visualización de trayectorias
      */
-    updateTrajectoryVisualization() {
-        if (!this.canvasRenderer || !this.canvasRenderer.overlayCtx) return;
-        
-        const ctx = this.canvasRenderer.overlayCtx;
-        const config = NAVIGATION_CONFIG.visualization;
-        
-        // Limpiar overlay anterior
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        
-        // Dibujar trayectorias activas
-        for (const [fleetId, trajectory] of this.trajectoryCache.entries()) {
-            this.drawTrajectory(ctx, trajectory, config);
+    updateVisualization(fleets) {
+        if (!this.canvasRenderer || !this.config.visualization.showTrajectories) {
+            return;
         }
+        
+        // 🔧 USAR SISTEMA DE OVERLAY EXISTENTE
+        if (!this.canvasRenderer.addDragLine) {
+            console.log('⚠️ Sistema de overlay no disponible');
+            return;
+        }
+        
+        // Limpiar trayectorias anteriores
+        this.clearVisualization();
+        
+        // Dibujar trayectorias de flotas activas
+        const activeFleets = fleets.filter(fleet => fleet.isMoving && !fleet.hasArrived);
+        
+        if (activeFleets.length > 0) {
+            console.log(`🎨 Dibujando ${activeFleets.length} trayectorias blancas usando overlay system`);
+        }
+        
+        activeFleets.forEach(fleet => {
+            this.drawFleetTrajectory(fleet);
+        });
     }
 
     /**
-     * 🎨 Dibujar una trayectoria individual
+     * 🎨 Dibujar trayectoria de una flota
      */
-    drawTrajectory(ctx, trajectory, config) {
-        ctx.save();
-        
-        // Configurar estilo
-        ctx.strokeStyle = trajectory.color;
-        ctx.lineWidth = config.trajectoryWidth;
-        ctx.globalAlpha = config.trajectoryOpacity;
-        ctx.setLineDash([5, 5]); // Línea punteada
-        
-        // Dibujar línea principal
-        ctx.beginPath();
-        ctx.moveTo(trajectory.start.x, trajectory.start.y);
-        ctx.lineTo(trajectory.end.x, trajectory.end.y);
-        ctx.stroke();
-        
-        // Dibujar obstáculos si están en debug
-        if (NAVIGATION_CONFIG.debug.visualizeDetection && trajectory.obstacles.length > 0) {
-            ctx.strokeStyle = '#ff4444';
-            ctx.globalAlpha = 0.3;
-            
-            for (const obstacle of trajectory.obstacles) {
-                const planet = obstacle.planet;
-                ctx.beginPath();
-                ctx.arc(planet.x, planet.y, planet.radius + 20, 0, Math.PI * 2);
-                ctx.stroke();
-            }
+    drawFleetTrajectory(fleet) {
+        if (!this.canvasRenderer || !this.canvasRenderer.addDragLine) {
+            console.log('❌ No hay sistema de overlay disponible');
+            return;
         }
         
-        ctx.restore();
+        // 🔧 USAR addDragLine del CanvasRenderer
+        const trajectoryId = `trajectory_${fleet.id}`;
+        
+        this.canvasRenderer.addDragLine(
+            trajectoryId,
+            fleet.x,
+            fleet.y,
+            fleet.targetX,
+            fleet.targetY,
+            {
+                color: this.config.visualization.trajectoryColor,
+                width: this.config.visualization.trajectoryWidth,
+                opacity: this.config.visualization.trajectoryOpacity,
+                dashArray: [5, 5], // Línea punteada
+                animation: null
+            }
+        );
+        
+        // 🔧 TEMPORAL: Log para verificar que se dibuja
+        console.log(`🎨 Trayectoria BLANCA añadida para flota ${fleet.id}: (${fleet.x.toFixed(1)}, ${fleet.y.toFixed(1)}) → (${fleet.targetX.toFixed(1)}, ${fleet.targetY.toFixed(1)})`);
+    }
+
+    /**
+     * 🧹 Limpiar visualización
+     */
+    clearVisualization() {
+        if (this.canvasRenderer && this.canvasRenderer.clearDragLines) {
+            // Solo limpiar trayectorias, no todas las líneas de drag
+            // Por ahora limpiaremos todas, pero esto se puede optimizar
+            const trajectoryIds = [];
+            
+            // Recopilar IDs de trayectorias
+            if (this.canvasRenderer.overlayElements && this.canvasRenderer.overlayElements.dragLines) {
+                this.canvasRenderer.overlayElements.dragLines.forEach(line => {
+                    if (line.id.startsWith('trajectory_')) {
+                        trajectoryIds.push(line.id);
+                    }
+                });
+                
+                // Remover solo las trayectorias
+                trajectoryIds.forEach(id => {
+                    this.canvasRenderer.removeDragLine(id);
+                });
+            }
+        }
     }
 
     /**
@@ -354,6 +391,36 @@ export class NavigationSystem {
         this.trajectoryCache.clear();
         this.fleetBatches = [];
         console.log('🧭 NavigationSystem destruido');
+    }
+
+    /**
+     * 🚀 Procesar una flota individual
+     */
+    processFleet(fleet, planets) {
+        // 🔧 REDUCIR SPAM: Solo log ocasionalmente
+        if (this.config.debug.enabled && Math.random() < 0.01) { // 1% de probabilidad
+            console.log(`🧭 Procesando flota ${fleet.id}: (${fleet.x.toFixed(1)}, ${fleet.y.toFixed(1)}) → (${fleet.targetX.toFixed(1)}, ${fleet.targetY.toFixed(1)})`);
+        }
+        
+        // Crear un objeto target para el ObstacleDetector
+        const target = {
+            x: fleet.targetX,
+            y: fleet.targetY
+        };
+        
+        // Detectar obstáculos en la trayectoria
+        const obstacles = this.obstacleDetector.detectObstaclesInRoute(fleet, target);
+        
+        if (obstacles.length > 0 && this.config.debug.logObstacles) {
+            console.log(`🚧 Obstáculos detectados para flota ${fleet.id}:`, obstacles.length);
+        }
+        
+        // Por ahora, solo registrar la flota para visualización
+        fleet.navigationData = {
+            obstacles: obstacles,
+            hasNavigation: true,
+            lastUpdate: Date.now()
+        };
     }
 }
 

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Laboratorio de Pathfinding - Galcon Game</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* 🧪 Estilos específicos del laboratorio */
+        .lab-container {
+            display: flex;
+            height: 100vh;
+            background: #000011;
+        }
+        
+        .lab-canvas-area {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(ellipse at center, #000033 0%, #000011 70%, #000000 100%);
+        }
+        
+        .lab-controls {
+            width: 300px;
+            background: rgba(0, 20, 40, 0.95);
+            border-left: 2px solid #00ff88;
+            padding: 20px;
+            overflow-y: auto;
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .lab-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(0, 255, 136, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 8px;
+        }
+        
+        .lab-section h3 {
+            color: #00ff88;
+            margin: 0 0 15px 0;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .lab-control {
+            margin-bottom: 15px;
+        }
+        
+        .lab-control label {
+            display: block;
+            color: #88ccff;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        
+        .lab-control input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        .lab-control input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        .lab-value {
+            color: #ffffff;
+            font-size: 11px;
+            text-align: right;
+        }
+        
+        .lab-button {
+            width: 100%;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        
+        .lab-button:hover {
+            background: rgba(0, 255, 136, 0.3);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+        }
+        
+        .lab-stats {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: #cccccc;
+        }
+        
+        .lab-stats .stat-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .lab-stats .stat-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        #labCanvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+        
+        .lab-header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ff88;
+            font-family: 'Orbitron', monospace;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            z-index: 100;
+        }
+        
+        .lab-instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #88ccff;
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 6px;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="lab-container">
+        <!-- Área del canvas -->
+        <div class="lab-canvas-area">
+            <div class="lab-header">
+                🧪 LABORATORIO DE PATHFINDING
+            </div>
+            
+            <canvas id="labCanvas"></canvas>
+            
+            <div class="lab-instructions">
+                <strong>INSTRUCCIONES:</strong><br>
+                • Click para crear planetas obstáculo<br>
+                • Drag & Drop para enviar naves<br>
+                • Ajusta parámetros en tiempo real<br>
+                • Observa diferentes algoritmos
+            </div>
+        </div>
+        
+        <!-- Panel de controles -->
+        <div class="lab-controls">
+            <!-- Configuración de Obstáculos -->
+            <div class="lab-section">
+                <h3>🚧 Detección de Obstáculos</h3>
+                
+                <div class="lab-control">
+                    <label>Radio de Detección</label>
+                    <input type="range" id="detectionRadius" min="20" max="150" value="50">
+                    <div class="lab-value" id="detectionRadiusValue">50px</div>
+                </div>
+                
+                <div class="lab-control">
+                    <label>Distancia de Evitación</label>
+                    <input type="range" id="avoidanceDistance" min="30" max="200" value="80">
+                    <div class="lab-value" id="avoidanceDistanceValue">80px</div>
+                </div>
+                
+                <div class="lab-control">
+                    <label>Buffer de Ruta</label>
+                    <input type="range" id="routeBuffer" min="5" max="50" value="15">
+                    <div class="lab-value" id="routeBufferValue">15px</div>
+                </div>
+                
+                <div class="lab-control">
+                    <input type="checkbox" id="enableDetection" checked>
+                    <label for="enableDetection">Activar Detección</label>
+                </div>
+            </div>
+            
+            <!-- Algoritmos de Pathfinding -->
+            <div class="lab-section">
+                <h3>🧭 Algoritmos</h3>
+                
+                <div class="lab-control">
+                    <input type="radio" name="algorithm" value="simple" id="algoSimple" checked>
+                    <label for="algoSimple">Evitación Simple</label>
+                </div>
+                
+                <div class="lab-control">
+                    <input type="radio" name="algorithm" value="astar" id="algoAStar">
+                    <label for="algoAStar">A* Pathfinding</label>
+                </div>
+                
+                <div class="lab-control">
+                    <input type="radio" name="algorithm" value="flow" id="algoFlow">
+                    <label for="algoFlow">Flow Field</label>
+                </div>
+            </div>
+            
+            <!-- Visualización -->
+            <div class="lab-section">
+                <h3>🎨 Visualización</h3>
+                
+                <div class="lab-control">
+                    <input type="checkbox" id="showTrajectories" checked>
+                    <label for="showTrajectories">Mostrar Trayectorias</label>
+                </div>
+                
+                <div class="lab-control">
+                    <input type="checkbox" id="showObstacleZones" checked>
+                    <label for="showObstacleZones">Zonas de Obstáculos</label>
+                </div>
+                
+                <div class="lab-control">
+                    <input type="checkbox" id="showAvoidancePoints">
+                    <label for="showAvoidancePoints">Puntos de Evitación</label>
+                </div>
+                
+                <div class="lab-control">
+                    <input type="checkbox" id="showPerformanceMetrics" checked>
+                    <label for="showPerformanceMetrics">Métricas de Rendimiento</label>
+                </div>
+            </div>
+            
+            <!-- Acciones -->
+            <div class="lab-section">
+                <h3>⚡ Acciones</h3>
+                
+                <button class="lab-button" id="clearAll">🧹 Limpiar Todo</button>
+                <button class="lab-button" id="addRandomObstacles">🎲 Obstáculos Aleatorios</button>
+                <button class="lab-button" id="runBenchmark">📊 Ejecutar Benchmark</button>
+                <button class="lab-button" id="exportConfig">💾 Exportar Configuración</button>
+            </div>
+            
+            <!-- Estadísticas en Tiempo Real -->
+            <div class="lab-section">
+                <h3>📊 Estadísticas</h3>
+                <div class="lab-stats" id="labStats">
+                    <div class="stat-line">
+                        <span>FPS:</span>
+                        <span class="stat-value" id="statFPS">60</span>
+                    </div>
+                    <div class="stat-line">
+                        <span>Naves Activas:</span>
+                        <span class="stat-value" id="statFleets">0</span>
+                    </div>
+                    <div class="stat-line">
+                        <span>Obstáculos:</span>
+                        <span class="stat-value" id="statObstacles">0</span>
+                    </div>
+                    <div class="stat-line">
+                        <span>Cálculos/Frame:</span>
+                        <span class="stat-value" id="statCalculations">0</span>
+                    </div>
+                    <div class="stat-line">
+                        <span>Tiempo Promedio:</span>
+                        <span class="stat-value" id="statAvgTime">0ms</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts del laboratorio -->
+    <script type="module">
+        import { PathfindingLab } from './src/labs/PathfindingLab.js';
+        
+        // Inicializar laboratorio cuando la página esté lista
+        document.addEventListener('DOMContentLoaded', () => {
+            const lab = new PathfindingLab();
+            lab.init();
+            
+            // Hacer el laboratorio accesible globalmente para debugging
+            window.pathfindingLab = lab;
+        });
+    </script>
+</body>
+</html> 

@@ -232,6 +232,7 @@ export class Planet {
             owner: this.owner,
             fromPlanet: this.id,
             toPlanet: targetPlanet.id,
+            targetPlanet: targetPlanet,
             startX: this.x,
             startY: this.y,
             targetX: targetPlanet.x,
