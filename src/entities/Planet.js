@@ -210,44 +210,162 @@ export class Planet {
     }
 
     /**
-     * 🚀 OPTIMIZACIÓN: Enviar flota sin logs críticos
+     * 🚀 ENVÍO DE FLOTA CON LANZAMIENTO GRADUAL TIPO ENJAMBRE
+     * Implementa oleadas de máximo 8 naves para efecto visual de enjambre
+     * Integrado con steering behaviors - FASE 3
      */
     sendFleet(targetPlanet, percentage = 0.5, targetClickX = null, targetClickY = null) {
         if (this.owner === 'neutral' || this.ships <= 1) {
             return null;
         }
 
-        const shipsToSend = Math.floor(this.ships * percentage);
-        if (shipsToSend <= 0) {
+        const totalShipsToSend = Math.floor(this.ships * percentage);
+        if (totalShipsToSend <= 0) {
             return null;
         }
 
-        // Reducir naves del planeta
-        this.ships -= shipsToSend;
+        // Reducir naves del planeta inmediatamente
+        this.ships -= totalShipsToSend;
 
-        // Crear datos de la flota optimizados
-        const fleetData = {
-            id: `fleet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            ships: shipsToSend,
+        // 🌊 CALCULAR OLEADAS DE ENJAMBRE
+        const maxWaveSize = 8; // Máximo 8 naves por oleada
+        const launchDelay = 200; // 200ms entre oleadas
+        const waves = [];
+        
+        for (let i = 0; i < totalShipsToSend; i += maxWaveSize) {
+            const waveSize = Math.min(maxWaveSize, totalShipsToSend - i);
+            waves.push(waveSize);
+        }
+
+        console.log(`🌊 Lanzando ${totalShipsToSend} naves en ${waves.length} oleadas: [${waves.join(', ')}]`);
+
+        // 🚀 LANZAR OLEADAS GRADUALMENTE
+        const launchedFleets = [];
+        let currentDelay = 0;
+
+        waves.forEach((waveSize, waveIndex) => {
+            setTimeout(() => {
+                const fleetData = this.createWaveFleetData(
+                    targetPlanet, 
+                    waveSize, 
+                    waveIndex, 
+                    waves.length,
+                    totalShipsToSend
+                );
+                
+                // Emitir evento de lanzamiento de oleada
+                eventBus.emit(GAME_EVENTS.FLEET_LAUNCHED, fleetData);
+                
+                if (this.debugMode) {
+                    console.log(`🚀 Oleada ${waveIndex + 1}/${waves.length}: ${waveSize} naves desde ${this.id} a ${targetPlanet.id}`);
+                }
+                
+                launchedFleets.push(fleetData);
+                
+                // Si es la última oleada, emitir evento de lanzamiento completo
+                if (waveIndex === waves.length - 1) {
+                    eventBus.emit(GAME_EVENTS.FLEET_SWARM_COMPLETE, {
+                        fromPlanet: this.id,
+                        toPlanet: targetPlanet.id,
+                        totalShips: totalShipsToSend,
+                        totalWaves: waves.length,
+                        fleets: launchedFleets
+                    });
+                }
+                
+            }, currentDelay);
+            
+            currentDelay += launchDelay;
+        });
+
+        // Retornar datos del primer lanzamiento para compatibilidad
+        const firstFleetData = this.createWaveFleetData(
+            targetPlanet, 
+            waves[0], 
+            0, 
+            waves.length,
+            totalShipsToSend
+        );
+
+        if (this.debugMode) {
+            console.log(`🚀 Enjambre iniciado desde ${this.id} a ${targetPlanet.id}: ${totalShipsToSend} naves en ${waves.length} oleadas`);
+        }
+        
+        return firstFleetData;
+    }
+
+    /**
+     * 🌊 Crear datos de flota para una oleada específica
+     */
+    createWaveFleetData(targetPlanet, waveSize, waveIndex, totalWaves, totalShips) {
+        // Calcular posición de lanzamiento con variación
+        const launchVariation = 15; // Variación en posición de salida
+        const angle = (Math.PI * 2 * waveIndex) / totalWaves; // Distribuir alrededor del planeta
+        const distance = this.radius + 10; // Distancia mínima del borde
+        
+        const launchX = this.x + Math.cos(angle) * distance + (Math.random() - 0.5) * launchVariation;
+        const launchY = this.y + Math.sin(angle) * distance + (Math.random() - 0.5) * launchVariation;
+
+        return {
+            id: `fleet_${Date.now()}_${waveIndex}_${Math.random().toString(36).substr(2, 9)}`,
+            ships: waveSize,
             owner: this.owner,
             fromPlanet: this.id,
             toPlanet: targetPlanet.id,
             targetPlanet: targetPlanet,
-            startX: this.x,
-            startY: this.y,
+            
+            // Posiciones con variación para efecto enjambre
+            startX: launchX,
+            startY: launchY,
+            x: launchX,
+            y: launchY,
             targetX: targetPlanet.x,
             targetY: targetPlanet.y,
+            
+            // Metadatos de enjambre
+            waveIndex: waveIndex,
+            totalWaves: totalWaves,
+            totalShipsInSwarm: totalShips,
+            isSwarmFleet: true,
+            
+            // Configuración de steering behaviors
+            useSteeringBehaviors: true,
+            formation: this.selectFormationForWave(waveIndex, totalWaves),
+            
             launchTime: Date.now()
         };
+    }
 
-        // Emitir evento de lanzamiento
-        eventBus.emit(GAME_EVENTS.FLEET_LAUNCHED, fleetData);
-
-        if (this.debugMode) {
-            console.log(`🚀 Flota enviada desde ${this.id} a ${targetPlanet.id}: ${shipsToSend} naves (${Math.floor(percentage*100)}%) - (${this.x},${this.y}) → (${targetPlanet.x},${targetPlanet.y})`);
+    /**
+     * 🎯 Seleccionar formación para oleada específica
+     */
+    selectFormationForWave(waveIndex, totalWaves) {
+        // Formaciones balanceadas según configuración probada
+        const formations = ['spread', 'line', 'wedge', 'circle'];
+        const probabilities = [0.4, 0.2, 0.2, 0.2]; // spread más común
+        
+        // Para oleadas múltiples, variar formaciones
+        if (totalWaves > 1) {
+            // Primera oleada: spread (más común)
+            if (waveIndex === 0) return 'spread';
+            
+            // Oleadas intermedias: alternar
+            const formationIndex = waveIndex % formations.length;
+            return formations[formationIndex];
         }
         
-        return fleetData;
+        // Oleada única: selección aleatoria ponderada
+        const random = Math.random();
+        let cumulative = 0;
+        
+        for (let i = 0; i < formations.length; i++) {
+            cumulative += probabilities[i];
+            if (random <= cumulative) {
+                return formations[i];
+            }
+        }
+        
+        return 'spread'; // fallback
     }
 
     /**

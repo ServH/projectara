@@ -2,11 +2,15 @@
  * 🧭 GALCON GAME - SISTEMA DE NAVEGACIÓN PRINCIPAL
  * Coordinador de detección de obstáculos, llegada realista y visualización
  * MILESTONE 2.3: Navegación inteligente completa
+ * 🆕 INTEGRADO CON STEERING BEHAVIORS - Fase 3
  */
 
 import { NAVIGATION_CONFIG, NavigationConfigManager } from './NavigationConfig.js';
 import ObstacleDetector from './ObstacleDetector.js';
 import ArrivalSystem from './ArrivalSystem.js';
+import { SpatialHashSystem } from '../systems/SpatialHashSystem.js';
+import { LegacyFleetAdapter } from '../adapters/LegacyFleetAdapter.js';
+import { GALCON_STEERING_CONFIG_PROBADA } from '../config/SteeringConfig.js';
 
 export class NavigationSystem {
     constructor(gameEngine, canvasRenderer) {
@@ -16,9 +20,18 @@ export class NavigationSystem {
         // 🔧 ARREGLO: Inicializar configuración
         this.config = NAVIGATION_CONFIG;
         
-        // Subsistemas
+        // Subsistemas legacy (mantener compatibilidad)
         this.obstacleDetector = new ObstacleDetector(gameEngine);
         this.arrivalSystem = new ArrivalSystem();
+        
+        // 🆕 NUEVOS SISTEMAS DE STEERING BEHAVIORS
+        this.spatialHash = new SpatialHashSystem(50); // Celdas de 50px
+        this.fleetAdapter = new LegacyFleetAdapter(gameEngine);
+        this.steeringConfig = GALCON_STEERING_CONFIG_PROBADA;
+        
+        // 🔄 MODO HÍBRIDO: Permitir cambio entre sistemas
+        this.useSteeringBehaviors = true; // Por defecto usar steering behaviors
+        this.legacyMode = false;
         
         // Control de actualizaciones
         this.frameCounter = 0;
@@ -35,31 +48,101 @@ export class NavigationSystem {
         // Cache de trayectorias para visualización
         this.trajectoryCache = new Map();
         
-        // Estadísticas de rendimiento
+        // Estadísticas de rendimiento (expandidas)
         this.stats = {
             fleetsProcessed: 0,
             obstaclesDetected: 0,
             routesRecalculated: 0,
             averageProcessingTime: 0,
-            activeNavigations: 0
+            activeNavigations: 0,
+            // 🆕 Estadísticas de steering behaviors
+            steeringFleets: 0,
+            spatialHashQueries: 0,
+            averageFleetSize: 0,
+            formationsActive: {}
         };
         
-        console.log('🧭 NavigationSystem inicializado - Navegación inteligente activa');
+        // 🔧 Integrar adaptador con gameEngine si steering behaviors está activo
+        if (this.useSteeringBehaviors) {
+            this.fleetAdapter.integrateWithGameEngine();
+        }
+        
+        console.log(`🧭 NavigationSystem inicializado - ${this.useSteeringBehaviors ? 'Steering Behaviors' : 'Legacy'} activo`);
     }
 
     /**
-     * 🔄 Actualizar sistema de navegación
+     * 🔄 Actualizar sistema de navegación (HÍBRIDO)
      */
     update() {
         if (!this.gameEngine) return;
         
+        this.frameCounter++;
+        
+        if (this.useSteeringBehaviors) {
+            this.updateWithSteeringBehaviors();
+        } else {
+            this.updateLegacyNavigation();
+        }
+        
+        // Actualizar spatial hash cada frame
+        if (this.useSteeringBehaviors) {
+            this.updateSpatialHash();
+        }
+        
+        // Limpiar caches periódicamente
+        if (this.frameCounter % 300 === 0) {
+            this.cleanupCaches();
+        }
+    }
+
+    /**
+     * 🆕 Actualizar con steering behaviors
+     */
+    updateWithSteeringBehaviors() {
+        const startTime = performance.now();
+        
+        // Obtener planetas como obstáculos
+        const planets = this.gameEngine.getAllPlanets();
+        const obstacles = this.convertPlanetsToObstacles(planets);
+        
+        // Actualizar spatial hash con obstáculos
+        this.updateSpatialHashWithObstacles(obstacles);
+        
+        // Actualizar todas las flotas a través del adaptador
+        const deltaTime = 1/60; // Asumir 60 FPS
+        this.fleetAdapter.updateAllFleets(deltaTime, obstacles, this.spatialHash);
+        
+        // Limpiar flotas inactivas
+        if (this.frameCounter % 60 === 0) {
+            this.fleetAdapter.cleanup();
+        }
+        
+        // Actualizar estadísticas
+        this.updateSteeringStats();
+        
+        // 🔧 REDUCIR SPAM: Solo log cada N frames
+        this.logCounter++;
+        if (this.config.debug.enabled && this.logCounter >= this.logInterval) {
+            const adapterStats = this.fleetAdapter.getStats();
+            console.log(`🧭 Steering Navigation: ${adapterStats.activeFleets} flotas, ${adapterStats.totalVehicles} naves`);
+            this.logCounter = 0;
+        }
+        
+        const processingTime = performance.now() - startTime;
+        this.updateStats(processingTime);
+    }
+
+    /**
+     * 🔄 Actualizar navegación legacy (compatibilidad)
+     */
+    updateLegacyNavigation() {
         const fleets = this.gameEngine.getAllFleets();
         const planets = this.gameEngine.getAllPlanets();
         
         // 🔧 REDUCIR SPAM: Solo log cada N frames
         this.logCounter++;
         if (this.config.debug.enabled && this.logCounter >= this.logInterval) {
-            console.log(`🧭 NavigationSystem procesando ${fleets.length} flotas y ${planets.length} planetas`);
+            console.log(`🧭 Legacy Navigation procesando ${fleets.length} flotas y ${planets.length} planetas`);
             this.logCounter = 0;
         }
         
@@ -72,6 +155,199 @@ export class NavigationSystem {
         
         // Actualizar visualización
         this.updateVisualization(fleets);
+    }
+
+    /**
+     * 🔄 Convertir planetas a obstáculos para steering behaviors
+     */
+    convertPlanetsToObstacles(planets) {
+        return planets.map(planet => ({
+            position: { x: planet.x, y: planet.y },
+            radius: planet.radius + 10, // Buffer de seguridad
+            id: planet.id,
+            type: 'planet'
+        }));
+    }
+
+    /**
+     * 🔄 Actualizar spatial hash con obstáculos
+     */
+    updateSpatialHashWithObstacles(obstacles) {
+        // Limpiar hash anterior
+        this.spatialHash.clear();
+        
+        // Insertar obstáculos
+        obstacles.forEach(obstacle => {
+            this.spatialHash.insert(
+                obstacle,
+                { x: obstacle.position.x, y: obstacle.position.y },
+                obstacle.radius
+            );
+        });
+    }
+
+    /**
+     * 📊 Actualizar estadísticas de steering behaviors
+     */
+    updateSteeringStats() {
+        if (!this.useSteeringBehaviors) return;
+        
+        const adapterStats = this.fleetAdapter.getStats();
+        const debugInfo = this.fleetAdapter.getDebugInfo();
+        
+        this.stats.steeringFleets = adapterStats.activeFleets;
+        this.stats.spatialHashQueries = this.spatialHash.stats.queriesPerFrame;
+        this.stats.averageFleetSize = adapterStats.averageFleetSize;
+        this.stats.formationsActive = debugInfo.formations;
+        
+        // Resetear contador de queries del spatial hash
+        this.spatialHash.stats.queriesPerFrame = 0;
+    }
+
+    /**
+     * 🔄 Actualizar spatial hash
+     */
+    updateSpatialHash() {
+        if (this.frameCounter % 10 === 0) { // Optimizar cada 10 frames
+            this.spatialHash.optimize();
+        }
+    }
+
+    /**
+     * 🎨 Renderizar navegación (HÍBRIDO)
+     */
+    render(ctx) {
+        if (this.useSteeringBehaviors) {
+            this.renderSteeringBehaviors(ctx);
+        } else {
+            this.renderLegacyNavigation(ctx);
+        }
+    }
+
+    /**
+     * 🎨 Renderizar steering behaviors
+     */
+    renderSteeringBehaviors(ctx) {
+        const debugConfig = this.steeringConfig.debug;
+        
+        // Renderizar spatial hash si está habilitado
+        if (debugConfig.showSpatialGrid) {
+            this.spatialHash.renderDebug(ctx);
+        }
+        
+        // Renderizar flotas a través del adaptador
+        this.fleetAdapter.renderAllFleets(ctx, debugConfig);
+        
+        // Renderizar información de debug
+        if (debugConfig.showFleetConnections) {
+            this.renderSteeringDebugInfo(ctx);
+        }
+    }
+
+    /**
+     * 🎨 Renderizar navegación legacy
+     */
+    renderLegacyNavigation(ctx) {
+        const fleets = this.gameEngine.getAllFleets();
+        this.updateVisualization(fleets);
+    }
+
+    /**
+     * 🎨 Renderizar información de debug de steering
+     */
+    renderSteeringDebugInfo(ctx) {
+        if (!this.steeringConfig.debug.showFleetConnections) return;
+        
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px monospace';
+        ctx.globalAlpha = 0.8;
+        
+        const debugInfo = this.fleetAdapter.getDebugInfo();
+        const spatialStats = this.spatialHash.getStats();
+        
+        const debugText = [
+            `🧭 STEERING NAVIGATION`,
+            `Flotas: ${debugInfo.adapter.activeFleets}`,
+            `Naves: ${debugInfo.totalVehicles}`,
+            `Evadiendo: ${debugInfo.avoidingVehicles}`,
+            `Spatial Queries: ${spatialStats.queriesPerFrame}`,
+            `Formaciones: ${Object.keys(debugInfo.formations).join(', ')}`
+        ];
+        
+        let y = 20;
+        debugText.forEach(text => {
+            ctx.fillText(text, 10, y);
+            y += 15;
+        });
+        
+        ctx.restore();
+    }
+
+    /**
+     * 🔄 Cambiar entre modos de navegación
+     */
+    toggleNavigationMode() {
+        this.useSteeringBehaviors = !this.useSteeringBehaviors;
+        this.legacyMode = !this.useSteeringBehaviors;
+        
+        if (this.useSteeringBehaviors) {
+            this.fleetAdapter.integrateWithGameEngine();
+            console.log('🔄 Cambiado a Steering Behaviors');
+        } else {
+            this.fleetAdapter.restoreGameEngine();
+            console.log('🔄 Cambiado a navegación Legacy');
+        }
+    }
+
+    /**
+     * 🎯 Configurar modo de navegación
+     */
+    setNavigationMode(useSteeringBehaviors) {
+        if (this.useSteeringBehaviors === useSteeringBehaviors) return;
+        
+        this.toggleNavigationMode();
+    }
+
+    /**
+     * 🔧 Obtener configuración actual
+     */
+    getCurrentConfig() {
+        return this.useSteeringBehaviors ? this.steeringConfig : this.config;
+    }
+
+    /**
+     * 📊 Obtener estadísticas expandidas
+     */
+    getExpandedStats() {
+        const baseStats = this.getStats();
+        
+        if (this.useSteeringBehaviors) {
+            const adapterStats = this.fleetAdapter.getStats();
+            const spatialStats = this.spatialHash.getStats();
+            
+            return {
+                ...baseStats,
+                mode: 'steering',
+                steering: {
+                    fleets: adapterStats.activeFleets,
+                    vehicles: adapterStats.totalVehicles,
+                    averageFleetSize: adapterStats.averageFleetSize,
+                    formations: this.stats.formationsActive
+                },
+                spatial: {
+                    cells: spatialStats.totalCells,
+                    objects: spatialStats.totalObjects,
+                    queriesPerFrame: spatialStats.queriesPerFrame,
+                    memoryKB: spatialStats.memoryUsage.totalKB
+                }
+            };
+        } else {
+            return {
+                ...baseStats,
+                mode: 'legacy'
+            };
+        }
     }
 
     /**

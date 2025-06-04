@@ -127,6 +127,12 @@ export const GAME_EVENTS = {
     FLEET_LAUNCHED: 'fleet:launched',
     FLEET_ARRIVED: 'fleet:arrived',
     FLEET_DESTROYED: 'fleet:destroyed',
+    
+    // 🆕 NUEVOS EVENTOS DE ENJAMBRE - Fase 3
+    FLEET_SWARM_COMPLETE: 'fleet:swarm:complete',
+    FLEET_WAVE_LAUNCHED: 'fleet:wave:launched',
+    FLEET_FORMATION_CHANGED: 'fleet:formation:changed',
+    FLEET_STEERING_ACTIVATED: 'fleet:steering:activated',
 
     // Battle Events
     BATTLE_START: 'battle:start',
@@ -145,7 +151,12 @@ export const GAME_EVENTS = {
     // Visual Events
     EFFECT_EXPLOSION: 'effect:explosion',
     EFFECT_TRAIL: 'effect:trail',
-    EFFECT_CONQUEST: 'effect:conquest'
+    EFFECT_CONQUEST: 'effect:conquest',
+    
+    // 🆕 NUEVOS EFECTOS VISUALES DE STEERING - Fase 3
+    EFFECT_SWARM_LAUNCH: 'effect:swarm:launch',
+    EFFECT_FORMATION_CHANGE: 'effect:formation:change',
+    EFFECT_OBSTACLE_AVOIDANCE: 'effect:obstacle:avoidance'
 };
 
 // Crear instancia global
