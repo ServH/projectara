@@ -881,7 +881,7 @@ export class GameEngine {
         if (this.debugMode) {
             console.log('💥 GameEngine destruido');
         }
-    }
+        }
         
     // 🧪 MÉTODOS DE TESTING SEPARADOS (solo para desarrollo)
     
