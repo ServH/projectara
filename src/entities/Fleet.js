@@ -8,15 +8,24 @@
 import { Vector2D } from '../utils/Vector2D.js';
 import { SteeringVehicle } from './SteeringVehicle.js';
 import { GALCON_STEERING_CONFIG_PROBADA } from '../config/SteeringConfig.js';
+import eventBus, { GAME_EVENTS } from '../core/EventBus.js';
 
 export class Fleet {
-    constructor(startPosition, targetPosition, config = GALCON_STEERING_CONFIG_PROBADA, fleetSize = 15) {
+    constructor(startPosition, targetPosition, config = GALCON_STEERING_CONFIG_PROBADA, fleetSize = 15, fleetData = {}) {
         // Propiedades básicas
         this.id = Fleet.generateId();
         this.startPosition = startPosition.copy();
         this.targetPosition = targetPosition.copy();
         this.config = config;
-        this.fleetSize = Math.min(fleetSize, config.galcon.maxFleetSize);
+        
+        // 🔧 CORREGIDO: Usar exactamente el número de naves enviadas, sin limitación artificial
+        this.fleetSize = fleetSize; // Respetar el número exacto de naves del planeta
+        
+        // 🔧 NUEVO: Propiedades para mecánicas del juego
+        this.owner = fleetData.owner || 'player';
+        this.fromPlanet = fleetData.fromPlanet || null;
+        this.toPlanet = fleetData.toPlanet || null;
+        this.color = fleetData.color || '#00ff88';
         
         // Propiedades de formación
         this.formation = config.fleet.formation || 'spread';
@@ -61,9 +70,18 @@ export class Fleet {
         // Crear posiciones de formación inicial
         const formationPositions = this.calculateFormationPositions(this.startPosition, this.formation);
         
+        // 🔧 NUEVO: Preparar datos de flota para los vehículos
+        const fleetDataForVehicles = {
+            toPlanet: this.toPlanet,
+            targetPlanet: this.toPlanet, // Asegurar que targetPlanet esté disponible
+            owner: this.owner,
+            fromPlanet: this.fromPlanet,
+            color: this.color
+        };
+        
         for (let i = 0; i < this.fleetSize; i++) {
             const vehiclePosition = formationPositions[i] || this.startPosition.copy();
-            const vehicle = new SteeringVehicle(vehiclePosition, this.targetPosition, this.config);
+            const vehicle = new SteeringVehicle(vehiclePosition, this.targetPosition, this.config, fleetDataForVehicles);
             
             // Configurar propiedades específicas de flota
             vehicle.fleetId = this.id;
@@ -214,52 +232,53 @@ export class Fleet {
         
         this.frameCounter++;
         
-        // Actualizar posición promedio y velocidad
-        this.updateAverageProperties();
-        
         // Actualizar cada vehículo
         this.vehicles.forEach((vehicle, index) => {
-            if (vehicle.hasArrived) return;
-            
-            // Obtener obstáculos cercanos usando spatial hash
-            const nearbyObstacles = spatialHash ? 
-                spatialHash.getNearby(vehicle.position, this.config.sensors.length * 2) : 
-                obstacles;
-            
-            // Calcular fuerzas de boids si están habilitadas
-            let boidsForces = Vector2D.zero();
-            if (this.enableBoids && this.vehicles.length > 1) {
-                boidsForces = this.calculateBoidsForces(vehicle, index);
+            if (!vehicle.hasArrived) {
+                // Calcular fuerzas de boids si están habilitadas
+                let boidsForces = Vector2D.zero();
+                if (this.enableBoids) {
+                    boidsForces = this.calculateBoidsForces(vehicle, index);
+                }
+                
+                // Actualizar vehículo con boids
+                this.updateVehicleWithBoids(vehicle, deltaTime, obstacles, boidsForces);
             }
-            
-            // Actualizar vehículo con fuerzas adicionales
-            this.updateVehicleWithBoids(vehicle, deltaTime, nearbyObstacles, boidsForces);
         });
         
-        // Verificar si la flota ha llegado
+        // 🔧 NUEVO: Limpiar naves que han llegado individualmente
+        this.cleanupArrivedVehicles();
+        
+        // Actualizar propiedades promedio
+        this.updateAverageProperties();
+        
+        // Verificar llegada de la flota
         this.checkFleetArrival();
         
         // Actualizar información de debug
-        if (this.frameCounter % 30 === 0) {
-            this.updateDebugInfo();
-        }
+        this.updateDebugInfo();
     }
 
     /**
      * 🔄 Actualizar vehículo con comportamientos de boids
      */
     updateVehicleWithBoids(vehicle, deltaTime, obstacles, boidsForces) {
-        // Actualizar steering normal
-        vehicle.update(deltaTime, obstacles, this.config);
+        // Obtener obstáculos cercanos usando spatial hash si está disponible
+        const nearbyObstacles = obstacles;
         
-        // Aplicar fuerzas de boids si están habilitadas
-        if (this.enableBoids && boidsForces.magnitude() > 0.1) {
-            // Limitar la influencia de boids para mantener steering principal
-            const maxBoidsInfluence = vehicle.maxForce * 0.3; // Máximo 30% de influencia
-            boidsForces.limit(maxBoidsInfluence);
+        // 🔧 NUEVO: Obtener otras naves de la flota para espaciado dinámico
+        const otherVehicles = this.vehicles.filter(v => v !== vehicle && !v.hasArrived);
+        
+        // Actualizar vehículo con información de otras naves
+        vehicle.update(deltaTime, nearbyObstacles, this.config, otherVehicles);
+        
+        // Aplicar fuerzas de boids si están disponibles
+        if (boidsForces && boidsForces.magnitude() > 0) {
+            // Aplicar fuerzas de boids como aceleración adicional
+            const boidsAcceleration = Vector2D.multiply(boidsForces, deltaTime);
+            vehicle.velocity.add(boidsAcceleration);
             
-            // Aplicar fuerzas de boids suavemente
-            vehicle.velocity.add(Vector2D.multiply(boidsForces, deltaTime * 0.5));
+            // Limitar velocidad después de aplicar boids
             vehicle.velocity.limit(vehicle.maxSpeed);
         }
     }
@@ -363,16 +382,92 @@ export class Fleet {
     }
 
     /**
-     * 🎯 Verificar llegada de la flota
+     * 🎯 Verificar si la flota ha llegado al destino
      */
     checkFleetArrival() {
-        const arrivedCount = this.vehicles.filter(v => v.hasArrived).length;
-        const arrivalThreshold = Math.ceil(this.vehicles.length * 0.8); // 80% debe llegar
+        if (this.hasArrived) return;
         
-        if (arrivedCount >= arrivalThreshold) {
+        // Contar vehículos que han llegado
+        const arrivedVehicles = this.vehicles.filter(v => v.hasArrived);
+        const totalVehicles = this.vehicles.length;
+        
+        // 🔧 NUEVO: Para flotas de 1 nave, verificar inmediatamente
+        if (totalVehicles === 1 && arrivedVehicles.length === 1) {
             this.hasArrived = true;
-            console.log(`🎯 Fleet ${this.id} ha llegado: ${arrivedCount}/${this.vehicles.length} naves`);
+            console.log(`🎯 ¡NAVE INDIVIDUAL LLEGÓ! ${this.id}`);
+            this.processFleetArrival();
+            return;
         }
+        
+        // Para flotas múltiples, verificar si todas han llegado
+        if (arrivedVehicles.length === totalVehicles && totalVehicles > 1) {
+            this.hasArrived = true;
+            console.log(`🎯 ¡FLOTA COMPLETA LLEGÓ! ${this.id} - ${totalVehicles} vehículos`);
+            this.processFleetArrival();
+            return;
+        }
+        
+        // 🔧 NUEVO: Logging de progreso solo para flotas múltiples
+        if (arrivedVehicles.length > 0 && totalVehicles > 1) {
+            console.log(`🎯 Progreso de llegada: ${arrivedVehicles.length}/${totalVehicles} vehículos llegaron`);
+        }
+        
+        // 🔧 NUEVO: Fallback por proximidad para cualquier flota
+        if (!this.hasArrived && this.averagePosition) {
+            const distanceToTarget = this.averagePosition.distance(this.targetPosition);
+            const arrivalThreshold = this.targetPlanet ? (this.targetPlanet.radius + 25) : 45;
+            
+            if (distanceToTarget <= arrivalThreshold) {
+                console.log(`🎯 Flota ${this.id} llegó por proximidad (distancia: ${distanceToTarget.toFixed(1)}, umbral: ${arrivalThreshold})`);
+                this.hasArrived = true;
+                this.processFleetArrival();
+            }
+        }
+    }
+
+    /**
+     * 🎯 Procesar llegada de flota al destino
+     */
+    processFleetArrival() {
+        if (!this.hasArrived || this.arrivalProcessed) return;
+        
+        // Marcar como procesado para evitar múltiples eventos
+        this.arrivalProcessed = true;
+        
+        // 🔧 NUEVO: Datos completos para el evento de llegada
+        const arrivalData = {
+            fleetId: this.id,
+            legacyId: this.legacyId || this.id,
+            ships: this.fleetSize,
+            owner: this.owner,
+            fromPlanet: this.fromPlanet,
+            toPlanet: this.toPlanet,
+            targetPlanet: this.targetPlanet,
+            color: this.color,
+            arrivalTime: Date.now(),
+            // Datos adicionales para compatibilidad
+            x: this.averagePosition.x,
+            y: this.averagePosition.y,
+            targetX: this.targetPosition.x,
+            targetY: this.targetPosition.y
+        };
+        
+        console.log(`🎯 ¡FLOTA LLEGÓ AL DESTINO! Emitiendo FLEET_ARRIVED`);
+        console.log(`📊 Datos de llegada:`, {
+            fleetId: arrivalData.fleetId,
+            ships: arrivalData.ships,
+            owner: arrivalData.owner,
+            from: arrivalData.fromPlanet,
+            to: arrivalData.toPlanet
+        });
+        
+        // 🔧 CRÍTICO: Emitir evento FLEET_ARRIVED para que GameEngine procese la conquista
+        eventBus.emit(GAME_EVENTS.FLEET_ARRIVED, arrivalData);
+        
+        console.log(`✅ Evento FLEET_ARRIVED emitido para flota ${this.id}`);
+        
+        // Marcar flota como inactiva para cleanup
+        this.isActive = false;
     }
 
     /**
@@ -418,125 +513,15 @@ export class Fleet {
     }
 
     /**
-     * 🎨 Renderizar flota
+     * 🎨 Renderizar flota (SIN DEBUG)
      */
     render(ctx, debugConfig) {
         if (!this.isActive) return;
         
-        // Renderizar conexiones de flota si está habilitado
-        if (debugConfig.showFleetConnections) {
-            this.renderFleetConnections(ctx);
-        }
-        
-        // Renderizar centro de flota si está habilitado
-        if (debugConfig.showFleetCenter) {
-            this.renderFleetCenter(ctx);
-        }
-        
-        // Renderizar cada vehículo
+        // Solo renderizar cada vehículo
         this.vehicles.forEach(vehicle => {
             vehicle.render(ctx, debugConfig);
         });
-        
-        // Renderizar información de debug
-        if (debugConfig.showFleetConnections) {
-            this.renderDebugInfo(ctx);
-        }
-    }
-
-    /**
-     * 🎨 Renderizar conexiones entre vehículos
-     */
-    renderFleetConnections(ctx) {
-        if (this.vehicles.length < 2) return;
-        
-        ctx.save();
-        ctx.strokeStyle = '#444444';
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.3;
-        
-        const perceptionRadius = this.spacing * 2;
-        
-        for (let i = 0; i < this.vehicles.length; i++) {
-            for (let j = i + 1; j < this.vehicles.length; j++) {
-                const v1 = this.vehicles[i];
-                const v2 = this.vehicles[j];
-                
-                if (v1.hasArrived || v2.hasArrived) continue;
-                
-                const distance = v1.position.distance(v2.position);
-                
-                if (distance < perceptionRadius) {
-                    ctx.beginPath();
-                    ctx.moveTo(v1.position.x, v1.position.y);
-                    ctx.lineTo(v2.position.x, v2.position.y);
-                    ctx.stroke();
-                }
-            }
-        }
-        
-        ctx.restore();
-    }
-
-    /**
-     * 🎨 Renderizar centro de flota
-     */
-    renderFleetCenter(ctx) {
-        ctx.save();
-        ctx.fillStyle = '#ffaa00';
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.7;
-        
-        // Círculo del centro
-        ctx.beginPath();
-        ctx.arc(this.averagePosition.x, this.averagePosition.y, 8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        
-        // Flecha de velocidad promedio
-        if (this.averageVelocity.magnitude() > 0.1) {
-            const velocityScale = 0.5;
-            const scaledVelocity = Vector2D.multiply(this.averageVelocity, velocityScale);
-            const end = Vector2D.add(this.averagePosition, scaledVelocity);
-            
-            ctx.strokeStyle = '#ffaa00';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(this.averagePosition.x, this.averagePosition.y);
-            ctx.lineTo(end.x, end.y);
-            ctx.stroke();
-        }
-        
-        ctx.restore();
-    }
-
-    /**
-     * 🎨 Renderizar información de debug
-     */
-    renderDebugInfo(ctx) {
-        ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px monospace';
-        ctx.globalAlpha = 0.8;
-        
-        const debugText = [
-            `Fleet ${this.id} - ${this.formation}`,
-            `Naves: ${this.debugInfo.totalVehicles}`,
-            `Llegadas: ${this.debugInfo.arrivedVehicles}`,
-            `Evadiendo: ${this.debugInfo.avoidingVehicles}`,
-            `Vel. Prom: ${this.debugInfo.averageSpeed.toFixed(1)}`
-        ];
-        
-        const textX = this.averagePosition.x + 15;
-        let textY = this.averagePosition.y - 40;
-        
-        debugText.forEach(text => {
-            ctx.fillText(text, textX, textY);
-            textY += 15;
-        });
-        
-        ctx.restore();
     }
 
     /**
@@ -616,5 +601,113 @@ export class Fleet {
                 this.leader.isLeader = true;
             }
         }
+    }
+
+    /**
+     * 🎨 Obtener datos para renderizado (compatibilidad con CanvasRenderer)
+     */
+    getRenderData() {
+        // Si la flota no está activa o ha llegado, no renderizar
+        if (!this.isActive || this.hasArrived) {
+            return null;
+        }
+
+        // Renderizar cada vehículo individual como una "flota" separada
+        const renderData = [];
+        
+        this.vehicles.forEach(vehicle => {
+            if (!vehicle.hasArrived) {
+                renderData.push({
+                    id: `${this.id}_${vehicle.id || 'vehicle'}`,
+                    x: vehicle.position.x,
+                    y: vehicle.position.y,
+                    targetX: vehicle.target.x,
+                    targetY: vehicle.target.y,
+                    ships: 1, // Cada vehículo representa 1 nave
+                    owner: this.owner,
+                    color: this.color,
+                    hasArrived: vehicle.hasArrived,
+                    // Datos adicionales para efectos visuales
+                    organicIntensity: vehicle.isAvoiding ? vehicle.avoidanceUrgency : 0,
+                    trail: vehicle.trail || [],
+                    formation: this.formation,
+                    isLeader: vehicle.isLeader || false
+                });
+            }
+        });
+
+        return renderData;
+    }
+
+    /**
+     * 🔧 NUEVO: Limpiar naves que han llegado individualmente
+     */
+    cleanupArrivedVehicles() {
+        const arrivedVehicles = this.vehicles.filter(v => v.hasArrived);
+        
+        if (arrivedVehicles.length === 0) return;
+        
+        // Para cada nave que ha llegado, verificar si debe ser eliminada
+        arrivedVehicles.forEach(vehicle => {
+            // Solo eliminar si ha estado llegada por un tiempo (para evitar eliminación prematura)
+            const framesArrived = this.frameCounter - (vehicle.arrivalFrame || this.frameCounter);
+            
+            if (framesArrived > 30) { // 30 frames = ~0.5 segundos
+                // Emitir evento de llegada individual si es necesario
+                if (!vehicle.arrivalProcessed) {
+                    this.processIndividualVehicleArrival(vehicle);
+                    vehicle.arrivalProcessed = true;
+                }
+            }
+        });
+        
+        // Eliminar naves que han llegado y han sido procesadas
+        const vehiclesToRemove = this.vehicles.filter(v => 
+            v.hasArrived && 
+            v.arrivalProcessed && 
+            (this.frameCounter - (v.arrivalFrame || this.frameCounter)) > 60 // 1 segundo
+        );
+        
+        if (vehiclesToRemove.length > 0) {
+            // Remover vehículos de la lista
+            this.vehicles = this.vehicles.filter(v => !vehiclesToRemove.includes(v));
+            
+            console.log(`🗑️ Fleet ${this.id}: ${vehiclesToRemove.length} naves eliminadas al llegar (${this.vehicles.length} restantes)`);
+            
+            // Si no quedan vehículos, marcar flota como completamente eliminada
+            if (this.vehicles.length === 0) {
+                this.hasArrived = true;
+                this.isActive = false;
+                console.log(`✅ Fleet ${this.id} completamente eliminada - todas las naves llegaron`);
+            }
+        }
+    }
+    
+    /**
+     * 🔧 NUEVO: Procesar llegada de nave individual
+     */
+    processIndividualVehicleArrival(vehicle) {
+        // Para naves individuales, contribuir inmediatamente al ataque/refuerzo
+        const arrivalData = {
+            fleetId: this.id,
+            vehicleId: vehicle.legacyId || `${this.id}_vehicle`,
+            ships: 1, // Una nave individual
+            owner: this.owner,
+            fromPlanet: this.fromPlanet,
+            toPlanet: this.toPlanet,
+            targetPlanet: this.targetPlanet,
+            color: this.color,
+            arrivalTime: Date.now(),
+            isIndividualArrival: true,
+            x: vehicle.position.x,
+            y: vehicle.position.y,
+            targetX: this.targetPosition.x,
+            targetY: this.targetPosition.y
+        };
+        
+        console.log(`🎯 Vehículo individual llegó: ${vehicle.legacyId || 'unknown'}`);
+        
+        // Emitir evento de llegada individual
+        eventBus.emit(GAME_EVENTS.FLEET_ARRIVED, arrivalData);
     }
 } 

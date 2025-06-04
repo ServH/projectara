@@ -503,6 +503,11 @@ export class CanvasRenderer {
         // Renderizar con LOD y culling
         this.renderWithOptimizations(renderData);
         
+        // 🔧 NUEVO: Renderizar NavigationSystem (steering behaviors debug)
+        if (this.gameEngine.navigationSystem) {
+            this.gameEngine.navigationSystem.render(this.ctx);
+        }
+        
         // 🎮 NUEVO: Renderizar overlays de feedback interactivo
         this.renderOverlays();
         

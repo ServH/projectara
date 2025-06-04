@@ -77,7 +77,7 @@ export class SpatialHashSystem {
         // Guardar las celdas que ocupa este objeto
         this.objects.set(object, {
             cells: cells,
-            position: position.copy(),
+            position: { x: position.x, y: position.y },
             radius: radius
         });
         
@@ -126,12 +126,12 @@ export class SpatialHashSystem {
             // Actualizar datos del objeto
             this.objects.set(object, {
                 cells: newCells,
-                position: newPosition.copy(),
+                position: { x: newPosition.x, y: newPosition.y },
                 radius: newRadius
             });
         } else {
             // Solo actualizar posición sin cambiar celdas
-            oldData.position = newPosition.copy();
+            oldData.position = { x: newPosition.x, y: newPosition.y };
             oldData.radius = newRadius;
         }
     }
@@ -175,7 +175,8 @@ export class SpatialHashSystem {
                     // Verificar distancia real
                     const objectData = this.objects.get(object);
                     if (objectData) {
-                        const distance = position.distance(objectData.position);
+                        // 🔧 CORREGIDO: Calcular distancia manualmente
+                        const distance = this.calculateDistance(position, objectData.position);
                         if (distance <= radius + objectData.radius) {
                             nearbyObjects.add(object);
                         }
@@ -245,7 +246,8 @@ export class SpatialHashSystem {
                     const data2 = this.objects.get(obj2);
                     
                     if (data1 && data2) {
-                        const distance = data1.position.distance(data2.position);
+                        // 🔧 CORREGIDO: Calcular distancia manualmente
+                        const distance = this.calculateDistance(data1.position, data2.position);
                         const minDistance = data1.radius + data2.radius;
                         
                         if (distance < minDistance) {
@@ -402,5 +404,14 @@ export class SpatialHashSystem {
     destroy() {
         this.clear();
         console.log('💥 SpatialHashSystem destruido');
+    }
+
+    /**
+     * 📐 Calcular distancia entre dos posiciones
+     */
+    calculateDistance(pos1, pos2) {
+        const dx = pos1.x - pos2.x;
+        const dy = pos1.y - pos2.y;
+        return Math.sqrt(dx * dx + dy * dy);
     }
 } 

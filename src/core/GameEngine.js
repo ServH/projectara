@@ -15,15 +15,12 @@
 
 import eventBus, { GAME_EVENTS } from './EventBus.js';
 import Planet from '../entities/Planet.js';
-import Fleet from '../entities/Fleet.js';
+import { Fleet } from '../entities/Fleet.js';
 import AISystem from '../systems/AISystem.js';
 import PercentageSelector from '../ui/PercentageSelector.js';
 import FleetRedirectionSystem from '../systems/FleetRedirectionSystem.js';
 import PerformanceProfiler from '../debug/PerformanceProfiler.js';
 import CullingSystem from '../visual/CullingSystem.js';
-import MemoryManager from '../systems/MemoryManager.js';
-import SpatialGrid from '../systems/SpatialGrid.js';
-import FleetPhysics from '../systems/FleetPhysics.js';
 import { GAME_CONFIG } from '../config/GameConfig.js';
 import { BALANCE_CONFIG } from '../config/BalanceConfig.js';
 import { FleetFormationSystem } from '../systems/FleetFormationSystem.js';
@@ -50,9 +47,6 @@ export class GameEngine {
         // Sistemas de optimización
         this.performanceProfiler = null;
         this.cullingSystem = null;
-        this.memoryManager = null;
-        this.spatialGrid = null;
-        this.fleetPhysics = null;
         
         // 🚀 OPTIMIZACIÓN: Cache de configuración
         this.config = this.initializeConfig();
@@ -124,8 +118,6 @@ export class GameEngine {
                 enableProfiling: true,
                 enableCulling: true,
                 enableSpatialGrid: true,
-                enableMemoryManager: true,
-                enableFleetPhysics: false,
                 maxPlanets: 50
             }
         };
@@ -197,7 +189,7 @@ export class GameEngine {
         this.fleetRedirectionSystem = new FleetRedirectionSystem(this);
         
         // Inicializar FleetFormationSystem
-        this.fleetFormationSystem = new FleetFormationSystem();
+        this.fleetFormationSystem = new FleetFormationSystem(this);
         
         // Inicializar sistemas de optimización
         if (this.config.performance.enableProfiling) {
@@ -210,22 +202,6 @@ export class GameEngine {
                 this.config.world.width, 
                 this.config.world.height
             );
-        }
-        
-        if (this.config.performance.enableMemoryManager) {
-            this.memoryManager = new MemoryManager();
-        }
-        
-        if (this.config.performance.enableSpatialGrid) {
-            this.spatialGrid = new SpatialGrid(
-                this.config.world.width, 
-                this.config.world.height,
-                100
-            );
-        }
-        
-        if (this.config.performance.enableFleetPhysics) {
-            this.fleetPhysics = new FleetPhysics();
         }
         
         // 🧭 Inicializar sistema de navegación inteligente
@@ -459,25 +435,37 @@ export class GameEngine {
         if (this.isPaused) return;
         
         // 🚀 OPTIMIZACIÓN: Spatial grid optimizado (solo limpiar si es necesario)
-        if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
-            this.spatialGrid.clear();
+        if (this.config.performance.enableSpatialGrid && this.cullingSystem) {
+            this.cullingSystem.clear();
         }
         
         // Actualizar planetas
         for (const planet of this.planets.values()) {
             planet.update(dt);
             
-            if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
-                this.spatialGrid.insert(planet);
+            if (this.config.performance.enableSpatialGrid && this.cullingSystem) {
+                this.cullingSystem.insert(planet);
             }
         }
         
         // Actualizar flotas
         for (const fleet of this.fleets.values()) {
-            fleet.update(dt);
+            // 🔧 CORREGIDO: Solo actualizar flotas legacy, las de steering behaviors las maneja NavigationSystem
+            if (fleet.update && typeof fleet.update === 'function') {
+                // Verificar si es una flota legacy (tiene método update con 1 parámetro)
+                // vs flota steering behaviors (tiene método update con 3 parámetros)
+                if (fleet.constructor.name === 'Fleet' && fleet.vehicles) {
+                    // Es una flota de steering behaviors - NO actualizar aquí
+                    // El NavigationSystem ya la maneja con obstacles y spatialHash
+                    continue;
+                } else {
+                    // Es una flota legacy - actualizar normalmente
+                    fleet.update(dt);
+                }
+            }
             
-            if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
-                this.spatialGrid.insert(fleet);
+            if (this.config.performance.enableSpatialGrid && this.cullingSystem) {
+                this.cullingSystem.insert(fleet);
             }
         }
         
@@ -488,8 +476,8 @@ export class GameEngine {
         }
         
         // Actualizar cache del spatial grid
-        if (this.config.performance.enableSpatialGrid && this.spatialGrid) {
-            this.spatialGrid.updateCache();
+        if (this.config.performance.enableSpatialGrid && this.cullingSystem) {
+            this.cullingSystem.updateCache();
         }
         
         // Limpiar flotas que han llegado
@@ -699,15 +687,82 @@ export class GameEngine {
             
             organicFleets.forEach(fleet => {
                 this.fleets.set(fleet.id, fleet);
+                
+                // 🔧 CORREGIDO: Registrar también en LegacyFleetAdapter para que NavigationSystem las encuentre
+                if (this.navigationSystem && this.navigationSystem.fleetAdapter) {
+                    // Crear datos legacy para el adaptador
+                    const legacyData = {
+                        id: fleet.legacyId || fleet.id,
+                        x: fleet.startPosition.x,
+                        y: fleet.startPosition.y,
+                        startX: fleet.startPosition.x,
+                        startY: fleet.startPosition.y,
+                        targetX: fleet.targetPosition.x,
+                        targetY: fleet.targetPosition.y,
+                        ships: fleet.fleetSize,
+                        owner: fleet.owner,
+                        color: fleet.color,
+                        fromPlanet: fleet.fromPlanet,
+                        toPlanet: fleet.toPlanet,
+                        speed: 50,
+                        launchTime: Date.now()
+                    };
+                    
+                    // Mapear la flota en el adaptador
+                    this.navigationSystem.fleetAdapter.fleetMap.set(legacyData.id, fleet);
+                    this.navigationSystem.fleetAdapter.legacyFleetMap.set(fleet, legacyData);
+                }
             });
             
             if (this.debugMode) {
-                console.log(`🌊 Formación orgánica: ${organicFleets.length} naves`);
+                console.log(`🌊 Formación orgánica: ${organicFleets.length} naves registradas en NavigationSystem`);
             }
         } else {
-        const fleet = new Fleet(data);
-        this.fleets.set(fleet.id, fleet);
-    }
+            // 🔧 USAR LEGACYFLEETADAPTER para compatibilidad
+            if (this.navigationSystem && this.navigationSystem.fleetAdapter) {
+                const newFleet = this.navigationSystem.fleetAdapter.createFromLegacyData(data);
+                this.fleets.set(data.id, newFleet);
+            } else {
+                // Fallback: crear flota legacy simple
+                const legacyFleet = {
+                    id: data.id,
+                    x: data.x,
+                    y: data.y,
+                    targetX: data.targetX,
+                    targetY: data.targetY,
+                    ships: data.ships,
+                    owner: data.owner,
+                    color: data.color,
+                    speed: data.speed || 50,
+                    hasArrived: false,
+                    update: function(deltaTime) {
+                        // Movimiento simple hacia el objetivo
+                        const dx = this.targetX - this.x;
+                        const dy = this.targetY - this.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance > 5) {
+                            this.x += (dx / distance) * this.speed * deltaTime;
+                            this.y += (dy / distance) * this.speed * deltaTime;
+                        } else {
+                            this.hasArrived = true;
+                        }
+                    },
+                    getRenderData: function() {
+                        return {
+                            id: this.id,
+                            x: this.x,
+                            y: this.y,
+                            ships: this.ships,
+                            owner: this.owner,
+                            color: this.color,
+                            hasArrived: this.hasArrived
+                        };
+                    }
+                };
+                this.fleets.set(data.id, legacyFleet);
+            }
+        }
 
         this.stats.fleetsCount = this.fleets.size;
     }
@@ -830,9 +885,24 @@ export class GameEngine {
             fleets = this.cullingSystem.cullFleets(this.fleets);
         }
         
+        // 🔧 CORREGIDO: Manejar flotas de steering behaviors que devuelven arrays
+        const fleetRenderData = [];
+        fleets.forEach(fleet => {
+            const renderData = fleet.getRenderData();
+            if (renderData) {
+                if (Array.isArray(renderData)) {
+                    // Flota de steering behaviors - agregar cada vehículo
+                    fleetRenderData.push(...renderData);
+                } else {
+                    // Flota legacy - agregar directamente
+                    fleetRenderData.push(renderData);
+                }
+            }
+        });
+        
         return {
             planets: planets.map(p => p.getRenderData()),
-            fleets: fleets.map(f => f.getRenderData()),
+            fleets: fleetRenderData,
             gameState: this.gameState,
             stats: this.stats,
             cullingStats: this.cullingSystem ? this.cullingSystem.getStats() : null
@@ -905,12 +975,54 @@ export class GameEngine {
             toPlanet: null
         };
 
-        const fleet = new Fleet(fleetData);
-        this.fleets.set(fleet.id, fleet);
-        
-        console.log(`🧪 Flota de test creada: ${fleet.id} (${ships} naves de ${owner})`);
-        return fleet;
+        // 🔧 USAR LEGACYFLEETADAPTER para compatibilidad
+        let fleet;
+        if (this.navigationSystem && this.navigationSystem.legacyFleetAdapter) {
+            fleet = this.navigationSystem.legacyFleetAdapter.createFromLegacyData(fleetData);
+        } else {
+            // Fallback: crear flota legacy simple
+            fleet = {
+                id: fleetData.id,
+                x: fleetData.x,
+                y: fleetData.y,
+                targetX: fleetData.targetX,
+                targetY: fleetData.targetY,
+                ships: fleetData.ships,
+                owner: fleetData.owner,
+                color: fleetData.color,
+                speed: fleetData.speed,
+                hasArrived: false,
+                update: function(deltaTime) {
+                    const dx = this.targetX - this.x;
+                    const dy = this.targetY - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance > 5) {
+                        this.x += (dx / distance) * this.speed * deltaTime;
+                        this.y += (dy / distance) * this.speed * deltaTime;
+                    } else {
+                        this.hasArrived = true;
+                    }
+                },
+                getRenderData: function() {
+                    return {
+                        id: this.id,
+                        x: this.x,
+                        y: this.y,
+                        ships: this.ships,
+                        owner: this.owner,
+                        color: this.color,
+                        hasArrived: this.hasArrived
+                    };
+                }
+            };
         }
+        
+        this.fleets.set(fleet.id || fleet.legacyId, fleet);
+        
+        console.log(`🧪 Flota de test creada: ${fleet.id || fleet.legacyId} (${ships} naves de ${owner})`);
+        return fleet;
+    }
         
     /**
      * 🧪 TESTING: Activar modo debug

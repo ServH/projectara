@@ -8,12 +8,26 @@
 import { Vector2D } from '../utils/Vector2D.js';
 
 export class SteeringVehicle {
-    constructor(position, target, config) {
+    constructor(position, target, config, fleetData = null) {
         // Propiedades físicas
         this.position = position.copy();
         this.velocity = Vector2D.zero();
         this.acceleration = Vector2D.zero();
         this.target = target.copy();
+        
+        // 🔧 NUEVO: Información del planeta destino y flota
+        this.fleetData = fleetData;
+        this.targetPlanet = fleetData ? fleetData.targetPlanet : null;
+        
+        // 🔧 NUEVO: Sistema de espaciado dinámico
+        this.spacingSystem = {
+            desiredPosition: null,          // Posición orbital asignada
+            orbitalAngle: Math.random() * Math.PI * 2,  // Ángulo orbital aleatorio
+            orbitalRadius: 0,               // Radio orbital calculado
+            hasOrbitalPosition: false,      // Si ya tiene posición asignada
+            spacingRadius: 12,              // Radio personal de espaciado
+            repulsionStrength: 150          // Fuerza de repulsión entre naves
+        };
         
         // Propiedades de steering
         this.maxSpeed = config.forces.maxSpeed;
@@ -24,143 +38,451 @@ export class SteeringVehicle {
         this.hasArrived = false;
         this.isAvoiding = false;
         this.wanderAngle = Math.random() * Math.PI * 2;
+        this.frameCounter = 0; // Para debugging y cleanup
         
-        // 🔄 SISTEMA DE HISTÉRESIS (ANTI-BAILOTEO)
+        // 🔧 NUEVO: Sistema de detección de atascamiento
+        this.stuckDetection = {
+            lastPosition: position.copy(),
+            stuckFrames: 0,
+            stuckThreshold: 60,     // 60 frames = ~1 segundo
+            minMovement: 2.0,       // Movimiento mínimo esperado por frame
+            escapeAttempts: 0,
+            maxEscapeAttempts: 3
+        };
+        
+        // Configuración de sensores (puede ser modificada por Fleet)
+        this.sensorConfig = config.sensors;
+        
+        // Estado de histéresis para anti-bailoteo
         this.avoidanceState = {
             isActive: false,
-            entryThreshold: 0.5,    // Umbral para ENTRAR en evasión
-            exitThreshold: 0.3,     // Umbral para SALIR de evasión
             urgency: 0,
+            entryThreshold: 0.5,    // Umbral para ENTRAR en evasión
+            exitThreshold: 0.3,     // Umbral para SALIR de evasión (histéresis)
             framesSinceLastThreat: 0
         };
         
-        // Historial para rastros
-        this.trail = [];
-        this.maxTrailLength = 30;
-        
-        // Fuerzas para debug visual
-        this.debugForces = {
-            seek: Vector2D.zero(),
-            avoidance: Vector2D.zero(),
-            resultant: Vector2D.zero()
-        };
-        
-        // Sensores
-        this.sensors = [];
-        this.updateSensors(config);
-        
-        // Debug y logging
+        // Propiedades de debug
         this.debugFrameCounter = 0;
-        this.lastLoggedThreat = null;
+        this.lastAvoidanceForce = Vector2D.zero();
+        this.sensors = [];
+        this.trail = [];
         
-        console.log(`🚀 SteeringVehicle creado en ${position.toString()}`);
+        console.log(`🚁 SteeringVehicle creado en ${position.toString()} hacia ${target.toString()}`);
     }
 
     /**
      * 🔄 Actualizar vehículo
      */
-    update(deltaTime, obstacles, config) {
+    update(deltaTime, obstacles, config, otherVehicles = []) {
         if (this.hasArrived) return;
+        
+        // 🔧 NUEVO: Incrementar contador de frames
+        this.frameCounter++;
+        
+        // 🔧 NUEVO: Detectar si la nave está atascada
+        this.detectStuckState();
         
         // Actualizar sensores
         this.updateSensors(config);
         
-        // Calcular fuerzas de steering
-        const steeringForce = this.calculateSteeringForce(obstacles, config);
+        // Calcular fuerzas de steering (ahora incluye espaciado)
+        const steeringForce = this.calculateSteeringForce(obstacles, config, otherVehicles);
         
-        // Aplicar física
-        this.acceleration = steeringForce.copy();
+        // 🔧 NUEVO: Aplicar fuerza de escape si está atascada
+        if (this.stuckDetection.stuckFrames > this.stuckDetection.stuckThreshold) {
+            const escapeForce = this.calculateEscapeForce(config);
+            steeringForce.add(escapeForce);
+        }
+        
+        // Aplicar fuerza como aceleración
+        this.acceleration = steeringForce;
+        
+        // Actualizar velocidad
         this.velocity.add(Vector2D.multiply(this.acceleration, deltaTime));
         this.velocity.limit(this.maxSpeed);
         
+        // Actualizar posición
         this.position.add(Vector2D.multiply(this.velocity, deltaTime));
-        
-        // Actualizar rastro
-        this.updateTrail();
         
         // Verificar llegada
         this.checkArrival(config);
         
-        // Aplicar suavizado a las fuerzas de debug
-        const smoothing = config.forces.smoothing;
-        this.debugForces.seek.lerp(this.lastSeekForce || Vector2D.zero(), smoothing);
-        this.debugForces.avoidance.lerp(this.lastAvoidanceForce || Vector2D.zero(), smoothing);
-        this.debugForces.resultant.lerp(steeringForce, smoothing);
+        // Actualizar rastro
+        this.updateTrail();
     }
 
     /**
-     * 🧭 Calcular fuerza de steering principal (CON HISTÉRESIS)
+     * 🧮 Calcular fuerzas de steering combinadas
      */
-    calculateSteeringForce(obstacles, config) {
+    calculateSteeringForce(obstacles, config, otherVehicles = []) {
+        // Aplicar suavizado dinámico basado en la situación
+        const smoothing = this.calculateDynamicSmoothing(obstacles, config);
+        const dynamicMaxForce = this.calculateDynamicMaxForce(obstacles, config);
+        
+        // 🔧 NUEVO: Calcular fuerzas de espaciado entre naves
+        const spacingForce = this.calculateSpacingForces(otherVehicles);
+        
+        // 🔧 NUEVO: Calcular fuerza orbital cuando está cerca del destino
+        const orbitalForce = this.calculateOrbitalForce(otherVehicles);
+        
+        // Usar navegación inteligente como fuerza principal
+        const navigationForce = this.calculateIntelligentNavigation(obstacles, config);
+        
+        // Combinar todas las fuerzas
         let totalForce = Vector2D.zero();
         
-        // 1. Fuerza de evasión de obstáculos (PRIORIDAD MÁXIMA)
-        const avoidanceForce = this.calculateObstacleAvoidanceForce(obstacles, config);
-        this.lastAvoidanceForce = avoidanceForce.copy();
+        // 1. Fuerza de navegación (principal)
+        totalForce.add(Vector2D.multiply(navigationForce, 1.0));
         
-        // 2. Fuerza de búsqueda (Seek)
-        const seekForce = this.calculateSeekForce(config);
-        this.lastSeekForce = seekForce.copy();
-        
-        // 3. Fuerza de vagabundeo (si está habilitado)
-        const wanderForce = config.behavior.enableWander ? 
-            this.calculateWanderForce(config) : Vector2D.zero();
-        
-        // 🔄 SISTEMA DE HISTÉRESIS MEJORADO
-        const currentUrgency = this.avoidanceUrgency || 0;
-        
-        // Actualizar estado de evasión con histéresis
-        if (!this.avoidanceState.isActive && currentUrgency > this.avoidanceState.entryThreshold) {
-            // ENTRAR en modo evasión
-            this.avoidanceState.isActive = true;
-            this.avoidanceState.framesSinceLastThreat = 0;
-        } else if (this.avoidanceState.isActive && currentUrgency < this.avoidanceState.exitThreshold) {
-            // SALIR de modo evasión (con delay)
-            this.avoidanceState.framesSinceLastThreat++;
-            if (this.avoidanceState.framesSinceLastThreat > 10) { // 10 frames de gracia
-                this.avoidanceState.isActive = false;
-            }
-        } else if (currentUrgency > 0) {
-            this.avoidanceState.framesSinceLastThreat = 0;
+        // 2. Fuerza de espaciado entre naves (alta prioridad cuando están cerca)
+        if (spacingForce.magnitude() > 0) {
+            totalForce.add(Vector2D.multiply(spacingForce, 0.8));
         }
         
-        this.avoidanceState.urgency = currentUrgency;
-        
-        // 🚨 SISTEMA DE PRIORIDADES BALANCEADO
-        if (this.avoidanceState.isActive) {
-            // MODO EVASIÓN: Fuerzas reducidas y seek protegido
-            const reducedAvoidanceForce = Vector2D.multiply(avoidanceForce, 1.8); // 3x→1.8x
-            totalForce.add(Vector2D.multiply(reducedAvoidanceForce, config.forces.avoidanceWeight));
-            
-            // Seek protegido: reducción máxima 50%, mínimo garantizado 20%
-            const seekReduction = Math.min(0.5, currentUrgency * 0.6); // Máximo 50% reducción
-            const seekMultiplier = Math.max(0.2, 1 - seekReduction); // Mínimo 20% garantizado
-            totalForce.add(Vector2D.multiply(seekForce, config.forces.seekWeight * seekMultiplier));
-            
-            // Log solo cada 60 frames
-            if (this.debugFrameCounter % 60 === 0) {
-                console.log(`🔄 EVASIÓN SUAVE - Urgencia: ${currentUrgency.toFixed(2)}, Seek: ${(seekMultiplier * 100).toFixed(0)}%`);
-            }
-        } else {
-            // MODO NORMAL: Combinar fuerzas normalmente
-            totalForce.add(Vector2D.multiply(seekForce, config.forces.seekWeight));
-            
-            // Evasión limitada en modo normal
-            const limitedAvoidanceForce = Vector2D.multiply(avoidanceForce, 1.2); // 2x→1.2x
-            totalForce.add(Vector2D.multiply(limitedAvoidanceForce, Math.min(config.forces.avoidanceWeight, 2.5))); // Máximo 2.5x
+        // 3. Fuerza orbital (cuando está cerca del destino)
+        if (orbitalForce.magnitude() > 0) {
+            totalForce.add(Vector2D.multiply(orbitalForce, 0.6));
         }
         
-        // Agregar wander con peso fijo bajo
-        totalForce.add(Vector2D.multiply(wanderForce, 0.3));
+        // Aplicar límites dinámicos
+        totalForce.limit(dynamicMaxForce);
         
-        // Limitar fuerza total (reducida)
-        const maxAllowedForce = this.avoidanceState.isActive ? this.maxForce * 2.5 : this.maxForce; // 4x→2.5x
-        totalForce.limit(maxAllowedForce);
-        
-        // Actualizar estado de evasión para debug
-        this.isAvoiding = this.avoidanceState.isActive;
+        // Aplicar suavizado
+        totalForce.multiply(smoothing);
         
         return totalForce;
+    }
+    
+    /**
+     * 🧭 Calcular fuerza de steering principal (NAVEGACIÓN INTELIGENTE)
+     */
+    calculateIntelligentNavigation(obstacles, config) {
+        // 1. Verificar si hay una ruta directa libre
+        const directPath = this.isDirectPathClear(this.position, this.target, obstacles);
+        
+        if (directPath.isClear) {
+            // Ruta directa disponible - usar seek normal
+            return this.calculateSeekForce(config);
+        }
+        
+        // 2. Calcular waypoint inteligente para evitar obstáculos
+        const waypoint = this.calculateSmartWaypoint(obstacles, config);
+        
+        if (waypoint) {
+            // Navegar hacia el waypoint inteligente
+            const waypointDirection = Vector2D.subtract(waypoint, this.position);
+            if (waypointDirection.magnitude() > 0) {
+                waypointDirection.normalize();
+                const seekForce = Vector2D.multiply(waypointDirection, config.forces.maxForce * config.forces.seekWeight);
+                
+                // Suavizar la navegación
+                return Vector2D.multiply(seekForce, config.forces.smoothing + 0.4);
+            }
+        }
+        
+        // 3. Fallback: usar sistema de evasión original
+        const avoidanceForce = this.calculateObstacleAvoidanceForce(obstacles, config);
+        
+        // 4. Si no hay fuerza de evasión, usar seek básico para evitar que se quede parada
+        if (avoidanceForce.magnitude() === 0) {
+            const basicSeek = this.calculateSeekForce(config);
+            // Reducir la fuerza para movimiento más cauteloso cerca de obstáculos
+            return Vector2D.multiply(basicSeek, 0.3);
+        }
+        
+        return avoidanceForce;
+    }
+    
+    /**
+     * 🔍 Verificar si hay una ruta directa libre hacia el objetivo
+     */
+    isDirectPathClear(start, end, obstacles) {
+        const direction = Vector2D.subtract(end, start);
+        const distance = direction.magnitude();
+        const normalizedDirection = direction.normalize();
+        
+        // Verificar puntos a lo largo de la ruta
+        const checkPoints = Math.ceil(distance / 15); // Cada 15 píxeles
+        
+        for (let i = 1; i <= checkPoints; i++) {
+            const checkDistance = (i / checkPoints) * distance;
+            const checkPoint = Vector2D.add(start, Vector2D.multiply(normalizedDirection, checkDistance));
+            
+            // Verificar si este punto está demasiado cerca de algún obstáculo
+            for (const obstacle of obstacles) {
+                const obstaclePos = obstacle.position || obstacle;
+                const obstacleRadius = obstacle.radius || 25;
+                const safeDistance = obstacleRadius + 20; // Buffer de seguridad
+                
+                if (checkPoint.distance(obstaclePos) < safeDistance) {
+                    return { 
+                        isClear: false, 
+                        blockedAt: checkPoint, 
+                        obstacle: obstacle 
+                    };
+                }
+            }
+        }
+        
+        return { isClear: true };
+    }
+    
+    /**
+     * 🎯 Calcular waypoint inteligente para evitar obstáculos
+     */
+    calculateSmartWaypoint(obstacles, config) {
+        const targetDirection = Vector2D.subtract(this.target, this.position).normalize();
+        
+        // Encontrar el obstáculo más problemático en nuestra ruta
+        let closestThreat = null;
+        let minThreatDistance = Infinity;
+        
+        for (const obstacle of obstacles) {
+            const obstaclePos = obstacle.position || obstacle;
+            const obstacleRadius = obstacle.radius || 25;
+            
+            // Calcular si este obstáculo está en nuestra ruta hacia el objetivo
+            const toObstacle = Vector2D.subtract(obstaclePos, this.position);
+            const projectionLength = Vector2D.dot(toObstacle, targetDirection);
+            
+            // Solo considerar obstáculos que están adelante en nuestra ruta
+            if (projectionLength > 0) {
+                const projection = Vector2D.multiply(targetDirection, projectionLength);
+                const perpendicular = Vector2D.subtract(toObstacle, projection);
+                const perpendicularDistance = perpendicular.magnitude();
+                
+                // Si el obstáculo está en nuestra ruta (dentro del "túnel" hacia el objetivo)
+                if (perpendicularDistance < obstacleRadius + 30) {
+                    const threatDistance = this.position.distance(obstaclePos);
+                    if (threatDistance < minThreatDistance) {
+                        minThreatDistance = threatDistance;
+                        closestThreat = { obstacle, obstaclePos, obstacleRadius };
+                    }
+                }
+            }
+        }
+        
+        if (!closestThreat) return null;
+        
+        // Calcular waypoint para rodear el obstáculo más problemático
+        return this.calculateBypassWaypoint(closestThreat, targetDirection);
+    }
+    
+    /**
+     * 🔄 Calcular waypoint para rodear un obstáculo
+     */
+    calculateBypassWaypoint(threat, targetDirection) {
+        const { obstaclePos, obstacleRadius } = threat;
+        
+        // Calcular dirección perpendicular al objetivo
+        const perpendicular = targetDirection.perpendicular();
+        
+        // Determinar qué lado del obstáculo es mejor para rodear
+        const leftSide = Vector2D.add(obstaclePos, Vector2D.multiply(perpendicular, obstacleRadius + 40));
+        const rightSide = Vector2D.add(obstaclePos, Vector2D.multiply(perpendicular, -(obstacleRadius + 40)));
+        
+        // Elegir el lado que nos acerca más al objetivo
+        const leftDistance = leftSide.distance(this.target);
+        const rightDistance = rightSide.distance(this.target);
+        
+        const chosenSide = leftDistance < rightDistance ? leftSide : rightSide;
+        
+        // Proyectar el waypoint un poco hacia adelante en dirección al objetivo
+        const forwardOffset = Vector2D.multiply(targetDirection, 30);
+        return Vector2D.add(chosenSide, forwardOffset);
+    }
+
+    /**
+     * 🔧 NUEVO: Detectar si la nave está atascada
+     */
+    detectStuckState() {
+        const currentPosition = this.position.copy();
+        const movement = Vector2D.subtract(currentPosition, this.stuckDetection.lastPosition);
+        const distanceMoved = movement.magnitude();
+        
+        if (distanceMoved < this.stuckDetection.minMovement) {
+            this.stuckDetection.stuckFrames++;
+            
+            // Log cuando se detecta atascamiento
+            if (this.stuckDetection.stuckFrames === this.stuckDetection.stuckThreshold) {
+                console.warn(`🚫 NAVE ATASCADA detectada: ${this.stuckDetection.stuckFrames} frames sin movimiento significativo`);
+            }
+        } else {
+            // Reset contador si se mueve
+            if (this.stuckDetection.stuckFrames > 0) {
+                this.stuckDetection.stuckFrames = 0;
+                this.stuckDetection.escapeAttempts = 0;
+            }
+        }
+        
+        // Actualizar posición anterior
+        this.stuckDetection.lastPosition = currentPosition;
+    }
+    
+    /**
+     * 🔧 NUEVO: Calcular fuerza de escape cuando está atascada
+     */
+    calculateEscapeForce(config) {
+        this.stuckDetection.escapeAttempts++;
+        
+        // Fuerza aleatoria para escapar
+        const randomDirection = Vector2D.fromAngle(Math.random() * Math.PI * 2, 1);
+        const escapeForce = Vector2D.multiply(randomDirection, config.forces.maxForce * 1.5);
+        
+        console.log(`🚀 ESCAPE ATTEMPT ${this.stuckDetection.escapeAttempts}: Aplicando fuerza aleatoria ${escapeForce.magnitude().toFixed(1)}`);
+        
+        return escapeForce;
+    }
+
+    /**
+     * 🌍 NUEVO: Calcular posición orbital alrededor del planeta destino
+     */
+    calculateOrbitalPosition(otherVehicles = []) {
+        if (!this.targetPlanet || this.hasArrived) return;
+        
+        // Si ya tiene posición orbital asignada, mantenerla
+        if (this.spacingSystem.hasOrbitalPosition && this.spacingSystem.desiredPosition) {
+            return this.spacingSystem.desiredPosition;
+        }
+        
+        // Calcular radio orbital basado en el planeta y número de naves
+        const planetRadius = this.targetPlanet.radius || 30;
+        const baseOrbitalRadius = planetRadius + 25; // Buffer mínimo del planeta
+        const vehicleCount = otherVehicles.length + 1; // +1 para incluir esta nave
+        
+        // Ajustar radio orbital según número de naves para evitar superposición
+        const circumference = 2 * Math.PI * baseOrbitalRadius;
+        const spacingNeeded = this.spacingSystem.spacingRadius * 2; // Diámetro de cada nave
+        const maxVehiclesInRadius = Math.floor(circumference / spacingNeeded);
+        
+        // Si hay demasiadas naves para un radio, crear capas orbitales
+        const orbitalLayer = Math.floor((vehicleCount - 1) / maxVehiclesInRadius);
+        const finalOrbitalRadius = baseOrbitalRadius + (orbitalLayer * spacingNeeded * 1.5);
+        
+        // Calcular ángulo orbital para esta nave
+        const vehicleIndexInLayer = (vehicleCount - 1) % maxVehiclesInRadius;
+        const angleStep = (2 * Math.PI) / Math.min(vehicleCount, maxVehiclesInRadius);
+        const orbitalAngle = vehicleIndexInLayer * angleStep + this.spacingSystem.orbitalAngle * 0.1; // Pequeña variación
+        
+        // Calcular posición orbital final
+        const planetCenter = new Vector2D(this.targetPlanet.x, this.targetPlanet.y);
+        const orbitalPosition = new Vector2D(
+            planetCenter.x + Math.cos(orbitalAngle) * finalOrbitalRadius,
+            planetCenter.y + Math.sin(orbitalAngle) * finalOrbitalRadius
+        );
+        
+        // Guardar información orbital
+        this.spacingSystem.orbitalRadius = finalOrbitalRadius;
+        this.spacingSystem.orbitalAngle = orbitalAngle;
+        this.spacingSystem.desiredPosition = orbitalPosition;
+        this.spacingSystem.hasOrbitalPosition = true;
+        
+        console.log(`🌍 Posición orbital calculada: radio ${finalOrbitalRadius.toFixed(1)}, ángulo ${(orbitalAngle * 180 / Math.PI).toFixed(1)}°, capa ${orbitalLayer}`);
+        
+        return orbitalPosition;
+    }
+    
+    /**
+     * 🚀 NUEVO: Calcular fuerzas de espaciado entre naves
+     */
+    calculateSpacingForces(otherVehicles = []) {
+        let totalSpacingForce = Vector2D.zero();
+        
+        if (!otherVehicles || otherVehicles.length === 0) return totalSpacingForce;
+        
+        // Calcular repulsión con otras naves cercanas
+        otherVehicles.forEach(otherVehicle => {
+            if (otherVehicle === this || otherVehicle.hasArrived) return;
+            
+            const distance = this.position.distance(otherVehicle.position);
+            const minDistance = this.spacingSystem.spacingRadius + otherVehicle.spacingSystem.spacingRadius;
+            
+            // Solo aplicar repulsión si están demasiado cerca
+            if (distance < minDistance && distance > 0) {
+                // Calcular fuerza de repulsión
+                const repulsionDirection = Vector2D.subtract(this.position, otherVehicle.position).normalize();
+                const repulsionStrength = (minDistance - distance) / minDistance; // 0-1
+                const repulsionForce = Vector2D.multiply(
+                    repulsionDirection, 
+                    repulsionStrength * this.spacingSystem.repulsionStrength
+                );
+                
+                totalSpacingForce.add(repulsionForce);
+            }
+        });
+        
+        return totalSpacingForce;
+    }
+    
+    /**
+     * 🎯 NUEVO: Calcular fuerza hacia posición orbital (cuando está cerca del destino)
+     */
+    calculateOrbitalForce(otherVehicles = []) {
+        if (!this.targetPlanet || this.hasArrived) return Vector2D.zero();
+        
+        const planetCenter = new Vector2D(this.targetPlanet.x, this.targetPlanet.y);
+        const distanceToPlanet = this.position.distance(planetCenter);
+        const planetRadius = this.targetPlanet.radius || 30;
+        
+        // Solo aplicar fuerzas orbitales cuando está cerca del planeta
+        const orbitalActivationDistance = planetRadius + 80;
+        if (distanceToPlanet > orbitalActivationDistance) {
+            return Vector2D.zero();
+        }
+        
+        // Calcular posición orbital deseada
+        const orbitalPosition = this.calculateOrbitalPosition(otherVehicles);
+        if (!orbitalPosition) return Vector2D.zero();
+        
+        // Calcular fuerza hacia la posición orbital
+        const toOrbitalPosition = Vector2D.subtract(orbitalPosition, this.position);
+        const distanceToOrbital = toOrbitalPosition.magnitude();
+        
+        if (distanceToOrbital < 5) {
+            // Ya está en posición orbital, aplicar fuerza mínima de mantenimiento
+            return Vector2D.multiply(toOrbitalPosition.normalize(), this.maxForce * 0.1);
+        }
+        
+        // Fuerza proporcional a la distancia a la posición orbital
+        const orbitalForce = toOrbitalPosition.normalize();
+        const forceStrength = Math.min(distanceToOrbital / 20, 1) * this.maxForce * 0.8;
+        
+        return Vector2D.multiply(orbitalForce, forceStrength);
+    }
+
+    /**
+     * 🔧 Calcular suavizado dinámico según la situación
+     */
+    calculateDynamicSmoothing(obstacles, config) {
+        const baseSmoothing = config.forces.smoothing;
+        
+        // Más suavizado cuando hay muchos obstáculos (evitar nerviosismo)
+        if (obstacles.length > 2) {
+            return Math.min(baseSmoothing + 0.3, 0.9);
+        }
+        
+        // Menos suavizado en espacio abierto (más responsivo)
+        if (obstacles.length === 0) {
+            return Math.max(baseSmoothing - 0.2, 0.1);
+        }
+        
+        return baseSmoothing;
+    }
+    
+    /**
+     * ⚡ Calcular fuerza máxima dinámica según la situación
+     */
+    calculateDynamicMaxForce(obstacles, config) {
+        const baseMaxForce = config.forces.maxForce;
+        
+        // Reducir fuerza máxima cuando hay muchos obstáculos (movimiento más suave)
+        if (obstacles.length > 2) {
+            return baseMaxForce * 0.7;
+        }
+        
+        // Fuerza normal en otras situaciones
+        return baseMaxForce;
     }
 
     /**
@@ -190,153 +512,135 @@ export class SteeringVehicle {
     }
 
     /**
-     * 🚧 Calcular fuerza de evasión de obstáculos (CON DEBUG)
+     * 🚧 Calcular fuerza de evasión de obstáculos con histéresis
      */
     calculateObstacleAvoidanceForce(obstacles, config) {
-        let avoidanceForce = Vector2D.zero();
-        let closestThreat = null;
-        let minDistance = Infinity;
-        
-        // 🔍 PASO 1: Usar sensores para detección confiable
-        for (const obstacle of obstacles) {
-            for (const sensor of this.sensors) {
-                // Verificar intersección del sensor con el obstáculo
-                const intersection = this.getLineCircleIntersection(
-                    sensor.start,
-                    sensor.end,
-                    obstacle.position,
-                    obstacle.radius + this.radius + 15 // Buffer de seguridad
-                );
-                
-                if (intersection) {
-                    const distanceToIntersection = this.position.distance(intersection);
-                    
-                    if (distanceToIntersection < minDistance) {
-                        minDistance = distanceToIntersection;
-                        closestThreat = {
-                            obstacle: obstacle,
-                            intersection: intersection,
-                            distance: distanceToIntersection,
-                            sensor: sensor
-                        };
-                    }
-                }
-            }
+        if (!obstacles || obstacles.length === 0) {
+            this.avoidanceState.isActive = false;
+            this.avoidanceState.urgency = 0;
+            this.avoidanceState.framesSinceLastThreat++;
+            return Vector2D.zero();
         }
-        
-        // 🚨 PASO 2: Calcular fuerza de evasión si hay amenaza
-        if (closestThreat) {
-            const threat = closestThreat;
-            const obstacle = threat.obstacle;
+
+        let totalAvoidanceForce = Vector2D.zero();
+        let maxUrgency = 0;
+        let threatDetected = false;
+
+        // Evaluar cada obstáculo
+        for (const obstacle of obstacles) {
+            const obstaclePos = obstacle.position || obstacle;
+            const distance = this.position.distance(obstaclePos);
+            const obstacleRadius = obstacle.radius || 25;
             
-            // DEBUG: Log detallado de la amenaza (solo cada 30 frames)
-            this.debugFrameCounter++;
-            const shouldLog = this.debugFrameCounter % 30 === 0 || !this.lastLoggedThreat;
+            // ✅ ORIGINAL: Radio de detección completo para anticipación
+            const detectionRadius = config.sensors.length + obstacleRadius;
             
-            if (shouldLog) {
-                console.log(`🚨 AMENAZA DETECTADA:`, {
-                    distancia: threat.distance.toFixed(1),
-                    obstaculoPos: `(${obstacle.position.x.toFixed(1)}, ${obstacle.position.y.toFixed(1)})`,
-                    navePos: `(${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)})`,
-                    velocidad: this.velocity.magnitude().toFixed(1)
-                });
-            }
-            
-            let steeringForce = Vector2D.zero();
-            
-            // A) Fuerza de repulsión directa desde el obstáculo
-            const toObstacle = Vector2D.subtract(obstacle.position, this.position);
-            const distanceToObstacle = toObstacle.magnitude();
-            
-            if (distanceToObstacle > 0) {
-                const repulsionDirection = Vector2D.normalize(toObstacle).multiply(-1);
-                const repulsionStrength = Math.max(0, 1 - (threat.distance / config.sensors.length));
-                const repulsionForce = Vector2D.multiply(repulsionDirection, repulsionStrength * this.maxForce * 3);
-                steeringForce.add(repulsionForce);
+            // Solo procesar obstáculos cercanos
+            if (distance > detectionRadius) continue;
+
+            // Calcular urgencia basada en distancia y velocidad
+            const normalizedDistance = distance / detectionRadius;
+            const velocityFactor = this.velocity.magnitude() / config.forces.maxSpeed;
+            const urgency = Math.max(0, (1 - normalizedDistance) + velocityFactor * 0.3);
+
+            // ✅ ORIGINAL: Umbral de activación original
+            if (urgency > this.avoidanceState.entryThreshold) {
+                threatDetected = true;
+                maxUrgency = Math.max(maxUrgency, urgency);
+
+                // Calcular dirección de repulsión
+                const repulsionDirection = Vector2D.subtract(this.position, obstaclePos).normalize();
                 
-                if (shouldLog) {
-                    console.log(`🔴 REPULSIÓN: Fuerza ${repulsionForce.magnitude().toFixed(1)}, Dirección ${repulsionDirection.toString()}`);
-                }
-            }
-            
-            // B) Fuerza lateral inteligente
-            if (this.velocity.magnitude() > 0.1) {
-                const velocityNorm = Vector2D.normalize(this.velocity);
+                // ✅ ORIGINAL: Fuerza de repulsión original
+                const repulsionMagnitude = urgency * config.forces.avoidanceWeight * config.forces.maxForce;
+                const repulsionForce = Vector2D.multiply(repulsionDirection, repulsionMagnitude);
+
+                // Calcular fuerzas laterales con clearance
+                const leftDirection = Vector2D.rotate(this.velocity.normalize(), -Math.PI / 2);
+                const rightDirection = Vector2D.rotate(this.velocity.normalize(), Math.PI / 2);
                 
-                // Calcular direcciones laterales
-                const leftDirection = velocityNorm.perpendicular();
-                const rightDirection = Vector2D.multiply(leftDirection, -1);
-                
-                // Determinar cuál lado está más libre
                 const leftClearance = this.calculateClearance(leftDirection, obstacles, config);
                 const rightClearance = this.calculateClearance(rightDirection, obstacles, config);
-                
-                const preferredDirection = leftClearance > rightClearance ? leftDirection : rightDirection;
-                const sideChoice = leftClearance > rightClearance ? "IZQUIERDA" : "DERECHA";
-                
-                // Fuerza lateral proporcional a la urgencia
-                const urgency = Math.max(0, 1 - (threat.distance / config.sensors.length));
-                const lateralForce = Vector2D.multiply(preferredDirection, urgency * this.maxForce * 2);
-                steeringForce.add(lateralForce);
-                
-                if (shouldLog) {
-                    console.log(`🔵 LATERAL: ${sideChoice}, Clearance L:${leftClearance.toFixed(1)} R:${rightClearance.toFixed(1)}, Fuerza: ${lateralForce.magnitude().toFixed(1)}`);
+
+                // Seleccionar dirección lateral
+                let lateralForce = Vector2D.zero();
+                if (leftClearance > rightClearance) {
+                    lateralForce = Vector2D.multiply(leftDirection, repulsionMagnitude * 0.6);
+                } else {
+                    lateralForce = Vector2D.multiply(rightDirection, repulsionMagnitude * 0.6);
+                }
+
+                // Fuerza de frenado proporcional a la velocidad
+                const brakingForce = this.velocity.magnitude() * urgency * 0.8;
+
+                // Combinar fuerzas
+                const combinedForce = Vector2D.add(
+                    Vector2D.add(repulsionForce, lateralForce),
+                    Vector2D.multiply(this.velocity.normalize(), -brakingForce)
+                );
+
+                totalAvoidanceForce.add(combinedForce);
+
+                // Debug original - cada 30 frames
+                if (this.debugFrameCounter % 30 === 0) {
+                    console.log(`🚨 AMENAZA DETECTADA: {distancia: '${distance.toFixed(1)}', obstaculoPos: '(${obstaclePos.x.toFixed(1)}, ${obstaclePos.y.toFixed(1)})', navePos: '(${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)})', velocidad: '${this.velocity.magnitude().toFixed(1)}'}`);
+                    console.log(`🔴 REPULSIÓN: Fuerza ${repulsionMagnitude.toFixed(1)}, Dirección ${repulsionDirection.toString()}`);
+                    console.log(`🔵 LATERAL: ${leftClearance > rightClearance ? 'IZQUIERDA' : 'DERECHA'}, Clearance L:${leftClearance.toFixed(1)} R:${rightClearance.toFixed(1)}, Fuerza: ${lateralForce.magnitude().toFixed(1)}`);
+                    console.log(`🟡 FRENADO: Fuerza ${brakingForce.toFixed(1)}`);
+                    console.log(`🚨 FUERZA TOTAL EVASIÓN: ${totalAvoidanceForce.magnitude().toFixed(1)}, Urgencia: ${urgency.toFixed(2)}`);
+                    console.log('---');
                 }
             }
-            
-            // C) Fuerza de frenado si está muy cerca
-            if (threat.distance < 30) {
-                const brakingForce = Vector2D.multiply(this.velocity, -0.8);
-                steeringForce.add(brakingForce);
-                if (shouldLog) {
-                    console.log(`🟡 FRENADO: Fuerza ${brakingForce.magnitude().toFixed(1)}`);
-                }
-            }
-            
-            // Limitar y aplicar fuerza
-            steeringForce.limit(this.maxForce * 4); // Hasta 4x la fuerza máxima
-            avoidanceForce = steeringForce;
-            
-            // Marcar estado de evasión
-            this.isAvoiding = true;
-            this.avoidanceUrgency = Math.max(0, 1 - (threat.distance / config.sensors.length));
-            this.debugThreat = threat; // Para visualización
-            this.lastLoggedThreat = threat;
-            
-            if (shouldLog) {
-                console.log(`🚨 FUERZA TOTAL EVASIÓN: ${avoidanceForce.magnitude().toFixed(1)}, Urgencia: ${this.avoidanceUrgency.toFixed(2)}`);
-                console.log(`---`);
-            }
-            
-        } else {
-            this.isAvoiding = false;
-            this.avoidanceUrgency = 0;
-            this.debugThreat = null;
-            this.lastLoggedThreat = null;
         }
+
+        // Actualizar estado de histéresis
+        if (threatDetected) {
+            this.avoidanceState.isActive = true;
+            this.avoidanceState.urgency = maxUrgency;
+            this.avoidanceState.framesSinceLastThreat = 0;
+        } else {
+            this.avoidanceState.framesSinceLastThreat++;
+            
+            // ✅ ORIGINAL: Salir de evasión después de frames de gracia originales
+            if (this.avoidanceState.framesSinceLastThreat > 10) {
+                this.avoidanceState.isActive = false;
+                this.avoidanceState.urgency = 0;
+            }
+        }
+
+        this.debugFrameCounter++;
+        this.lastAvoidanceForce = totalAvoidanceForce.copy();
         
-        return avoidanceForce;
+        return totalAvoidanceForce;
     }
     
     /**
-     * 🔍 Calcular claridad en una dirección
+     * 🔍 Calcular clearance (espacio libre) en una dirección
      */
     calculateClearance(direction, obstacles, config) {
-        const testDistance = config.sensors.length;
-        const testPosition = Vector2D.add(this.position, Vector2D.multiply(direction, testDistance));
+        const clearanceDistance = config.sensors.length;
+        const sensorStart = this.position.copy();
+        const sensorEnd = Vector2D.add(sensorStart, Vector2D.multiply(direction, clearanceDistance));
         
-        let minClearance = testDistance;
+        let minClearance = clearanceDistance;
         
         for (const obstacle of obstacles) {
-            const distanceToObstacle = testPosition.distance(obstacle.position);
-            const requiredClearance = obstacle.radius + this.radius + 20; // Buffer extra
+            const intersection = this.getLineCircleIntersection(
+                sensorStart, 
+                sensorEnd, 
+                obstacle, 
+                obstacle.radius + 10 // Buffer de seguridad
+            );
             
-            if (distanceToObstacle < requiredClearance) {
-                minClearance = Math.min(minClearance, distanceToObstacle - obstacle.radius);
+            if (intersection) {
+                const distanceToIntersection = sensorStart.distance(intersection);
+                minClearance = Math.min(minClearance, distanceToIntersection);
             }
         }
         
-        return Math.max(0, minClearance);
+        // 🔧 NUEVO: Clearance mínimo garantizado para evitar bloqueos
+        const minimumClearance = 5; // 5 píxeles mínimo
+        return Math.max(minClearance, minimumClearance);
     }
 
     /**
@@ -465,54 +769,40 @@ export class SteeringVehicle {
     }
 
     /**
-     * 🎯 Verificar llegada al objetivo
+     * 🎯 Verificar llegada al objetivo (DINÁMICO SEGÚN PLANETA)
      */
     checkArrival(config) {
         const distance = this.position.distance(this.target);
         
-        if (distance <= config.behavior.arrivalRadius) {
+        // 🔧 NUEVO: Radio de llegada dinámico basado en el planeta destino
+        let arrivalRadius = config.behavior.arrivalRadius; // Default: 25px
+        
+        // Si tenemos información del planeta destino, usar su radio + buffer
+        if (this.targetPlanet && this.targetPlanet.radius) {
+            // Llegar al borde del planeta + pequeño buffer
+            arrivalRadius = this.targetPlanet.radius + 15; // Radio del planeta + 15px buffer
+        } else if (this.fleetData && this.fleetData.toPlanet) {
+            // Fallback: estimar radio basado en el tipo de planeta
+            // Esto es una estimación si no tenemos acceso directo al planeta
+            arrivalRadius = 40; // Radio conservador para planetas medianos/grandes
+        }
+        
+        if (distance <= arrivalRadius) {
             this.hasArrived = true;
             this.velocity = Vector2D.zero();
-            console.log(`🎯 Vehículo llegó al objetivo`);
+            this.arrivalFrame = this.frameCounter || 0; // Para cleanup posterior
+            console.log(`🎯 Vehículo llegó al objetivo (distancia: ${distance.toFixed(1)}, radio: ${arrivalRadius.toFixed(1)})`);
         }
     }
 
     /**
-     * 🎨 Renderizar vehículo
+     * 🎨 Renderizar vehículo (SIN DEBUG)
      */
     render(ctx, debugConfig) {
         ctx.save();
         
-        // Renderizar rastro
-        if (debugConfig.showTrails && this.trail.length > 1) {
-            this.renderTrail(ctx);
-        }
-        
-        // Renderizar sensores
-        if (debugConfig.showSensors) {
-            this.renderSensors(ctx);
-        }
-        
-        // Renderizar debug de amenazas
-        if (debugConfig.showSensors && this.debugThreat) {
-            this.renderThreatDebug(ctx);
-        }
-        
-        // Renderizar fuerzas
-        if (debugConfig.showForces) {
-            this.renderForces(ctx);
-        }
-        
-        // Renderizar velocidad
-        if (debugConfig.showVelocity) {
-            this.renderVelocity(ctx);
-        }
-        
-        // Renderizar vehículo
+        // Solo renderizar el cuerpo del vehículo
         this.renderBody(ctx);
-        
-        // Renderizar objetivo
-        this.renderTarget(ctx);
         
         ctx.restore();
     }
@@ -548,224 +838,6 @@ export class SteeringVehicle {
         ctx.closePath();
         
         ctx.fill();
-        ctx.stroke();
-        
-        ctx.restore();
-    }
-
-    /**
-     * 🎨 Renderizar rastro
-     */
-    renderTrail(ctx) {
-        if (this.trail.length < 2) return;
-        
-        ctx.save();
-        ctx.strokeStyle = '#00aaff';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.3;
-        
-        ctx.beginPath();
-        ctx.moveTo(this.trail[0].x, this.trail[0].y);
-        
-        for (let i = 1; i < this.trail.length; i++) {
-            ctx.lineTo(this.trail[i].x, this.trail[i].y);
-        }
-        
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    /**
-     * 🎨 Renderizar sensores
-     */
-    renderSensors(ctx) {
-        ctx.save();
-        ctx.strokeStyle = '#ff88ff';
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.6;
-        
-        this.sensors.forEach(sensor => {
-            ctx.beginPath();
-            ctx.moveTo(sensor.start.x, sensor.start.y);
-            ctx.lineTo(sensor.end.x, sensor.end.y);
-            ctx.stroke();
-            
-            // Punto final del sensor
-            ctx.fillStyle = '#ff88ff';
-            ctx.beginPath();
-            ctx.arc(sensor.end.x, sensor.end.y, 2, 0, Math.PI * 2);
-            ctx.fill();
-        });
-        
-        ctx.restore();
-    }
-
-    /**
-     * 🎨 Renderizar fuerzas
-     */
-    renderForces(ctx) {
-        const scale = 0.5; // Escala para visualización
-        
-        // Fuerza de búsqueda (azul)
-        this.renderForceVector(ctx, this.debugForces.seek, '#00aaff', scale);
-        
-        // Fuerza de evasión (rojo)
-        this.renderForceVector(ctx, this.debugForces.avoidance, '#ff4444', scale);
-        
-        // Fuerza resultante (verde)
-        this.renderForceVector(ctx, this.debugForces.resultant, '#00ff88', scale);
-    }
-
-    /**
-     * 🎨 Renderizar vector de fuerza
-     */
-    renderForceVector(ctx, force, color, scale) {
-        if (force.magnitude() < 0.1) return;
-        
-        ctx.save();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.8;
-        
-        const scaledForce = Vector2D.multiply(force, scale);
-        const end = Vector2D.add(this.position, scaledForce);
-        
-        // Línea del vector
-        ctx.beginPath();
-        ctx.moveTo(this.position.x, this.position.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
-        
-        // Punta de flecha
-        const arrowSize = 5;
-        const angle = scaledForce.angle();
-        
-        ctx.save();
-        ctx.translate(end.x, end.y);
-        ctx.rotate(angle);
-        
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-arrowSize, -arrowSize / 2);
-        ctx.lineTo(-arrowSize, arrowSize / 2);
-        ctx.closePath();
-        ctx.fill();
-        
-        ctx.restore();
-        ctx.restore();
-    }
-
-    /**
-     * 🎨 Renderizar velocidad
-     */
-    renderVelocity(ctx) {
-        if (this.velocity.magnitude() < 0.1) return;
-        
-        ctx.save();
-        ctx.strokeStyle = '#ffaa00';
-        ctx.lineWidth = 3;
-        ctx.globalAlpha = 0.7;
-        
-        const velocityScale = 0.3;
-        const scaledVelocity = Vector2D.multiply(this.velocity, velocityScale);
-        const end = Vector2D.add(this.position, scaledVelocity);
-        
-        ctx.beginPath();
-        ctx.moveTo(this.position.x, this.position.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
-        
-        ctx.restore();
-    }
-
-    /**
-     * 🎨 Renderizar objetivo
-     */
-    renderTarget(ctx) {
-        ctx.save();
-        ctx.strokeStyle = this.hasArrived ? '#00ff88' : '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.8;
-        
-        // Cruz del objetivo
-        const size = 8;
-        ctx.beginPath();
-        ctx.moveTo(this.target.x - size, this.target.y);
-        ctx.lineTo(this.target.x + size, this.target.y);
-        ctx.moveTo(this.target.x, this.target.y - size);
-        ctx.lineTo(this.target.x, this.target.y + size);
-        ctx.stroke();
-        
-        // Círculo del objetivo
-        ctx.beginPath();
-        ctx.arc(this.target.x, this.target.y, size, 0, Math.PI * 2);
-        ctx.stroke();
-        
-        ctx.restore();
-    }
-
-    /**
-     * 🚨 Renderizar debug de amenazas
-     */
-    renderThreatDebug(ctx) {
-        if (!this.debugThreat) return;
-        
-        const threat = this.debugThreat;
-        
-        ctx.save();
-        
-        // 1. Línea hacia el punto de intersección (ROJO)
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = 3;
-        ctx.globalAlpha = 0.8;
-        
-        ctx.beginPath();
-        ctx.moveTo(this.position.x, this.position.y);
-        ctx.lineTo(threat.intersection.x, threat.intersection.y);
-        ctx.stroke();
-        
-        // 2. Punto de intersección (ROJO BRILLANTE)
-        ctx.fillStyle = '#ff0000';
-        ctx.globalAlpha = 1.0;
-        ctx.beginPath();
-        ctx.arc(threat.intersection.x, threat.intersection.y, 6, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // 3. Línea del sensor que detectó (MAGENTA BRILLANTE)
-        ctx.strokeStyle = '#ff00ff';
-        ctx.lineWidth = 4;
-        ctx.globalAlpha = 1.0;
-        
-        ctx.beginPath();
-        ctx.moveTo(threat.sensor.start.x, threat.sensor.start.y);
-        ctx.lineTo(threat.sensor.end.x, threat.sensor.end.y);
-        ctx.stroke();
-        
-        // 4. Información de debug como texto
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px monospace';
-        ctx.globalAlpha = 1.0;
-        
-        const debugText = [
-            `AMENAZA DETECTADA`,
-            `Distancia: ${threat.distance.toFixed(1)}px`,
-            `Urgencia: ${this.avoidanceUrgency.toFixed(2)}`,
-            `Evadiendo: ${this.isAvoiding ? 'SÍ' : 'NO'}`
-        ];
-        
-        debugText.forEach((text, index) => {
-            ctx.fillText(text, this.position.x + 15, this.position.y - 30 + (index * 15));
-        });
-        
-        // 5. Círculo de zona de peligro alrededor del obstáculo
-        ctx.strokeStyle = '#ff4444';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.3;
-        ctx.setLineDash([5, 5]);
-        
-        const dangerRadius = threat.obstacle.radius + this.radius + 15;
-        ctx.beginPath();
-        ctx.arc(threat.obstacle.position.x, threat.obstacle.position.y, dangerRadius, 0, Math.PI * 2);
         ctx.stroke();
         
         ctx.restore();

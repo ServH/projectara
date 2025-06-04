@@ -7,24 +7,24 @@
 export const GALCON_STEERING_CONFIG_PROBADA = {
     // ✅ SENSORES - Configuración exacta del JSON probado
     sensors: {
-        length: 30,        // ✅ PROBADO: Funciona perfectamente
-        width: 5,          // ✅ PROBADO: Detección precisa
-        lateralCount: 1,   // ✅ PROBADO: Sensores mínimos eficientes
-        lateralAngle: 15   // ✅ PROBADO: Ángulo óptimo
+        length: 20,        // ✅ PROBADO: Funciona perfectamente
+        width: 2,          // ✅ PROBADO: Detección precisa
+        lateralCount: 0,   // ✅ PROBADO: Sensores mínimos eficientes
+        lateralAngle: 10   // ✅ PROBADO: Ángulo óptimo
     },
     
     // ⚡ FUERZAS - Configuración exacta del JSON probado
     forces: {
         maxForce: 200,     // ✅ PROBADO: Responsivo para gameplay
-        maxSpeed: 120,     // ✅ PROBADO: Velocidad perfecta
+        maxSpeed: 60,     // ✅ PROBADO: Velocidad perfecta
         seekWeight: 1,     // ✅ PROBADO: Prioridad al objetivo
-        avoidanceWeight: 2, // ✅ PROBADO: Evasión balanceada
-        smoothing: 0.3     // ✅ PROBADO: Suavizado visual
+        avoidanceWeight: 3, // ✅ PROBADO: Evasión balanceada
+        smoothing: 0.5     // ✅ PROBADO: Suavizado visual
     },
     
     // 🎯 COMPORTAMIENTOS - Configuración exacta del JSON probado
     behavior: {
-        arrivalRadius: 25,     // ✅ PROBADO: Radio de llegada
+        arrivalRadius: 15,     // ✅ PROBADO: Radio de llegada
         slowingDistance: 60,   // ✅ PROBADO: Desaceleración suave
         enableArrival: true,   // ✅ PROBADO: Llegada inteligente
         enableWander: false    // ✅ PROBADO: Sin vagabundeo
@@ -33,7 +33,6 @@ export const GALCON_STEERING_CONFIG_PROBADA = {
     // 🚁 FLOTAS - Configuración exacta del JSON probado
     fleet: {
         size: 15,              // ✅ PROBADO: Tamaño óptimo
-        formation: "circle",   // ✅ PROBADO: Formación por defecto
         spacing: 30,           // ✅ PROBADO: Espaciado perfecto
         enableBoids: true,     // ✅ PROBADO: Comportamientos de grupo
         separationWeight: 1.5, // ✅ PROBADO: Separación balanceada
@@ -41,16 +40,16 @@ export const GALCON_STEERING_CONFIG_PROBADA = {
         cohesionWeight: 0.8    // ✅ PROBADO: Cohesión natural
     },
     
-    // 🎨 DEBUG - Configuración exacta del JSON probado
+    // 🎨 DEBUG - Sin visualización para el juego final
     debug: {
-        showSensors: true,         // ✅ PROBADO: Visualizar sensores
-        showForces: true,          // ✅ PROBADO: Visualizar fuerzas
-        showVelocity: true,        // ✅ PROBADO: Visualizar velocidad
-        showTrails: true,          // ✅ PROBADO: Visualizar rastros
-        showObstacleZones: false,  // ✅ PROBADO: Sin zonas de obstáculos
-        showSpatialGrid: true,     // ✅ PROBADO: Visualizar grid espacial
-        showFleetConnections: true, // ✅ PROBADO: Conexiones de flota
-        showFleetCenter: true      // ✅ PROBADO: Centro de flota
+        showSensors: false,        // ❌ DESACTIVADO: Sin debug visual
+        showForces: false,         // ❌ DESACTIVADO: Sin debug visual
+        showVelocity: false,       // ❌ DESACTIVADO: Sin debug visual
+        showTrails: false,         // ❌ DESACTIVADO: Sin debug visual
+        showObstacleZones: false,  // ❌ DESACTIVADO: Sin debug visual
+        showSpatialGrid: false,    // ❌ DESACTIVADO: Sin debug visual
+        showFleetConnections: false, // ❌ DESACTIVADO: Sin debug visual
+        showFleetCenter: false     // ❌ DESACTIVADO: Sin debug visual
     },
     
     // 🆕 CONFIGURACIÓN ESPECÍFICA DE GALCON

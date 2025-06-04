@@ -27,6 +27,7 @@ export class NavigationSystem {
         // 🆕 NUEVOS SISTEMAS DE STEERING BEHAVIORS
         this.spatialHash = new SpatialHashSystem(50); // Celdas de 50px
         this.fleetAdapter = new LegacyFleetAdapter(gameEngine);
+        this.legacyFleetAdapter = this.fleetAdapter; // Alias para compatibilidad
         this.steeringConfig = GALCON_STEERING_CONFIG_PROBADA;
         
         // 🔄 MODO HÍBRIDO: Permitir cambio entre sistemas
@@ -101,16 +102,12 @@ export class NavigationSystem {
     updateWithSteeringBehaviors() {
         const startTime = performance.now();
         
-        // Obtener planetas como obstáculos
+        // Obtener planetas y flotas
         const planets = this.gameEngine.getAllPlanets();
-        const obstacles = this.convertPlanetsToObstacles(planets);
-        
-        // Actualizar spatial hash con obstáculos
-        this.updateSpatialHashWithObstacles(obstacles);
         
         // Actualizar todas las flotas a través del adaptador
         const deltaTime = 1/60; // Asumir 60 FPS
-        this.fleetAdapter.updateAllFleets(deltaTime, obstacles, this.spatialHash);
+        this.fleetAdapter.updateAllFleetsWithTargets(deltaTime, planets, this.spatialHash);
         
         // Limpiar flotas inactivas
         if (this.frameCounter % 60 === 0) {
@@ -158,15 +155,17 @@ export class NavigationSystem {
     }
 
     /**
-     * 🔄 Convertir planetas a obstáculos para steering behaviors
+     * 🔄 Convertir planetas a obstáculos para una flota específica (EXCLUYENDO SU DESTINO)
      */
-    convertPlanetsToObstacles(planets) {
-        return planets.map(planet => ({
-            position: { x: planet.x, y: planet.y },
-            radius: planet.radius + 10, // Buffer de seguridad
-            id: planet.id,
-            type: 'planet'
-        }));
+    convertPlanetsToObstaclesForFleet(planets, targetPlanetId) {
+        return planets
+            .filter(planet => planet.id !== targetPlanetId) // 🔧 EXCLUIR planeta destino
+            .map(planet => ({
+                position: { x: planet.x, y: planet.y },
+                radius: planet.radius + 10, // Buffer de seguridad
+                id: planet.id,
+                type: 'planet'
+            }));
     }
 
     /**
@@ -214,74 +213,21 @@ export class NavigationSystem {
     }
 
     /**
-     * 🎨 Renderizar navegación (HÍBRIDO)
+     * 🎨 Renderizar navegación (SIN DEBUG)
      */
     render(ctx) {
+        // Solo renderizar las flotas básicas sin debug
         if (this.useSteeringBehaviors) {
-            this.renderSteeringBehaviors(ctx);
-        } else {
-            this.renderLegacyNavigation(ctx);
+            this.fleetAdapter.renderAllFleets(ctx, { 
+                showDebug: false,
+                showSensors: false,
+                showForces: false,
+                showTrails: false,
+                showFleetConnections: false,
+                showFleetCenter: false,
+                showSpatialGrid: false
+            });
         }
-    }
-
-    /**
-     * 🎨 Renderizar steering behaviors
-     */
-    renderSteeringBehaviors(ctx) {
-        const debugConfig = this.steeringConfig.debug;
-        
-        // Renderizar spatial hash si está habilitado
-        if (debugConfig.showSpatialGrid) {
-            this.spatialHash.renderDebug(ctx);
-        }
-        
-        // Renderizar flotas a través del adaptador
-        this.fleetAdapter.renderAllFleets(ctx, debugConfig);
-        
-        // Renderizar información de debug
-        if (debugConfig.showFleetConnections) {
-            this.renderSteeringDebugInfo(ctx);
-        }
-    }
-
-    /**
-     * 🎨 Renderizar navegación legacy
-     */
-    renderLegacyNavigation(ctx) {
-        const fleets = this.gameEngine.getAllFleets();
-        this.updateVisualization(fleets);
-    }
-
-    /**
-     * 🎨 Renderizar información de debug de steering
-     */
-    renderSteeringDebugInfo(ctx) {
-        if (!this.steeringConfig.debug.showFleetConnections) return;
-        
-        ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px monospace';
-        ctx.globalAlpha = 0.8;
-        
-        const debugInfo = this.fleetAdapter.getDebugInfo();
-        const spatialStats = this.spatialHash.getStats();
-        
-        const debugText = [
-            `🧭 STEERING NAVIGATION`,
-            `Flotas: ${debugInfo.adapter.activeFleets}`,
-            `Naves: ${debugInfo.totalVehicles}`,
-            `Evadiendo: ${debugInfo.avoidingVehicles}`,
-            `Spatial Queries: ${spatialStats.queriesPerFrame}`,
-            `Formaciones: ${Object.keys(debugInfo.formations).join(', ')}`
-        ];
-        
-        let y = 20;
-        debugText.forEach(text => {
-            ctx.fillText(text, 10, y);
-            y += 15;
-        });
-        
-        ctx.restore();
     }
 
     /**

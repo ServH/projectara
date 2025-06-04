@@ -60,6 +60,16 @@ export class Planet {
         // 🚀 OPTIMIZACIÓN: Flag de debug centralizado
         this.debugMode = false; // Solo true para debugging
         
+        // 🔧 NUEVO: Sistema de cola de lanzamiento progresivo
+        this.launchQueue = {
+            pendingWaves: [],
+            isLaunching: false,
+            lastLaunchTime: 0,
+            launchInterval: 200, // 200ms entre oleadas
+            maxConcurrentFleets: 3, // Máximo 3 flotas cerca del planeta
+            currentNearbyFleets: 0
+        };
+        
         // 🚀 OPTIMIZACIÓN: Cache de propiedades calculadas
         this.configCache = {
             initialShips: this.calculateInitialShips(),
@@ -185,6 +195,9 @@ export class Planet {
             }
         }
 
+        // 🔧 NUEVO: Procesar cola de lanzamiento progresivo
+        this.processLaunchQueue();
+
         // Actualizar animaciones optimizadas
         this.updateAnimationsOptimized(deltaTime);
     }
@@ -210,10 +223,77 @@ export class Planet {
     }
 
     /**
-     * 🚀 ENVÍO DE FLOTA CON LANZAMIENTO GRADUAL TIPO ENJAMBRE
-     * Implementa oleadas de máximo 8 naves para efecto visual de enjambre
-     * Integrado con steering behaviors - FASE 3
+     * 🔧 NUEVO: Procesar cola de lanzamiento progresivo
      */
+    processLaunchQueue() {
+        const now = Date.now();
+        
+        // Solo procesar si hay oleadas pendientes y ha pasado suficiente tiempo
+        if (this.launchQueue.pendingWaves.length === 0) {
+            this.launchQueue.isLaunching = false;
+            return;
+        }
+        
+        // Verificar si es momento de lanzar la siguiente oleada
+        const timeSinceLastLaunch = now - this.launchQueue.lastLaunchTime;
+        if (timeSinceLastLaunch < this.launchQueue.launchInterval) {
+            return;
+        }
+        
+        // Verificar si hay espacio para más flotas cerca del planeta
+        if (this.launchQueue.currentNearbyFleets >= this.launchQueue.maxConcurrentFleets) {
+            // Esperar a que se libere espacio
+            return;
+        }
+        
+        // Lanzar la siguiente oleada
+        const nextWave = this.launchQueue.pendingWaves.shift();
+        if (nextWave) {
+            this.launchWaveNow(nextWave);
+            this.launchQueue.lastLaunchTime = now;
+            this.launchQueue.currentNearbyFleets++;
+            
+            console.log(`🚀 Lanzamiento progresivo: Oleada ${nextWave.waveIndex + 1}/${nextWave.totalWaves}, ${this.launchQueue.pendingWaves.length} oleadas restantes`);
+        }
+        
+        // Si no hay más oleadas, marcar como no lanzando
+        if (this.launchQueue.pendingWaves.length === 0) {
+            this.launchQueue.isLaunching = false;
+        }
+    }
+    
+    /**
+     * 🔧 NUEVO: Lanzar oleada inmediatamente
+     */
+    launchWaveNow(waveData) {
+        // Emitir evento de lanzamiento de oleada
+        eventBus.emit(GAME_EVENTS.FLEET_LAUNCHED, waveData.fleetData);
+        
+        if (this.debugMode) {
+            console.log(`🚀 Oleada ${waveData.waveIndex + 1}/${waveData.totalWaves}: ${waveData.fleetData.ships} naves desde ${this.id} a ${waveData.fleetData.toPlanet}`);
+        }
+        
+        // Si es la última oleada, emitir evento de lanzamiento completo
+        if (waveData.waveIndex === waveData.totalWaves - 1) {
+            eventBus.emit(GAME_EVENTS.FLEET_SWARM_COMPLETE, {
+                fromPlanet: this.id,
+                toPlanet: waveData.fleetData.toPlanet,
+                totalShips: waveData.totalShipsInSwarm,
+                totalWaves: waveData.totalWaves,
+                fleets: [waveData.fleetData] // Solo la flota actual por ahora
+            });
+        }
+    }
+    
+    /**
+     * 🔧 NUEVO: Notificar que una flota se alejó del planeta
+     */
+    notifyFleetDeparted() {
+        if (this.launchQueue.currentNearbyFleets > 0) {
+            this.launchQueue.currentNearbyFleets--;
+        }
+    }
+
     sendFleet(targetPlanet, percentage = 0.5, targetClickX = null, targetClickY = null) {
         if (this.owner === 'neutral' || this.ships <= 1) {
             return null;
@@ -229,7 +309,6 @@ export class Planet {
 
         // 🌊 CALCULAR OLEADAS DE ENJAMBRE
         const maxWaveSize = 8; // Máximo 8 naves por oleada
-        const launchDelay = 200; // 200ms entre oleadas
         const waves = [];
         
         for (let i = 0; i < totalShipsToSend; i += maxWaveSize) {
@@ -237,46 +316,37 @@ export class Planet {
             waves.push(waveSize);
         }
 
-        console.log(`🌊 Lanzando ${totalShipsToSend} naves en ${waves.length} oleadas: [${waves.join(', ')}]`);
+        console.log(`🌊 Preparando ${totalShipsToSend} naves en ${waves.length} oleadas para lanzamiento progresivo: [${waves.join(', ')}]`);
 
-        // 🚀 LANZAR OLEADAS GRADUALMENTE
-        const launchedFleets = [];
-        let currentDelay = 0;
-
+        // 🔧 NUEVO: Agregar oleadas a la cola en lugar de setTimeout
         waves.forEach((waveSize, waveIndex) => {
-            setTimeout(() => {
-                const fleetData = this.createWaveFleetData(
-                    targetPlanet, 
-                    waveSize, 
-                    waveIndex, 
-                    waves.length,
-                    totalShipsToSend
-                );
-                
-                // Emitir evento de lanzamiento de oleada
-                eventBus.emit(GAME_EVENTS.FLEET_LAUNCHED, fleetData);
-                
-                if (this.debugMode) {
-                    console.log(`🚀 Oleada ${waveIndex + 1}/${waves.length}: ${waveSize} naves desde ${this.id} a ${targetPlanet.id}`);
-                }
-                
-                launchedFleets.push(fleetData);
-                
-                // Si es la última oleada, emitir evento de lanzamiento completo
-                if (waveIndex === waves.length - 1) {
-                    eventBus.emit(GAME_EVENTS.FLEET_SWARM_COMPLETE, {
-                        fromPlanet: this.id,
-                        toPlanet: targetPlanet.id,
-                        totalShips: totalShipsToSend,
-                        totalWaves: waves.length,
-                        fleets: launchedFleets
-                    });
-                }
-                
-            }, currentDelay);
+            const fleetData = this.createWaveFleetData(
+                targetPlanet, 
+                waveSize, 
+                waveIndex, 
+                waves.length,
+                totalShipsToSend
+            );
             
-            currentDelay += launchDelay;
+            this.launchQueue.pendingWaves.push({
+                waveIndex: waveIndex,
+                totalWaves: waves.length,
+                totalShipsInSwarm: totalShipsToSend,
+                fleetData: fleetData
+            });
         });
+
+        // Iniciar procesamiento de cola si no está activo
+        if (!this.launchQueue.isLaunching) {
+            this.launchQueue.isLaunching = true;
+            // Lanzar la primera oleada inmediatamente
+            if (this.launchQueue.pendingWaves.length > 0) {
+                const firstWave = this.launchQueue.pendingWaves.shift();
+                this.launchWaveNow(firstWave);
+                this.launchQueue.lastLaunchTime = Date.now();
+                this.launchQueue.currentNearbyFleets++;
+            }
+        }
 
         // Retornar datos del primer lanzamiento para compatibilidad
         const firstFleetData = this.createWaveFleetData(
@@ -288,7 +358,7 @@ export class Planet {
         );
 
         if (this.debugMode) {
-            console.log(`🚀 Enjambre iniciado desde ${this.id} a ${targetPlanet.id}: ${totalShipsToSend} naves en ${waves.length} oleadas`);
+            console.log(`🚀 Enjambre en cola desde ${this.id} a ${targetPlanet.id}: ${totalShipsToSend} naves en ${waves.length} oleadas`);
         }
         
         return firstFleetData;
@@ -298,13 +368,33 @@ export class Planet {
      * 🌊 Crear datos de flota para una oleada específica
      */
     createWaveFleetData(targetPlanet, waveSize, waveIndex, totalWaves, totalShips) {
-        // Calcular posición de lanzamiento con variación
-        const launchVariation = 15; // Variación en posición de salida
-        const angle = (Math.PI * 2 * waveIndex) / totalWaves; // Distribuir alrededor del planeta
-        const distance = this.radius + 10; // Distancia mínima del borde
+        // 🔧 NUEVO: Calcular dirección hacia el planeta destino
+        const directionToTarget = {
+            x: targetPlanet.x - this.x,
+            y: targetPlanet.y - this.y
+        };
+        const distanceToTarget = Math.sqrt(directionToTarget.x * directionToTarget.x + directionToTarget.y * directionToTarget.y);
         
-        const launchX = this.x + Math.cos(angle) * distance + (Math.random() - 0.5) * launchVariation;
-        const launchY = this.y + Math.sin(angle) * distance + (Math.random() - 0.5) * launchVariation;
+        // Normalizar dirección
+        const normalizedDirection = {
+            x: directionToTarget.x / distanceToTarget,
+            y: directionToTarget.y / distanceToTarget
+        };
+        
+        // 🔧 NUEVO: Posición de salida en el borde del planeta hacia el destino
+        const launchDistance = this.radius + 8; // Justo fuera del borde del planeta
+        const baseAngle = Math.atan2(normalizedDirection.y, normalizedDirection.x);
+        
+        // Variación angular para dispersión de oleada (máximo ±30 grados)
+        const maxAngleVariation = Math.PI / 6; // 30 grados
+        const angleVariation = (Math.random() - 0.5) * maxAngleVariation;
+        const finalAngle = baseAngle + angleVariation;
+        
+        // Calcular posición final de lanzamiento
+        const launchX = this.x + Math.cos(finalAngle) * launchDistance;
+        const launchY = this.y + Math.sin(finalAngle) * launchDistance;
+
+        console.log(`🚀 Oleada ${waveIndex}: Salida desde ángulo ${(finalAngle * 180 / Math.PI).toFixed(1)}° hacia ${targetPlanet.id}`);
 
         return {
             id: `fleet_${Date.now()}_${waveIndex}_${Math.random().toString(36).substr(2, 9)}`,
@@ -314,7 +404,7 @@ export class Planet {
             toPlanet: targetPlanet.id,
             targetPlanet: targetPlanet,
             
-            // Posiciones con variación para efecto enjambre
+            // 🔧 NUEVO: Posiciones inteligentes hacia el destino
             startX: launchX,
             startY: launchY,
             x: launchX,

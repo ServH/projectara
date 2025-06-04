@@ -1,222 +1,214 @@
-# 🚀 Project Ara - Galcon Game
+# 🌌 ProjectAra - Galcon con Steering Behaviors
 
-Un juego estilo Galcon desarrollado con **Canvas 2D optimizado** y sistemas de navegación inteligente.
+## 🎮 Descripción
+ProjectAra es una implementación avanzada del juego Galcon que integra un sistema completo de **Steering Behaviors** para navegación inteligente de naves espaciales. El proyecto evoluciona desde un sistema básico Canvas 2D hasta una experiencia de juego fluida con IA avanzada.
 
-## 🎯 Características Principales
+## ✨ Características Principales
 
-### ✨ **Renderizado Optimizado**
-- **Canvas 2D nativo** con alta resolución (DPR)
-- **60 FPS estables** con 5000+ objetos
-- **Sistema de overlay** para efectos interactivos
-- **Batch rendering** por colores optimizado
+### 🚀 Sistema de Navegación Inteligente
+- **Evasión Predictiva**: Las naves anticipan obstáculos y calculan rutas óptimas
+- **Espaciado Dinámico**: Distribución automática alrededor de planetas destino
+- **Anti-Atascamiento**: Detección y resolución automática de naves bloqueadas
+- **Navegación Híbrida**: Compatibilidad total con el sistema legacy
 
-### 🧭 **Navegación Inteligente**
-- **Sistema de pathfinding** con detección de obstáculos
-- **Radio de entrada variable** para llegadas realistas
-- **Visualización de trayectorias** en tiempo real
-- **Laboratorio de desarrollo** para algoritmos
+### 🚁 Gestión de Flotas Avanzada
+- **4 Formaciones Dinámicas**: Spread, Line, Wedge, Circle
+- **Comportamiento de Enjambre**: Separación, alineación y cohesión
+- **Lanzamiento Progresivo**: Oleadas graduales para evitar congestión
+- **Limpieza Automática**: Gestión eficiente de memoria
 
-### 🎮 **Controles Avanzados**
-- **Drag & Drop** fluido para envío de flotas
-- **Multi-selección** con Ctrl+Click
-- **Selección por área** con cajas de selección
-- **Ataques rápidos** con click derecho
+### ⚡ Optimizaciones de Rendimiento
+- **Spatial Hashing**: Optimización O(n²) → O(n)
+- **Sensores Adaptativos**: Configuración dinámica según rol
+- **Renderizado Eficiente**: 60 FPS estables con 100+ naves
 
-### 🚀 **Rendimiento**
-- **Movimiento orgánico** preservado del juego original
-- **Cache matemático** para cálculos optimizados
-- **Viewport culling** para objetos fuera de pantalla
-- **Profiling integrado** con métricas en tiempo real
+## 🏗️ Estructura del Proyecto
 
-## 🛠️ Instalación y Uso
+```
+projectAra/
+├── src/                          # 🎯 Código fuente principal
+│   ├── config/
+│   │   └── SteeringConfig.js     # ⚙️ Configuración del sistema
+│   ├── entities/
+│   │   ├── SteeringVehicle.js    # 🚀 Nave individual con IA
+│   │   ├── Fleet.js              # 🚁 Gestión de flotas
+│   │   └── Planet.js             # 🌍 Planetas con lanzamiento
+│   ├── systems/
+│   │   ├── SpatialHashSystem.js  # 🔍 Optimización espacial
+│   │   └── NavigationSystem.js   # 🧭 Sistema híbrido
+│   ├── adapters/
+│   │   └── LegacyFleetAdapter.js # 🔄 Compatibilidad legacy
+│   └── utils/
+│       └── Vector2D.js           # 📐 Matemáticas vectoriales
+├── css/                          # 🎨 Estilos
+├── _archive/                     # 📦 Archivos históricos
+└── docs/                         # 📚 Documentación adicional
+```
 
-### **Requisitos**
-- Navegador moderno con soporte Canvas 2D
+## 🚀 Inicio Rápido
+
+### Requisitos
+- Navegador web moderno con soporte ES6+
 - Servidor HTTP local (Python, Node.js, etc.)
 
-### **Inicio Rápido**
+### Instalación
 ```bash
-# Clonar repositorio
-git clone https://github.com/ServH/projectAra.git
+# Clonar el repositorio
+git clone [repository-url]
 cd projectAra
 
 # Iniciar servidor local
 python3 -m http.server 8080
+# o
+npx serve .
 
 # Abrir en navegador
 open http://localhost:8080
 ```
 
-### **URLs Disponibles**
-- **Juego Principal**: `http://localhost:8080/`
-- **Laboratorio de Pathfinding**: `http://localhost:8080/pathfinding-lab.html`
+### Primer Uso
+1. Abre `index.html` en tu navegador
+2. Haz clic en un planeta para seleccionarlo
+3. Arrastra hacia otro planeta para enviar naves
+4. Observa la navegación inteligente en acción
 
-## 🎮 Controles del Juego
+## ⚙️ Configuración
+
+### Configuración Básica
+El archivo principal de configuración está en `src/config/SteeringConfig.js`:
+
+```javascript
+// Velocidad de las naves
+forces: {
+    maxSpeed: 120,        // Píxeles por segundo
+    maxForce: 200         // Fuerza máxima
+}
+
+// Detección de obstáculos
+sensors: {
+    length: 30,           // Alcance de sensores
+    lateralAngle: 15      // Ángulo lateral
+}
+
+// Comportamiento de flotas
+fleet: {
+    spacing: 30,          // Espaciado entre naves
+    enableBoids: true     // Activar enjambre
+}
+```
+
+### Configuración Avanzada
+Ver [DOCUMENTACION-STEERING-BEHAVIORS.md](./DOCUMENTACION-STEERING-BEHAVIORS.md) para configuración detallada.
+
+## 🎮 Controles
 
 | Acción | Control |
 |--------|---------|
-| Seleccionar planeta | `Click` |
-| Enviar flotas | `Drag & Drop` |
-| Multi-selección | `Ctrl + Click` |
-| Seleccionar todos | `Shift + Click` |
-| Ataque rápido | `Click Derecho` |
-| Deseleccionar | `Esc` |
-| Toggle líneas | `Botón 🎨 Líneas` |
+| Seleccionar planeta | Click izquierdo |
+| Enviar naves | Arrastrar desde planeta origen a destino |
+| Enviar porcentaje | Mantener arrastrar para ajustar % |
+| Pausa | Barra espaciadora |
 
-### **Teclas de Debug**
-| Tecla | Función |
-|-------|---------|
-| `F1` | Panel de debug |
-| `F2` | Reporte de rendimiento |
-| `F3` | Toggle profiling |
-| `F4` | Reset profiler |
-| `F5` | Reiniciar juego |
-| `F6` | Benchmark ligero |
-| `F7` | Benchmark completo |
+## 🔧 Desarrollo
 
-## 🧪 Laboratorio de Pathfinding
+### Archivos Principales
+- **SteeringVehicle.js**: Lógica de navegación individual
+- **Fleet.js**: Gestión de grupos de naves
+- **SteeringConfig.js**: Configuración del sistema
+- **NavigationSystem.js**: Integración con el juego
 
-### **Características**
-- **Entorno de pruebas** para algoritmos de navegación
-- **Configuración en tiempo real** de parámetros
-- **Visualización completa** de rutas y obstáculos
-- **Métricas de rendimiento** detalladas
-- **Exportación de configuraciones**
+### Modificaciones Comunes
+```javascript
+// Cambiar velocidad de naves
+forces.maxSpeed = 150;
 
-### **Controles del Laboratorio**
-| Acción | Control |
-|--------|---------|
-| Crear nave | `Drag & Drop` |
-| Crear obstáculo | `Shift + Click` |
-| Remover obstáculo | `Click en obstáculo` |
-| Ajustar parámetros | `Sliders del panel` |
+// Ajustar sensibilidad de evasión
+sensors.length = 40;
 
-### **Algoritmos Disponibles**
-- **Evitación Simple**: Detección básica y evitación directa
-- **A* Pathfinding**: *(En desarrollo)* Búsqueda de ruta óptima
-- **Flow Field**: *(En desarrollo)* Campo de flujo para múltiples unidades
-
-## 📁 Estructura del Proyecto
-
-```
-projectAra/
-├── 📄 index.html                 # Juego principal
-├── 🧪 pathfinding-lab.html       # Laboratorio de pathfinding
-├── 📁 css/                       # Estilos del juego
-├── 📁 src/
-│   ├── 📁 core/                  # Motor del juego
-│   │   ├── GameEngine.js         # Motor principal
-│   │   └── PerformanceProfiler.js # Sistema de profiling
-│   ├── 📁 entities/              # Entidades del juego
-│   │   ├── Planet.js             # Planetas
-│   │   └── Fleet.js              # Flotas de naves
-│   ├── 📁 visual/                # Sistemas de renderizado
-│   │   └── CanvasRenderer.js     # Renderer Canvas 2D optimizado
-│   ├── 📁 navigation/            # Sistema de navegación
-│   │   ├── NavigationSystem.js   # Coordinador principal
-│   │   ├── NavigationConfig.js   # Configuración centralizada
-│   │   ├── ObstacleDetector.js   # Detección de obstáculos
-│   │   └── ArrivalSystem.js      # Sistema de llegadas
-│   ├── 📁 systems/               # Sistemas del juego
-│   │   ├── AISystem.js           # Inteligencia artificial
-│   │   ├── SelectionSystem.js    # Sistema de selección
-│   │   └── FleetRedirectionSystem.js # Redirección de flotas
-│   ├── 📁 input/                 # Manejo de entrada
-│   │   └── DragDropHandler.js    # Drag & Drop
-│   ├── 📁 ui/                    # Interfaz de usuario
-│   │   ├── GameLoader.js         # Cargador del juego
-│   │   └── HUDManager.js         # Gestión del HUD
-│   ├── 📁 labs/                  # Laboratorios de desarrollo
-│   │   └── PathfindingLab.js     # Laboratorio de pathfinding
-│   └── 📁 debug/                 # Herramientas de debug
-└── 📁 _archive/                  # Archivos archivados
-    ├── 📁 backups/               # Backups de versiones anteriores
-    └── 📁 docs/                  # Documentación archivada
+// Modificar formaciones
+galcon.formationProbability.spread = 0.6;
 ```
 
-## 🏗️ Arquitectura Técnica
+## 📊 Rendimiento
 
-### **Canvas 2D Optimizado**
-- **Renderizado directo** sin DOM virtual
-- **Double buffering** para animaciones fluidas
-- **Viewport culling** automático
-- **Cache de transformaciones** matemáticas
+### Métricas Actuales
+- **60 FPS** estables con 100+ naves
+- **< 16ms** tiempo de frame
+- **Memoria**: Gestión automática
 
-### **Sistema de Navegación**
-- **Detección de obstáculos** línea-círculo optimizada
-- **Cache de cálculos** con invalidación inteligente
-- **Visualización en tiempo real** de trayectorias
-- **Configuración dinámica** de parámetros
+### Optimizaciones Implementadas
+- Spatial hashing para colisiones
+- Sensores adaptativos por rol
+- Cleanup progresivo de entidades
+- Renderizado eficiente
 
-### **Gestión de Estado**
-- **GameEngine centralizado** como single source of truth
-- **Sistemas modulares** con interfaces bien definidas
-- **Event-driven architecture** para comunicación
-- **Profiling integrado** para optimización continua
+## 🐛 Troubleshooting
 
-## 📊 Métricas de Rendimiento
+### Problemas Comunes
 
-### **Benchmarks Actuales**
-- **Canvas 2D**: 60 FPS con 5000+ objetos
-- **Memoria**: ~50MB para sesión completa
-- **Tiempo de carga**: <2 segundos
-- **Latencia de input**: <16ms
+**Naves se quedan paradas**
+- Verificar configuración de `targetPlanet`
+- Revisar logs de anti-atascamiento
 
-### **Comparativa con SVG**
-| Métrica | Canvas 2D | SVG DOM |
-|---------|-----------|---------|
-| FPS (5000 objetos) | 60 | 15-20 |
-| Memoria | 50MB | 120MB+ |
-| Tiempo de renderizado | 8ms | 35ms+ |
-| Escalabilidad | Excelente | Limitada |
+**Rendimiento bajo**
+- Reducir número de naves simultáneas
+- Ajustar configuración de sensores
 
-## 🚀 Roadmap de Desarrollo
+**Navegación nerviosa**
+- Aumentar `forces.smoothing`
+- Ajustar umbrales de histéresis
 
-### **Milestone 2.3 - Navegación Inteligente** ✅
-- [x] Sistema base de navegación
-- [x] Detección de obstáculos
-- [x] Radio de entrada variable
-- [x] Laboratorio de pathfinding
-- [ ] Algoritmo A* completo
-- [ ] Flow Field para múltiples unidades
+Ver [Troubleshooting completo](./DOCUMENTACION-STEERING-BEHAVIORS.md#troubleshooting) para más detalles.
 
-### **Milestone 2.4 - IA Avanzada** 🔄
-- [ ] Comportamientos de IA mejorados
-- [ ] Estrategias dinámicas
-- [ ] Dificultad adaptativa
-- [ ] Sistema de personalidades
+## 📚 Documentación
 
-### **Milestone 3.0 - Multijugador** 📋
-- [ ] Arquitectura cliente-servidor
-- [ ] Sincronización de estado
-- [ ] Matchmaking
-- [ ] Salas privadas
+- [**Documentación Completa**](./DOCUMENTACION-STEERING-BEHAVIORS.md) - Guía detallada del sistema
+- [**Configuración**](./src/config/SteeringConfig.js) - Parámetros del sistema
+- [**Changelog**](./_archive/docs/changelog/) - Historial de cambios
+
+## 🎯 Roadmap
+
+### Próximas Características
+- [ ] Pathfinding A* para mapas complejos
+- [ ] Editor de formaciones personalizadas
+- [ ] IA táctica avanzada
+- [ ] Efectos visuales mejorados
+- [ ] Panel de configuración en tiempo real
+
+### Mejoras de Rendimiento
+- [ ] Web Workers para cálculos pesados
+- [ ] LOD (Level of Detail) para naves distantes
+- [ ] Culling frustum para renderizado
 
 ## 🤝 Contribución
 
-### **Cómo Contribuir**
+### Estructura de Commits
+```
+feat: nueva característica
+fix: corrección de bug
+docs: actualización de documentación
+perf: mejora de rendimiento
+refactor: refactorización de código
+```
+
+### Desarrollo Local
 1. Fork del repositorio
-2. Crear rama feature (`git checkout -b feature/nueva-caracteristica`)
-3. Commit cambios (`git commit -am 'Agregar nueva característica'`)
-4. Push a la rama (`git push origin feature/nueva-caracteristica`)
+2. Crear rama feature: `git checkout -b feature/nueva-caracteristica`
+3. Commit cambios: `git commit -m 'feat: agregar nueva característica'`
+4. Push a la rama: `git push origin feature/nueva-caracteristica`
 5. Crear Pull Request
 
-### **Estándares de Código**
-- **ES6+ modules** para organización
-- **JSDoc comments** para documentación
-- **Console logging** con emojis para debugging
-- **Performance-first** approach en todas las implementaciones
+## 📄 Licencia
 
-## 📝 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+Este proyecto está bajo la licencia MIT. Ver `LICENSE` para más detalles.
 
 ## 🙏 Agradecimientos
 
-- Inspirado en el clásico juego **Galcon**
-- Desarrollado con **Canvas 2D nativo** para máximo rendimiento
-- Optimizado para **navegadores modernos**
+- **Craig Reynolds** - Por los algoritmos originales de Steering Behaviors
+- **Comunidad de Game Development** - Por inspiración y recursos
+- **Contribuidores** - Por mejoras y feedback
 
 ---
 
-**🚀 ¡Conquista la galaxia con Project Ara!** 
+**ProjectAra v1.0** - Sistema de Steering Behaviors para Galcon
+*Desarrollado con ❤️ para la comunidad de game development* 

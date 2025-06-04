@@ -5,11 +5,14 @@
  */
 
 import { Fleet } from '../entities/Fleet.js';
+import { Vector2D } from '../utils/Vector2D.js';
+import { GALCON_STEERING_CONFIG_PROBADA } from '../config/SteeringConfig.js';
 import { organicConfig } from '../config/OrganicMovementConfig.js';
 
 export class FleetFormationSystem {
-    constructor() {
+    constructor(gameEngine = null) {
         this.config = organicConfig.getConfig();
+        this.gameEngine = gameEngine; // 🔧 NUEVO: Referencia al gameEngine para obtener planetas
         
         console.log('🌊 FleetFormationSystem inicializado con configuración orgánica');
     }
@@ -23,12 +26,35 @@ export class FleetFormationSystem {
         const ships = fleetData.ships;
         const individualFleets = [];
         
-        // Si es una sola nave, no necesita formación
-        if (ships <= 1) {
-            return [new Fleet(fleetData)];
+        // 🔧 NUEVO: Obtener planeta destino del gameEngine
+        let targetPlanet = null;
+        if (this.gameEngine && fleetData.toPlanet) {
+            targetPlanet = this.gameEngine.getPlanet(fleetData.toPlanet);
         }
         
-        console.log(`🌊 Creando formación orgánica: ${ships} naves desde ${fleetData.fromPlanet} → ${fleetData.toPlanet}`);
+        // Si es una sola nave, crear flota simple
+        if (ships <= 1) {
+            const startPos = new Vector2D(fleetData.x || fleetData.startX, fleetData.y || fleetData.startY);
+            const targetPos = new Vector2D(fleetData.targetX, fleetData.targetY);
+            
+            // 🔧 NUEVO: Pasar datos del juego incluyendo planeta destino
+            const gameData = {
+                owner: fleetData.owner,
+                fromPlanet: fleetData.fromPlanet,
+                toPlanet: fleetData.toPlanet,
+                targetPlanet: targetPlanet, // 🔧 NUEVO: Objeto planeta completo
+                color: fleetData.color
+            };
+            
+            const fleet = new Fleet(startPos, targetPos, GALCON_STEERING_CONFIG_PROBADA, 1, gameData);
+            
+            // Mapear propiedades legacy adicionales
+            fleet.legacyId = fleetData.id;
+            
+            return [fleet];
+        }
+        
+        console.log(`🌊 Creando formación orgánica: ${ships} naves desde ${fleetData.fromPlanet} → ${fleetData.toPlanet}${targetPlanet ? ` (radio: ${targetPlanet.radius})` : ''}`);
         
         // Obtener configuración de formación
         const formationConfig = this.config.formation;
@@ -55,11 +81,32 @@ export class FleetFormationSystem {
                 baseTime
             );
             
-            const individualFleet = new Fleet(individualFleetData);
+            // Crear Fleet con constructor correcto
+            const startPos = new Vector2D(individualFleetData.startX, individualFleetData.startY);
+            const targetPos = new Vector2D(individualFleetData.targetX, individualFleetData.targetY);
+            
+            // 🔧 NUEVO: Pasar datos del juego incluyendo planeta destino
+            const gameData = {
+                owner: individualFleetData.owner,
+                fromPlanet: individualFleetData.fromPlanet,
+                toPlanet: individualFleetData.toPlanet,
+                targetPlanet: targetPlanet, // 🔧 NUEVO: Objeto planeta completo
+                color: individualFleetData.color
+            };
+            
+            const individualFleet = new Fleet(startPos, targetPos, GALCON_STEERING_CONFIG_PROBADA, 1, gameData);
+            
+            // Mapear propiedades legacy adicionales
+            individualFleet.legacyId = individualFleetData.id;
+            individualFleet.formationIndex = individualFleetData.formationIndex;
+            individualFleet.formationTotal = individualFleetData.formationTotal;
+            individualFleet.originalFleetId = individualFleetData.originalFleetId;
+            individualFleet.isFormationMember = individualFleetData.isFormationMember;
+            
             individualFleets.push(individualFleet);
         }
         
-        console.log(`✅ Formación orgánica creada: ${individualFleets.length} naves individuales`);
+        console.log(`✅ Formación orgánica creada: ${individualFleets.length} naves individuales${targetPlanet ? ` → planeta radio ${targetPlanet.radius}` : ''}`);
         return individualFleets;
     }
 

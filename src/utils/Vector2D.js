@@ -153,7 +153,7 @@ export class Vector2D {
     }
 
     /**
-     * ⊥ Obtener vector perpendicular
+     * 🔄 Obtener vector perpendicular (rotado 90 grados)
      */
     perpendicular() {
         return new Vector2D(-this.y, this.x);
@@ -192,12 +192,24 @@ export class Vector2D {
     }
 
     /**
-     * 🔄 Interpolar linealmente hacia otro vector
+     * 🎯 Interpolación lineal hacia otro vector (modifica este vector)
      */
-    lerp(target, amount) {
-        this.x += (target.x - this.x) * amount;
-        this.y += (target.y - this.y) * amount;
+    lerp(target, t) {
+        const clampedT = Math.max(0, Math.min(1, t));
+        this.x = this.x + (target.x - this.x) * clampedT;
+        this.y = this.y + (target.y - this.y) * clampedT;
         return this;
+    }
+
+    /**
+     * 🎯 Interpolación lineal entre dos vectores (método estático)
+     */
+    static lerp(a, b, t) {
+        const clampedT = Math.max(0, Math.min(1, t));
+        return new Vector2D(
+            a.x + (b.x - a.x) * clampedT,
+            a.y + (b.y - a.y) * clampedT
+        );
     }
 
     /**
@@ -283,10 +295,10 @@ export class Vector2D {
     }
 
     /**
-     * 🔗 Producto punto entre dos vectores
+     * 📐 Producto punto entre dos vectores
      */
-    static dot(v1, v2) {
-        return v1.dot(v2);
+    static dot(a, b) {
+        return a.x * b.x + a.y * b.y;
     }
 
     /**
@@ -294,28 +306,6 @@ export class Vector2D {
      */
     static cross(v1, v2) {
         return v1.cross(v2);
-    }
-
-    /**
-     * 🔄 Interpolar linealmente entre dos vectores
-     */
-    static lerp(v1, v2, amount) {
-        return new Vector2D(
-            v1.x + (v2.x - v1.x) * amount,
-            v1.y + (v2.y - v1.y) * amount
-        );
-    }
-
-    /**
-     * 🔄 Rotar vector por ángulo (sin modificar original)
-     */
-    static rotate(vector, angle) {
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
-        return new Vector2D(
-            vector.x * cos - vector.y * sin,
-            vector.x * sin + vector.y * cos
-        );
     }
 
     /**
@@ -360,5 +350,17 @@ export class Vector2D {
         const dot = Vector2D.dot(vector, normalizedNormal);
         const reflection = Vector2D.multiply(normalizedNormal, 2 * dot);
         return Vector2D.subtract(vector, reflection);
+    }
+
+    /**
+     * 🔄 Rotar vector por ángulo (sin modificar original)
+     */
+    static rotate(vector, angle) {
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        return new Vector2D(
+            vector.x * cos - vector.y * sin,
+            vector.x * sin + vector.y * cos
+        );
     }
 } 
