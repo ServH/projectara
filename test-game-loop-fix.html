@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Game Loop Fix - Project Ara</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #gameCanvas {
+            border: 1px solid #0f0;
+            background: #001122;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+            background: rgba(0, 50, 0, 0.3);
+        }
+        
+        .hud {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            min-width: 200px;
+        }
+        
+        .hud div {
+            margin: 5px 0;
+        }
+        
+        .success {
+            color: #0f0;
+        }
+        
+        .error {
+            color: #f00;
+        }
+        
+        .warning {
+            color: #ff0;
+        }
+        
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        
+        button:hover {
+            background: #0a0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Game Loop Fix - Project Ara</h1>
+    
+    <div class="status">
+        <h3>Estado del Test:</h3>
+        <div id="testStatus">Iniciando test...</div>
+    </div>
+    
+    <div class="hud">
+        <h4>📊 Métricas del Juego:</h4>
+        <div id="planetsCount">Planetas: 0</div>
+        <div id="fleetsCount">Flotas: 0</div>
+        <div id="renderCount">Renders: 0</div>
+        <div id="gameLoopStatus">Game Loop: Detenido</div>
+        <div id="rendererStatus">Renderer: No conectado</div>
+    </div>
+    
+    <!-- Canvas del juego -->
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div class="status">
+        <button onclick="startTest()">🚀 Iniciar Test</button>
+        <button onclick="stopTest()">⏹️ Detener Test</button>
+        <button onclick="clearLogs()">🧹 Limpiar Logs</button>
+    </div>
+    
+    <div class="status">
+        <h3>📋 Log del Test:</h3>
+        <div id="testLog" style="max-height: 300px; overflow-y: auto; background: #001; padding: 10px; font-size: 12px;"></div>
+    </div>
+
+    <script type="module">
+        let gameLoader = null;
+        let testInterval = null;
+        let renderCount = 0;
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('testLog');
+            const className = type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'success';
+            logElement.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(`🔧 TEST: ${message}`);
+        }
+        
+        window.startTest = async function() {
+            try {
+                log('🔧 TEST: Iniciando test del game loop corregido...', 'info');
+                
+                // Importar GameLoader
+                log('🔧 TEST: Importando GameLoader...', 'info');
+                const { GameLoader } = await import('./src/ui/GameLoader.js');
+                
+                // Crear GameLoader
+                log('🔧 TEST: Creando GameLoader...', 'info');
+                gameLoader = new GameLoader();
+                
+                // Cargar el juego
+                log('🔧 TEST: Iniciando carga del juego...', 'info');
+                await gameLoader.load();
+                
+                // Obtener sistemas cargados
+                const systems = gameLoader.getLoadedSystems();
+                
+                if (!systems) {
+                    throw new Error('No se pudieron cargar los sistemas');
+                }
+                
+                log('🔧 TEST: ✅ Sistemas cargados correctamente', 'success');
+                
+                // Verificar que el renderer esté conectado al GameEngine
+                if (systems.gameEngine && systems.gameEngine.renderer) {
+                    log('🔧 TEST: ✅ CanvasRenderer conectado al GameEngine', 'success');
+                    document.getElementById('rendererStatus').textContent = 'Renderer: ✅ Conectado';
+                } else {
+                    log('🔧 TEST: ❌ CanvasRenderer NO conectado al GameEngine', 'error');
+                    document.getElementById('rendererStatus').textContent = 'Renderer: ❌ No conectado';
+                }
+                
+                // Verificar que el game loop esté funcionando
+                if (systems.gameEngine && systems.gameEngine.stateManager.isRunning) {
+                    log('🔧 TEST: ✅ Game loop funcionando', 'success');
+                    document.getElementById('gameLoopStatus').textContent = 'Game Loop: ✅ Funcionando';
+                } else {
+                    log('🔧 TEST: ❌ Game loop NO funcionando', 'error');
+                    document.getElementById('gameLoopStatus').textContent = 'Game Loop: ❌ Detenido';
+                }
+                
+                // Iniciar monitoreo de métricas
+                startMetricsMonitoring(systems);
+                
+                log('🔧 TEST: ✅ Test completado exitosamente', 'success');
+                document.getElementById('testStatus').innerHTML = '<span class="success">✅ Test completado - Juego funcionando</span>';
+                
+            } catch (error) {
+                log(`🔧 TEST: ❌ Error en el test: ${error.message}`, 'error');
+                document.getElementById('testStatus').innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+                console.error('❌ Error completo:', error);
+            }
+        };
+        
+        function startMetricsMonitoring(systems) {
+            if (testInterval) clearInterval(testInterval);
+            
+            testInterval = setInterval(() => {
+                try {
+                    if (systems.gameEngine) {
+                        const planets = systems.gameEngine.getAllPlanets();
+                        const fleets = systems.gameEngine.getAllFleets();
+                        
+                        document.getElementById('planetsCount').textContent = `Planetas: ${planets ? planets.length : 0}`;
+                        document.getElementById('fleetsCount').textContent = `Flotas: ${fleets ? fleets.length : 0}`;
+                        
+                        // Contar renders (aproximado)
+                        if (systems.gameEngine.renderer && systems.gameEngine.renderer.renderState) {
+                            const currentRenderCount = systems.gameEngine.renderer.renderState.frameCount || 0;
+                            document.getElementById('renderCount').textContent = `Renders: ${currentRenderCount}`;
+                        }
+                        
+                        // Verificar estado del game loop
+                        const isRunning = systems.gameEngine.stateManager.isRunning;
+                        document.getElementById('gameLoopStatus').textContent = `Game Loop: ${isRunning ? '✅ Funcionando' : '❌ Detenido'}`;
+                    }
+                } catch (error) {
+                    log(`⚠️ Error actualizando métricas: ${error.message}`, 'warning');
+                }
+            }, 1000);
+        }
+        
+        window.stopTest = function() {
+            if (testInterval) {
+                clearInterval(testInterval);
+                testInterval = null;
+            }
+            
+            if (gameLoader) {
+                try {
+                    gameLoader.destroy();
+                    gameLoader = null;
+                    log('🔧 TEST: GameLoader destruido', 'info');
+                } catch (error) {
+                    log(`⚠️ Error destruyendo GameLoader: ${error.message}`, 'warning');
+                }
+            }
+            
+            document.getElementById('testStatus').innerHTML = '<span class="warning">⏹️ Test detenido</span>';
+            document.getElementById('gameLoopStatus').textContent = 'Game Loop: Detenido';
+            document.getElementById('rendererStatus').textContent = 'Renderer: No conectado';
+        };
+        
+        window.clearLogs = function() {
+            document.getElementById('testLog').innerHTML = '';
+        };
+        
+        // Auto-iniciar el test
+        log('🔧 TEST: Página cargada, listo para iniciar test', 'info');
+    </script>
+</body>
+</html> 
