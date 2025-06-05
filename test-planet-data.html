@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Planet Data - Project Ara</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+            background: rgba(0, 50, 0, 0.3);
+        }
+        
+        .planet-data {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #666;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .player { border-color: #00ff88; }
+        .enemy { border-color: #ff4444; }
+        .neutral { border-color: #666666; }
+        
+        #gameCanvas {
+            border: 1px solid #0f0;
+            background: #001122;
+            display: block;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Planet Data - Project Ara</h1>
+    
+    <div class="status">
+        <h3>📊 Estado del Test:</h3>
+        <div id="testStatus">Iniciando...</div>
+    </div>
+    
+    <div id="planetDataContainer">
+        <h3>🪐 Datos de Planetas:</h3>
+        <div id="planetList"></div>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <script type="module">
+        async function testPlanetData() {
+            const testStatus = document.getElementById('testStatus');
+            const planetList = document.getElementById('planetList');
+            
+            try {
+                testStatus.textContent = '🔧 Importando GameLoader...';
+                const { GameLoader } = await import('./src/ui/GameLoader.js');
+                
+                testStatus.textContent = '🔧 Creando GameLoader...';
+                const gameLoader = new GameLoader();
+                
+                testStatus.textContent = '🔧 Iniciando carga del juego...';
+                await gameLoader.load();
+                
+                testStatus.textContent = '✅ Juego cargado - Analizando datos de planetas...';
+                
+                // Obtener referencia al GameEngine
+                const gameEngine = gameLoader.gameEngine;
+                
+                if (!gameEngine) {
+                    throw new Error('GameEngine no disponible');
+                }
+                
+                // Obtener planetas
+                const planets = gameEngine.getAllPlanets();
+                
+                console.log('🪐 Planetas obtenidos:', planets);
+                
+                // Mostrar datos de cada planeta
+                planetList.innerHTML = '';
+                
+                planets.forEach((planet, index) => {
+                    const planetDiv = document.createElement('div');
+                    planetDiv.className = 'planet-data';
+                    
+                    // Determinar clase CSS según propietario
+                    let ownerClass = 'neutral';
+                    let ownerText = 'Neutral';
+                    
+                    if (planet.owner === 1 || planet.owner === 'player') {
+                        ownerClass = 'player';
+                        ownerText = 'Player';
+                    } else if (planet.owner === 2 || planet.owner === 'ai' || planet.owner === 'enemy') {
+                        ownerClass = 'enemy';
+                        ownerText = 'Enemy/AI';
+                    }
+                    
+                    planetDiv.classList.add(ownerClass);
+                    
+                    planetDiv.innerHTML = `
+                        <strong>Planeta ${index + 1} (${planet.id || 'sin ID'})</strong><br/>
+                        <strong>Owner:</strong> ${planet.owner} (${ownerText})<br/>
+                        <strong>Posición:</strong> (${Math.round(planet.x)}, ${Math.round(planet.y)})<br/>
+                        <strong>Radio:</strong> ${planet.radius}<br/>
+                        <strong>Población:</strong> ${planet.ships || planet.population || 0}<br/>
+                        <strong>Tipo:</strong> ${planet.type || 'unknown'}
+                    `;
+                    
+                    planetList.appendChild(planetDiv);
+                });
+                
+                // Verificar datos de renderizado
+                const canvasRenderer = gameLoader.canvasRenderer;
+                if (canvasRenderer) {
+                    const renderData = canvasRenderer.gatherRenderData();
+                    console.log('🎨 Datos de renderizado:', renderData);
+                    
+                    // Mostrar estadísticas
+                    const statsDiv = document.createElement('div');
+                    statsDiv.className = 'status';
+                    statsDiv.innerHTML = `
+                        <h3>📊 Estadísticas:</h3>
+                        <strong>Total planetas:</strong> ${planets.length}<br/>
+                        <strong>Planetas para renderizar:</strong> ${renderData.planets.length}<br/>
+                        <strong>Flotas para renderizar:</strong> ${renderData.fleets.length}
+                    `;
+                    planetList.appendChild(statsDiv);
+                }
+                
+                testStatus.textContent = `✅ Análisis completado - ${planets.length} planetas encontrados`;
+                
+            } catch (error) {
+                testStatus.textContent = `❌ Error en el test: ${error.message}`;
+                console.error('❌ Error completo:', error);
+            }
+        }
+        
+        // Iniciar test
+        testPlanetData();
+    </script>
+</body>
+</html> 
