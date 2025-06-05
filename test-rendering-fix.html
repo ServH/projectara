@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Rendering Fix - Project Ara</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #gameCanvas {
+            border: 1px solid #0f0;
+            background: #001122;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+            background: rgba(0, 50, 0, 0.3);
+        }
+        
+        .hud {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        
+        .hud div {
+            margin: 5px 0;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #0f0;
+            font-size: 24px;
+            z-index: 1000;
+        }
+        
+        .game-area {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            border: 1px solid #0f0;
+            margin: 20px 0;
+        }
+        
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        
+        button:hover {
+            background: #0a0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Rendering Fix - Project Ara</h1>
+    
+    <div class="status">
+        <h3>Estado del Test:</h3>
+        <div id="testStatus">Iniciando test...</div>
+    </div>
+    
+    <div class="loading-screen" id="loadingScreen">
+        <div>🚀 Cargando Project Ara...</div>
+    </div>
+    
+    <div class="game-area">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    </div>
+    
+    <div class="hud" id="gameHUD">
+        <div>Planetas: <span id="planetCount">0</span></div>
+        <div>Flotas: <span id="fleetCount">0</span></div>
+        <div>FPS: <span id="fpsCounter">0</span></div>
+        <div>Seleccionados: <span id="selectedCount">0</span></div>
+        <div>Porcentaje: <span id="percentageDisplay">50%</span></div>
+    </div>
+    
+    <div class="status">
+        <h3>Controles de Test:</h3>
+        <button onclick="testRenderData()">🔍 Test Render Data</button>
+        <button onclick="testPlanetClick()">🪐 Test Planet Click</button>
+        <button onclick="forceRender()">🎨 Force Render</button>
+        <button onclick="showDebugInfo()">🐛 Debug Info</button>
+    </div>
+    
+    <div class="status" id="debugOutput">
+        <h3>Debug Output:</h3>
+        <pre id="debugText">Esperando datos...</pre>
+    </div>
+
+    <script type="module">
+        import { GameLoader } from '/src/ui/GameLoader.js';
+        
+        let gameLoader = null;
+        let gameEngine = null;
+        let canvasRenderer = null;
+        
+        function log(message) {
+            console.log(message);
+            const status = document.getElementById('testStatus');
+            status.innerHTML += '<br>' + message;
+        }
+        
+        // Funciones globales para los botones
+        window.testRenderData = function() {
+            if (!canvasRenderer) {
+                log('❌ CanvasRenderer no disponible');
+                return;
+            }
+            
+            const renderData = canvasRenderer.gatherRenderData();
+            log(`🔍 Render Data: ${renderData.planets.length} planetas, ${renderData.fleets.length} flotas`);
+            
+            document.getElementById('debugText').textContent = JSON.stringify(renderData, null, 2);
+        };
+        
+        window.testPlanetClick = function() {
+            if (!gameEngine) {
+                log('❌ GameEngine no disponible');
+                return;
+            }
+            
+            const planets = gameEngine.getAllPlanets();
+            if (planets.length > 0) {
+                const planet = planets[0];
+                log(`🪐 Primer planeta: ${planet.id} en (${planet.x}, ${planet.y}) con ${planet.ships} naves`);
+            } else {
+                log('❌ No hay planetas disponibles');
+            }
+        };
+        
+        window.forceRender = function() {
+            if (!canvasRenderer) {
+                log('❌ CanvasRenderer no disponible');
+                return;
+            }
+            
+            canvasRenderer.render();
+            log('🎨 Renderizado forzado ejecutado');
+        };
+        
+        window.showDebugInfo = function() {
+            if (!canvasRenderer) {
+                log('❌ CanvasRenderer no disponible');
+                return;
+            }
+            
+            const debugInfo = canvasRenderer.getDebugInfo();
+            document.getElementById('debugText').textContent = JSON.stringify(debugInfo, null, 2);
+            log('🐛 Debug info actualizado');
+        };
+        
+        async function runTest() {
+            try {
+                log('🔧 TEST: Iniciando test de renderizado...');
+                
+                // Crear GameLoader
+                log('🔧 TEST: Creando GameLoader...');
+                gameLoader = new GameLoader();
+                
+                // Cargar juego
+                log('🔧 TEST: Cargando juego...');
+                await gameLoader.load();
+                
+                // Obtener referencias
+                gameEngine = gameLoader.gameEngine;
+                canvasRenderer = gameLoader.canvasRenderer;
+                
+                if (!gameEngine) {
+                    throw new Error('GameEngine no disponible');
+                }
+                
+                if (!canvasRenderer) {
+                    throw new Error('CanvasRenderer no disponible');
+                }
+                
+                log('🔧 TEST: ✅ Juego cargado exitosamente');
+                
+                // Test inicial de datos
+                const planets = gameEngine.getAllPlanets();
+                const fleets = gameEngine.getAllFleets();
+                
+                log(`🔧 TEST: 📊 ${planets.length} planetas y ${fleets.length} flotas encontrados`);
+                
+                // Test de render data
+                const renderData = canvasRenderer.gatherRenderData();
+                log(`🔧 TEST: 🎨 Render data: ${renderData.planets.length} planetas para renderizar`);
+                
+                if (renderData.planets.length > 0) {
+                    log('🔧 TEST: ✅ ¡Los planetas se están obteniendo correctamente para renderizado!');
+                    log('🔧 TEST: 🎮 El juego debería estar visible ahora');
+                } else {
+                    log('🔧 TEST: ❌ Los planetas no se están obteniendo para renderizado');
+                }
+                
+                // Ocultar pantalla de carga
+                document.getElementById('loadingScreen').style.display = 'none';
+                
+            } catch (error) {
+                log(`🔧 TEST: ❌ Error en el test: ${error.message}`);
+                console.error('❌ Error completo:', error);
+            }
+        }
+        
+        // Ejecutar test al cargar la página
+        runTest();
+    </script>
+</body>
+</html> 
