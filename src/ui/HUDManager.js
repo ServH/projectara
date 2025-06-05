@@ -84,15 +84,44 @@ export class HUDManager {
     updateHUD() {
         try {
             // OPTIMIZACIÓN: Solo actualizar si hay cambios
-            this.updatePlanetsCount();
-            this.updateFleetsCount();
-            this.updatePercentage();
-            this.updateFPS();
-            this.updateSelectedCount();
-            this.updateGameState();
+            try {
+                this.updatePlanetsCount();
+            } catch (error) {
+                console.warn('⚠️ Error actualizando planetas count:', error);
+            }
+            
+            try {
+                this.updateFleetsCount();
+            } catch (error) {
+                console.warn('⚠️ Error actualizando flotas count:', error);
+            }
+            
+            try {
+                this.updatePercentage();
+            } catch (error) {
+                console.warn('⚠️ Error actualizando porcentaje:', error);
+            }
+            
+            try {
+                this.updateFPS();
+            } catch (error) {
+                console.warn('⚠️ Error actualizando FPS:', error);
+            }
+            
+            try {
+                this.updateSelectedCount();
+            } catch (error) {
+                console.warn('⚠️ Error actualizando selección count:', error);
+            }
+            
+            try {
+                this.updateGameState();
+            } catch (error) {
+                console.warn('⚠️ Error actualizando estado del juego:', error);
+            }
             
         } catch (error) {
-            console.warn('⚠️ Error actualizando HUD:', error);
+            console.warn('⚠️ Error crítico actualizando HUD:', error);
         }
     }
 

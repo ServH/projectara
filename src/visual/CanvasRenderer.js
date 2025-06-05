@@ -290,33 +290,65 @@ export class CanvasRenderer {
         
         try {
             // 📊 Iniciar tracking de métricas
-            this.managers.metrics.startFrame();
-            this.managers.metrics.startRender();
+            if (this.managers.metrics) {
+                this.managers.metrics.startFrame();
+                this.managers.metrics.startRender();
+            }
             
             // 🎯 Obtener datos del juego
             const renderData = this.gatherRenderData();
             
             // ⚡ Optimizar datos de renderizado
-            const optimizedData = this.managers.optimization.optimizeRenderData(renderData);
+            let optimizedData = renderData;
+            if (this.managers.optimization) {
+                try {
+                    optimizedData = this.managers.optimization.optimizeRenderData(renderData);
+                } catch (error) {
+                    console.warn('⚠️ Error en optimización, usando datos sin optimizar:', error);
+                    optimizedData = renderData;
+                }
+            }
             
             // 🎨 Renderizar entidades básicas
-            this.managers.rendering.renderEntities(optimizedData);
+            if (this.managers.rendering) {
+                try {
+                    this.managers.rendering.renderEntities(optimizedData);
+                } catch (error) {
+                    console.error('❌ Error en renderizado de entidades:', error);
+                }
+            } else {
+                console.warn('⚠️ CanvasRenderingManager no disponible');
+            }
             
             // 🌊 Renderizar efectos visuales
-            this.managers.effects.renderEffects();
+            if (this.managers.effects) {
+                try {
+                    this.managers.effects.renderEffects();
+                } catch (error) {
+                    console.warn('⚠️ Error en efectos visuales:', error);
+                }
+            }
             
             // 🎮 Renderizar overlays interactivos
-            this.managers.overlay.renderOverlays();
+            if (this.managers.overlay) {
+                try {
+                    this.managers.overlay.renderOverlays();
+                } catch (error) {
+                    console.warn('⚠️ Error en overlays:', error);
+                }
+            }
             
             // 📊 Finalizar tracking de métricas
-            this.managers.metrics.endRender();
-            this.managers.metrics.endFrame();
+            if (this.managers.metrics) {
+                this.managers.metrics.endRender();
+                this.managers.metrics.endFrame();
+            }
             
             // 🔄 Actualizar estado
             this.updateRenderState();
             
         } catch (error) {
-            console.error('❌ Error en renderizado:', error);
+            console.error('❌ Error crítico en renderizado:', error);
         }
     }
     
