@@ -115,6 +115,22 @@ export class LegacyFleetAdapter {
     }
 
     /**
+     * ➕ Agregar flota nueva al adaptador
+     */
+    addFleet(fleet) {
+        try {
+            // Registrar la flota en el mapping manager
+            this.mappingManager.registerFleetMapping(fleet.id, fleet, null);
+            
+            console.log(`🔧 Flota ${fleet.id} agregada al LegacyFleetAdapter`);
+            return true;
+        } catch (error) {
+            console.error(`❌ Error agregando flota ${fleet.id} al adaptador:`, error);
+            return false;
+        }
+    }
+
+    /**
      * 🧹 Limpiar flotas inactivas
      */
     cleanup() {

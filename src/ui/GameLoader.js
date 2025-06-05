@@ -73,13 +73,13 @@ export class GameLoader {
 
     async loadModules() {
         const moduleSpecs = [
-            { path: '/src/core/GameEngine.js', name: 'GameEngine' },
-            { path: '/src/systems/AISystem.js', name: 'AISystem' },
-            { path: '/src/systems/FleetRedirectionSystem.js', name: 'FleetRedirectionSystem' },
-            { path: '/src/visual/CanvasRenderer.js', name: 'CanvasRenderer' },
-            { path: '/src/systems/SelectionSystem.js', name: 'SelectionSystem' },
-            { path: '/src/input/DragDropHandler.js', name: 'DragDropHandler' },
-            { path: '/src/ui/HUDManager.js', name: 'HUDManager' }
+            { path: '/projectAra/src/core/GameEngine.js', name: 'GameEngine' },
+            { path: '/projectAra/src/systems/AISystem.js', name: 'AISystem' },
+            { path: '/projectAra/src/systems/FleetRedirectionSystem.js', name: 'FleetRedirectionSystem' },
+            { path: '/projectAra/src/visual/CanvasRenderer.js', name: 'CanvasRenderer' },
+            { path: '/projectAra/src/systems/SelectionSystem.js', name: 'SelectionSystem' },
+            { path: '/projectAra/src/input/DragDropHandler.js', name: 'DragDropHandler' },
+            { path: '/projectAra/src/ui/HUDManager.js', name: 'HUDManager' }
         ];
         
         const modules = {};

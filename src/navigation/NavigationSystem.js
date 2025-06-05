@@ -10,6 +10,7 @@ import ArrivalSystem from './ArrivalSystem.js';
 import { SpatialHashSystem } from '../systems/SpatialHashSystem.js';
 import { LegacyFleetAdapter } from '../adapters/LegacyFleetAdapter.js';
 import { GALCON_STEERING_CONFIG_PROBADA } from '../config/SteeringConfig.js';
+import eventBus, { GAME_EVENTS } from '../core/EventBus.js';
 
 // Gestores especializados
 import { NavigationModeManager } from './managers/NavigationModeManager.js';
@@ -49,6 +50,9 @@ export class NavigationSystem {
         if (this.modeManager.isSteeringMode()) {
             this.fleetAdapter.integrateWithGameEngine();
         }
+        
+        // 🔗 Configurar event listeners para recibir flotas automáticamente
+        this.setupEventListeners();
         
         console.log(`🧭 NavigationSystem refactorizado inicializado - ${this.modeManager.getCurrentMode()} activo`);
     }
@@ -226,6 +230,10 @@ export class NavigationSystem {
      * 🧹 Cleanup completo
      */
     destroy() {
+        // Limpiar event listeners
+        eventBus.off(GAME_EVENTS.FLEET_ADDED, this.handleFleetAdded.bind(this));
+        eventBus.off(GAME_EVENTS.FLEET_REMOVED, this.handleFleetRemoved.bind(this));
+        
         // Destruir subsistemas core
         this.obstacleDetector.destroy();
         this.arrivalSystem.destroy();
@@ -323,6 +331,42 @@ export class NavigationSystem {
      */
     updateStats(processingTime) {
         this.statsManager.updatePerformanceStats(processingTime);
+    }
+
+    // 🔗 Configurar event listeners para recibir flotas automáticamente
+    setupEventListeners() {
+        // Escuchar cuando se agregan flotas al StateManager
+        eventBus.on(GAME_EVENTS.FLEET_ADDED, this.handleFleetAdded.bind(this));
+        
+        // Escuchar cuando se remueven flotas del StateManager
+        eventBus.on(GAME_EVENTS.FLEET_REMOVED, this.handleFleetRemoved.bind(this));
+        
+        console.log('🔗 NavigationSystem event listeners configurados');
+    }
+
+    /**
+     * 🚀 Manejar flota agregada al StateManager
+     */
+    handleFleetAdded({ fleetId, fleet }) {
+        // Solo procesar en modo steering
+        if (this.modeManager.isSteeringMode()) {
+            console.log(`🧭 NavigationSystem recibió nueva flota: ${fleetId}`);
+            
+            // Agregar flota al adaptador para navegación
+            this.fleetAdapter.addFleet(fleet);
+        }
+    }
+
+    /**
+     * 🗑️ Manejar flota removida del StateManager
+     */
+    handleFleetRemoved({ fleetId, fleet }) {
+        if (this.modeManager.isSteeringMode()) {
+            console.log(`🧭 NavigationSystem removió flota: ${fleetId}`);
+            
+            // Remover flota del adaptador
+            this.fleetAdapter.removeFleet(fleetId);
+        }
     }
 }
 

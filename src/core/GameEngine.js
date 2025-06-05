@@ -497,8 +497,9 @@ export class GameEngine {
         console.log(`🚀 Fleet launched: ${data.ships} ships from ${data.fromPlanet} to ${data.toPlanet}`);
         
         // Crear flota real en el sistema usando FleetFormationSystem
-        if (this.systemsManager.fleetFormationSystem) {
-            const fleets = this.systemsManager.fleetFormationSystem.createOrganicFormation(data);
+        const fleetFormationSystem = this.systemsManager.getSystem('fleetFormationSystem');
+        if (fleetFormationSystem) {
+            const fleets = fleetFormationSystem.createOrganicFormation(data);
             
             // Agregar flotas al estado del juego
             fleets.forEach(fleet => {

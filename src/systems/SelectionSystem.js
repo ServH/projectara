@@ -315,7 +315,8 @@ export class SelectionSystem {
      */
     handleDragEnd({ event, coords }) {
         const selectedPlanets = this.dragManager.endDrag(coords.x, coords.y);
-        console.log(`🏁 Drag finalizado: ${selectedPlanets.length} planetas seleccionados`);
+        const count = selectedPlanets ? selectedPlanets.length : 0;
+        console.log(`🏁 Drag finalizado: ${count} planetas seleccionados`);
     }
 
     /**
