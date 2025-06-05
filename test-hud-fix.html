@@ -38,6 +38,13 @@
             border: 1px solid #0f0;
             background: rgba(0, 50, 0, 0.3);
         }
+        
+        .game-area {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            margin: 20px auto;
+        }
     </style>
 </head>
 <body>
@@ -48,7 +55,16 @@
         <div id="testStatus">Iniciando...</div>
     </div>
     
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <!-- Elementos DOM requeridos -->
+    <div class="game-area">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    </div>
+    
+    <!-- Loading UI Elements -->
+    <div id="loadingScreen" style="display: none;">
+        <div id="loadingProgress"></div>
+        <div id="loadingText"></div>
+    </div>
     
     <!-- HUD Elements -->
     <div class="hud">
@@ -60,6 +76,10 @@
         <div>Estado: <span id="game-state">CARGANDO</span></div>
         <div class="status-indicator" id="status-indicator"></div>
     </div>
+
+    <!-- Top and Bottom bars -->
+    <div id="topBar" style="display: none;"></div>
+    <div class="bottom-bar" style="display: none;"></div>
 
     <script type="module">
         const testStatus = document.getElementById('testStatus');
@@ -80,7 +100,7 @@
             const gameLoader = new GameLoader();
             
             updateStatus('Iniciando carga del juego...');
-            await gameLoader.loadGame();
+            await gameLoader.load();
             
             updateStatus('✅ Juego cargado exitosamente');
             updateStatus('🎮 El HUD debería estar funcionando sin errores');
@@ -88,14 +108,15 @@
             
             // Verificar que el HUD está funcionando
             setTimeout(() => {
-                const hudManager = gameLoader.hudManager;
-                if (hudManager) {
+                const loadedSystems = gameLoader.getLoadedSystems();
+                if (loadedSystems && loadedSystems.hudManager) {
                     updateStatus('✅ HUDManager encontrado y funcionando');
                     updateStatus('🔧 Forzando actualización del HUD...');
-                    hudManager.forceUpdate();
+                    loadedSystems.hudManager.forceUpdate();
                     updateStatus('✅ Actualización forzada completada');
+                    updateStatus('🎯 TEST COMPLETADO: El HUD funciona correctamente sin errores');
                 } else {
-                    updateStatus('❌ HUDManager no encontrado');
+                    updateStatus('❌ HUDManager no encontrado en los sistemas cargados');
                 }
             }, 2000);
             
