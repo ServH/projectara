@@ -385,7 +385,7 @@ export class AITargetingManager {
     }
 
     calculateRiskFactor(target, aiPlanets) {
-        const playerPlanets = Array.from(this.gameEngine.planets.values())
+        const playerPlanets = this.gameEngine.getAllPlanets()
             .filter(p => p.owner === 'player');
         
         const nearbyEnemies = playerPlanets.filter(enemy => 
@@ -466,7 +466,7 @@ export class AITargetingManager {
 
     calculateAvailability(attacker) {
         // Verificar si el planeta está siendo atacado o tiene flotas en camino
-        const incomingFleets = Array.from(this.gameEngine.fleets.values())
+        const incomingFleets = this.gameEngine.getAllFleets()
             .filter(f => f.target === attacker && f.owner !== 'ai');
         
         const availability = incomingFleets.length > 0 ? 0.5 : 1.0;
@@ -499,7 +499,7 @@ export class AITargetingManager {
 
     calculateRouteRisk(from, to) {
         // Calcular riesgo basado en planetas enemigos en la ruta
-        const playerPlanets = Array.from(this.gameEngine.planets.values())
+        const playerPlanets = this.gameEngine.getAllPlanets()
             .filter(p => p.owner === 'player');
         
         let risk = 0;

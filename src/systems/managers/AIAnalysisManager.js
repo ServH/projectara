@@ -57,7 +57,7 @@ export class AIAnalysisManager {
      * 🪐 Analizar planetas
      */
     analyzePlanets() {
-        const allPlanets = Array.from(this.gameEngine.planets.values());
+        const allPlanets = this.gameEngine.getAllPlanets();
         const aiPlanets = allPlanets.filter(p => p.owner === 'ai');
         const playerPlanets = allPlanets.filter(p => p.owner === 'player');
         const neutralPlanets = allPlanets.filter(p => p.owner === 'neutral');
@@ -102,7 +102,7 @@ export class AIAnalysisManager {
      * 🚁 Analizar flotas
      */
     analyzeFleets() {
-        const allFleets = Array.from(this.gameEngine.fleets.values());
+        const allFleets = this.gameEngine.getAllFleets();
         const aiFleets = allFleets.filter(f => f.owner === 'ai');
         const playerFleets = allFleets.filter(f => f.owner === 'player');
         
@@ -136,8 +136,8 @@ export class AIAnalysisManager {
      */
     analyzeThreats() {
         const threats = [];
-        const aiPlanets = Array.from(this.gameEngine.planets.values()).filter(p => p.owner === 'ai');
-        const playerFleets = Array.from(this.gameEngine.fleets.values()).filter(f => f.owner === 'player');
+        const aiPlanets = this.gameEngine.getAllPlanets().filter(p => p.owner === 'ai');
+        const playerFleets = this.gameEngine.getAllFleets().filter(f => f.owner === 'player');
         
         // Amenazas de flotas enemigas
         playerFleets.forEach(fleet => {
@@ -155,7 +155,7 @@ export class AIAnalysisManager {
         });
         
         // Amenazas de planetas enemigos cercanos
-        const playerPlanets = Array.from(this.gameEngine.planets.values()).filter(p => p.owner === 'player');
+        const playerPlanets = this.gameEngine.getAllPlanets().filter(p => p.owner === 'player');
         aiPlanets.forEach(aiPlanet => {
             const nearbyEnemies = this.findNearbyEnemyPlanets(aiPlanet, playerPlanets, 200);
             nearbyEnemies.forEach(enemy => {
@@ -190,9 +190,9 @@ export class AIAnalysisManager {
      */
     analyzeOpportunities() {
         const opportunities = [];
-        const aiPlanets = Array.from(this.gameEngine.planets.values()).filter(p => p.owner === 'ai');
-        const neutralPlanets = Array.from(this.gameEngine.planets.values()).filter(p => p.owner === 'neutral');
-        const playerPlanets = Array.from(this.gameEngine.planets.values()).filter(p => p.owner === 'player');
+        const aiPlanets = this.gameEngine.getAllPlanets().filter(p => p.owner === 'ai');
+        const neutralPlanets = this.gameEngine.getAllPlanets().filter(p => p.owner === 'neutral');
+        const playerPlanets = this.gameEngine.getAllPlanets().filter(p => p.owner === 'player');
         
         // Oportunidades de expansión (planetas neutrales)
         neutralPlanets.forEach(neutral => {
@@ -391,7 +391,7 @@ export class AIAnalysisManager {
 
     canDefendPlanet(planet, attackingShips) {
         const nearbyAI = this.findNearbyAIPlanets(planet, 
-            Array.from(this.gameEngine.planets.values()).filter(p => p.owner === 'ai'), 
+            this.gameEngine.getAllPlanets().filter(p => p.owner === 'ai'), 
             200
         );
         
@@ -500,7 +500,7 @@ export class AIAnalysisManager {
 
     canCounterThreat(aiPlanet, enemy) {
         const nearbyAI = this.findNearbyAIPlanets(aiPlanet, 
-            Array.from(this.gameEngine.planets.values()).filter(p => p.owner === 'ai'), 
+            this.gameEngine.getAllPlanets().filter(p => p.owner === 'ai'), 
             250
         );
         
@@ -575,7 +575,7 @@ export class AIAnalysisManager {
     calculateReinforcementUrgency(weakPlanet) {
         const nearbyEnemies = this.findNearbyEnemyPlanets(
             weakPlanet,
-            Array.from(this.gameEngine.planets.values()).filter(p => p.owner === 'player'),
+            this.gameEngine.getAllPlanets().filter(p => p.owner === 'player'),
             200
         );
         

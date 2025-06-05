@@ -467,15 +467,15 @@ export class AIStrategyManager {
     // ===== MÉTODOS AUXILIARES =====
 
     getAIPlanets() {
-        return Array.from(this.gameEngine.planets.values()).filter(p => p.owner === 'ai');
+        return this.gameEngine.getAllPlanets().filter(p => p.owner === 'ai');
     }
 
     getPlayerPlanets() {
-        return Array.from(this.gameEngine.planets.values()).filter(p => p.owner === 'player');
+        return this.gameEngine.getAllPlanets().filter(p => p.owner === 'player');
     }
 
     getNeutralPlanets() {
-        return Array.from(this.gameEngine.planets.values()).filter(p => p.owner === 'neutral');
+        return this.gameEngine.getAllPlanets().filter(p => p.owner === 'neutral');
     }
 
     calculateDistance(planet1, planet2) {
