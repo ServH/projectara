@@ -1,89 +1,159 @@
 /**
- * 🎯 GALCON GAME - SELECTION SYSTEM (CANVAS 2D ONLY)
- * Sistema de selección de planetas con controles estilo Galcon
- * Optimizado para Canvas 2D únicamente
+ * 🎯 SELECTION SYSTEM REFACTORIZADO
+ * Sistema de selección modular con gestores especializados
+ * Responsabilidad única: Coordinar la selección de planetas
+ * 
+ * ARQUITECTURA MODULAR:
+ * - SelectionEventManager: Eventos de mouse y teclado
+ * - SelectionStateManager: Estado de selección
+ * - SelectionDragManager: Selección por arrastre
+ * - SelectionVisualizationManager: Renderizado visual
+ * - SelectionOverlayManager: Overlay y UI
  */
 
-import eventBus, { GAME_EVENTS } from '../core/EventBus.js';
+import { GAME_EVENTS } from '../core/EventBus.js';
+import { SelectionEventManager } from './managers/SelectionEventManager.js';
+import { SelectionStateManager } from './managers/SelectionStateManager.js';
+import { SelectionDragManager } from './managers/SelectionDragManager.js';
+import { SelectionVisualizationManager } from './managers/SelectionVisualizationManager.js';
+import { SelectionOverlayManager } from './managers/SelectionOverlayManager.js';
 
 export class SelectionSystem {
     constructor(gameEngine) {
         this.gameEngine = gameEngine;
-        this.selectedPlanets = new Set();
         
-        // 🎮 Canvas 2D únicamente
-        this.overlaySystem = null;
+        // 🎛️ Configuración unificada
+        this.config = this.createDefaultConfig();
         
-        // Estado de drag selection
-        this.isDragging = false;
-        this.dragStartX = 0;
-        this.dragStartY = 0;
-        this.dragCurrentX = 0;
-        this.dragCurrentY = 0;
+        // 🎯 Gestores especializados
+        this.eventManager = null;
+        this.stateManager = null;
+        this.dragManager = null;
+        this.visualizationManager = null;
+        this.overlayManager = null;
         
-        // 🎛️ Configuración de controles Galcon
-        this.config = {
-            multiSelectKey: 'ctrlKey', // Ctrl para multi-selección
-            selectAllKey: 'shiftKey',  // Shift para seleccionar todos
-            doubleClickThreshold: 300  // ms para detectar doble clic
-        };
+        // 🔄 Estado del sistema
+        this.isInitialized = false;
+        this.lastUpdateTime = 0;
         
-        // 🎛️ Estado para doble clic
-        this.lastClickTime = 0;
-        this.lastClickedPlanet = null;
-        
+        console.log('🎯 SelectionSystem refactorizado inicializado');
         this.initializeWhenReady();
-        console.log('🎯 SelectionSystem inicializado para Canvas 2D');
     }
 
     /**
-     * 🎮 Configurar sistema de overlay Canvas
+     * ⚙️ Crear configuración por defecto
      */
-    setupOverlaySystem() {
-        // Esperar a que el overlay esté disponible
-        const checkOverlay = () => {
-            if (window.canvasOverlay) {
-                this.overlaySystem = window.canvasOverlay;
-                console.log('🎮 SelectionSystem: Sistema de overlay Canvas conectado');
-                return true;
-            }
-            return false;
-        };
-        
-        if (!checkOverlay()) {
-            // Reintentar cada 100ms hasta que esté disponible
-            const retryInterval = setInterval(() => {
-                if (checkOverlay()) {
-                    clearInterval(retryInterval);
-                }
-            }, 100);
-        }
-    }
-
-    /**
-     * Obtener coordenadas del mouse para Canvas 2D
-     */
-    getMouseCoordinates(event) {
-        const canvas = document.getElementById('gameCanvas');
-        const rect = canvas.getBoundingClientRect();
-        
-        // Canvas 2D: coordenadas directas
+    createDefaultConfig() {
         return {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top
+            // Configuración de eventos
+            multiSelectKey: 'ctrlKey',
+            selectAllKey: 'shiftKey',
+            doubleClickThreshold: 300,
+            
+            // Configuración de drag
+            minDragDistance: 5,
+            defaultPlanetRadius: 20,
+            
+            // Configuración visual
+            selectionColor: '#00ff00',
+            selectionAlpha: 0.8,
+            selectionLineWidth: 2,
+            selectionRingOffset: 5,
+            pulseMagnitude: 3,
+            pulseSpeed: 0.003,
+            
+            // Configuración de glow
+            showSelectionGlow: true,
+            glowColor: '#00ff00',
+            glowAlpha: 0.3,
+            glowOffset: 10,
+            glowPulseMagnitude: 5,
+            
+            // Configuración de esquinas
+            showSelectionCorners: false,
+            cornerSize: 8,
+            cornerOffset: 25,
+            cornerColor: '#ffffff',
+            cornerLineWidth: 2,
+            
+            // Configuración de información
+            showPlanetInfo: true,
+            showDetailedInfo: true,
+            infoOffset: 30,
+            infoFont: '12px Arial',
+            infoTextColor: '#ffffff',
+            infoLineHeight: 16,
+            minRadiusForDetails: 30,
+            
+            // Configuración de estadísticas
+            showSelectionStats: true,
+            statsPosition: { x: 10, y: 10 },
+            statsWidth: 200,
+            statsHeight: 80,
+            statsBackgroundColor: 'rgba(0, 0, 0, 0.7)',
+            statsTextColor: '#ffffff',
+            statsFont: '14px Arial',
+            statsLineHeight: 18,
+            statsPadding: 10,
+            
+            // Configuración de overlay
+            gameContainerId: 'gameContainer',
+            overlayZIndex: 1000,
+            
+            // Configuración de drag overlay
+            normalSelectColor: '#00ff00',
+            normalSelectFillColor: 'rgba(0, 255, 0, 0.1)',
+            multiSelectColor: '#ffff00',
+            multiSelectFillColor: 'rgba(255, 255, 0, 0.1)',
+            dragLineWidth: 2,
+            dragAlpha: 0.8,
+            
+            // Configuración de overlay de drag
+            normalSelectBorderColor: '#00ff00',
+            normalSelectBackgroundColor: 'rgba(0, 255, 0, 0.1)',
+            multiSelectBorderColor: '#ffff00',
+            multiSelectBackgroundColor: 'rgba(255, 255, 0, 0.1)',
+            dragBorderWidth: 2,
+            dragBorderStyle: 'solid',
+            useDragAnimation: false,
+            dragAnimationDuration: 100,
+            useDragShadow: true,
+            dragShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+            
+            // Configuración de información overlay
+            infoBackgroundColor: 'rgba(0, 0, 0, 0.8)',
+            infoBorderColor: '#333333',
+            infoPadding: 8,
+            infoBorderRadius: 4,
+            infoFontFamily: 'Arial, sans-serif',
+            infoFontSize: 12,
+            infoZIndex: 1001,
+            useInfoShadow: true,
+            infoShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
+            
+            // Configuración de indicadores
+            indicatorSize: 20,
+            indicatorBorderWidth: 2,
+            indicatorColor: '#00ff00',
+            useIndicatorAnimation: true,
+            indicatorAnimationDuration: 1000,
+            
+            // Configuración de historial
+            maxHistorySize: 100
         };
     }
 
     /**
-     * Inicializar cuando el canvas esté listo
+     * 🎬 Inicializar cuando esté listo
      */
     initializeWhenReady() {
         const checkCanvas = () => {
             const canvas = document.getElementById('gameCanvas');
-            if (canvas) {
-                this.setupOverlaySystem();
-                this.setupEventListeners();
-                console.log('🎯 SelectionSystem configurado');
+            if (canvas && this.gameEngine) {
+                this.initializeManagers();
+                this.setupCallbacks();
+                this.isInitialized = true;
+                console.log('🎯 SelectionSystem completamente inicializado');
             } else {
                 setTimeout(checkCanvas, 100);
             }
@@ -92,507 +162,453 @@ export class SelectionSystem {
     }
 
     /**
-     * Configurar event listeners
+     * 🏗️ Inicializar gestores especializados
      */
-    setupEventListeners() {
-        const canvas = document.getElementById('gameCanvas');
+    initializeManagers() {
+        // Crear gestores con dependency injection
+        this.eventManager = new SelectionEventManager(this.gameEngine, this.config);
+        this.stateManager = new SelectionStateManager(this.gameEngine, this.config);
+        this.dragManager = new SelectionDragManager(this.gameEngine, this.config);
+        this.visualizationManager = new SelectionVisualizationManager(this.gameEngine, this.config);
+        this.overlayManager = new SelectionOverlayManager(this.gameEngine, this.config);
         
-        canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
-        canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
-        canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
-        canvas.addEventListener('contextmenu', this.onRightClick.bind(this));
+        // Configurar event listeners
+        this.eventManager.setupEventListeners();
+        this.overlayManager.initializeOverlay();
+        this.overlayManager.addDynamicStyles();
         
-        // Eventos de teclado
-        document.addEventListener('keydown', this.onKeyDown.bind(this));
-        
-        console.log('🎯 Event listeners configurados');
+        console.log('🏗️ Gestores especializados inicializados');
     }
 
     /**
-     * Manejar clic derecho
+     * 🔗 Configurar callbacks entre gestores
      */
-    onRightClick(event) {
-        event.preventDefault();
-        
-        const coords = this.getMouseCoordinates(event);
-        const x = coords.x;
-        const y = coords.y;
+    setupCallbacks() {
+        // Callbacks del EventManager
+        this.eventManager.setCallbacks({
+            onPlanetClick: this.handlePlanetClick.bind(this),
+            onDragStart: this.handleDragStart.bind(this),
+            onDragMove: this.handleDragMove.bind(this),
+            onDragEnd: this.handleDragEnd.bind(this),
+            onRightClick: this.handleRightClick.bind(this),
+            onKeyDown: this.handleKeyDown.bind(this)
+        });
 
-        const targetPlanet = this.gameEngine.getPlanetAtPosition(x, y);
+        // Callbacks del StateManager
+        this.stateManager.setCallbacks({
+            onSelectionChanged: this.handleSelectionChanged.bind(this),
+            onPlanetSelected: this.handlePlanetSelected.bind(this),
+            onPlanetDeselected: this.handlePlanetDeselected.bind(this),
+            onSelectionCleared: this.handleSelectionCleared.bind(this)
+        });
+
+        // Callbacks del DragManager
+        this.dragManager.setCallbacks({
+            onDragStart: this.handleDragVisualizationStart.bind(this),
+            onDragUpdate: this.handleDragVisualizationUpdate.bind(this),
+            onDragEnd: this.handleDragVisualizationEnd.bind(this),
+            onPlanetsSelected: this.handleDragPlanetsSelected.bind(this)
+        });
+
+        // Callbacks del VisualizationManager
+        this.visualizationManager.setCallbacks({
+            onRenderComplete: this.handleRenderComplete.bind(this),
+            onAnimationUpdate: this.handleAnimationUpdate.bind(this)
+        });
+
+        // Callbacks del OverlayManager
+        this.overlayManager.setCallbacks({
+            onOverlayCreated: this.handleOverlayCreated.bind(this),
+            onOverlayUpdated: this.handleOverlayUpdated.bind(this),
+            onOverlayDestroyed: this.handleOverlayDestroyed.bind(this)
+        });
+
+        console.log('🔗 Callbacks configurados entre gestores');
+    }
+
+    /**
+     * 🪐 Manejar clic en planeta
+     */
+    handlePlanetClick({ planet, event, coords, isMultiSelect, isSelectAll, isDoubleClick }) {
+        console.log(`🪐 Clic en planeta ${planet.id}: multi=${isMultiSelect}, selectAll=${isSelectAll}, double=${isDoubleClick}`);
         
-        if (targetPlanet && targetPlanet.owner !== 'player') {
-            console.log(`🎛️ Clic derecho: enviando flotas a ${targetPlanet.id}`);
+        if (planet.owner === this.gameEngine.getCurrentPlayer()) {
+            // Planeta del jugador
+            if (isSelectAll || isDoubleClick) {
+                this.stateManager.selectAllPlanetsOfType(planet);
+            } else if (isMultiSelect) {
+                this.stateManager.selectPlanet(planet.id, { isMultiSelect: true });
+            } else {
+                this.stateManager.selectPlanet(planet.id, { clearPrevious: true });
+            }
+        } else {
+            // Planeta enemigo/neutral - enviar flotas
+            if (this.stateManager.getSelectedPlanets().length > 0) {
+                this.gameEngine.sendFleetFromSelected(planet.id);
+                this.showAttackFeedback(planet);
+            }
+        }
+    }
+
+    /**
+     * 🎬 Manejar inicio de drag
+     */
+    handleDragStart({ event, coords, isMultiSelect }) {
+        console.log(`🎬 Iniciando drag selection en (${coords.x}, ${coords.y})`);
+        this.dragManager.startDrag(coords.x, coords.y, { isMultiSelect });
+    }
+
+    /**
+     * 🔄 Manejar movimiento de drag
+     */
+    handleDragMove({ event, coords }) {
+        this.dragManager.updateDrag(coords.x, coords.y);
+    }
+
+    /**
+     * 🏁 Manejar fin de drag
+     */
+    handleDragEnd({ event, coords }) {
+        const selectedPlanets = this.dragManager.endDrag(coords.x, coords.y);
+        console.log(`🏁 Drag finalizado: ${selectedPlanets.length} planetas seleccionados`);
+    }
+
+    /**
+     * 🖱️ Manejar clic derecho
+     */
+    handleRightClick({ event, coords, targetPlanet }) {
+        if (targetPlanet && targetPlanet.owner !== this.gameEngine.getCurrentPlayer()) {
+            console.log(`🖱️ Clic derecho: enviando flotas a ${targetPlanet.id}`);
             this.gameEngine.sendFleetFromSelected(targetPlanet.id);
             this.showAttackFeedback(targetPlanet);
         }
     }
 
     /**
-     * Manejar mouse down
+     * ⌨️ Manejar teclas
      */
-    onMouseDown(event) {
-        if (event.button !== 0) return; // Solo botón izquierdo
-
-        // Verificar si el DragDropHandler está manejando este evento
-        if (event.defaultPrevented) return;
-
-        const coords = this.getMouseCoordinates(event);
-        const x = coords.x;
-        const y = coords.y;
-
-        console.log(`🖱️ Mouse down en: ${x}, ${y}`);
-
-        const clickedPlanet = this.gameEngine.getPlanetAtPosition(x, y);
-        
-        if (clickedPlanet) {
-            console.log(`🪐 Planeta clickeado: ${clickedPlanet.id} (${clickedPlanet.owner})`);
-            this.handlePlanetClick(clickedPlanet, event);
-        } else {
-            // Iniciar selección por área
-            this.startDragSelection(x, y, event);
-        }
-    }
-
-    /**
-     * 🎛️ MEJORADO: Manejar clic en planeta con controles Galcon
-     */
-    handlePlanetClick(planet, event) {
-        const isMultiSelect = event[this.config.multiSelectKey];
-        const isSelectAll = event[this.config.selectAllKey]; // 🎛️ NUEVO
-        const currentTime = Date.now();
-        
-        console.log(`🎯 Manejando click en planeta ${planet.id}, multiSelect: ${isMultiSelect}, selectAll: ${isSelectAll}, owner: ${planet.owner}`);
-        
-        if (planet.owner === 'player') {
-            // 🎛️ NUEVO: Shift + clic = seleccionar todos los planetas del jugador
-            if (isSelectAll) {
-                console.log('🎛️ Shift+clic: seleccionando todos los planetas del jugador');
-                this.selectAllPlayerPlanets();
-                return;
-            }
-            
-            // 🎛️ NUEVO: Detectar doble clic
-            const isDoubleClick = (currentTime - this.lastClickTime < this.doubleClickThreshold) && 
-                                 (this.lastClickedPlanet === planet.id);
-            
-            if (isDoubleClick) {
-                console.log('🎛️ Doble clic: seleccionando todos los planetas del jugador');
-                this.selectAllPlayerPlanets();
-            } else if (isMultiSelect) {
-                console.log(`🎯 Toggle selección planeta ${planet.id}`);
-                this.togglePlanetSelection(planet);
-            } else {
-                console.log(`🎯 Selección única planeta ${planet.id}`);
-                this.selectSinglePlanet(planet);
-            }
-            
-            // Actualizar estado para doble clic
-            this.lastClickTime = currentTime;
-            this.lastClickedPlanet = planet.id;
-        } else {
-            // Enviar flotas a planeta enemigo/neutral
-            if (this.selectedPlanets.size > 0) {
-                console.log(`🚀 Enviando flotas desde ${this.selectedPlanets.size} planetas a ${planet.id}`);
-                this.gameEngine.sendFleetFromSelected(planet.id);
-                
-                // Mostrar feedback visual
-                this.showAttackFeedback(planet);
-            } else {
-                console.log('⚠️ No hay planetas seleccionados para enviar flotas');
-            }
-        }
-    }
-
-    /**
-     * 🎮 ADAPTADO: Mostrar feedback visual de ataque
-     */
-    showAttackFeedback(targetPlanet) {
-        if (this.overlaySystem) {
-            // Canvas: usar overlay system
-            this.overlaySystem.addTargetHighlight(
-                'attack-feedback',
-                targetPlanet.x,
-                targetPlanet.y,
-                targetPlanet.radius + 5,
-                {
-                    color: '#ffaa00',
-                    width: 3,
-                    opacity: 0.8,
-                    animation: 'pulse'
-                }
-            );
-            
-            // Remover después de un tiempo
-            setTimeout(() => {
-                this.overlaySystem.removeTargetHighlight('attack-feedback');
-            }, 800);
-        }
-    }
-
-    /**
-     * Iniciar selección por drag
-     */
-    startDragSelection(x, y, event) {
-        if (!event[this.config.multiSelectKey]) {
-            this.clearSelection();
-        }
-
-        this.isDragging = true;
-        this.dragStartX = x;
-        this.dragStartY = y;
-        this.dragCurrentX = x;
-        this.dragCurrentY = y;
-
-        console.log(`📦 Drag selection iniciado en: ${x}, ${y}`);
-
-        eventBus.emit(GAME_EVENTS.SELECTION_START, {
-            startX: x,
-            startY: y
-        });
-    }
-
-    /**
-     * Manejar movimiento del mouse
-     */
-    onMouseMove(event) {
-        // Si el evento fue manejado por otro sistema (como DragDropHandler), no hacer nada
-        if (event.defaultPrevented) return;
-        
-        if (!this.isDragging) return;
-
-        const coords = this.getMouseCoordinates(event);
-        this.dragCurrentX = coords.x;
-        this.dragCurrentY = coords.y;
-
-        this.updateSelectionBox();
-        this.updateDragSelection();
-    }
-
-    /**
-     * Manejar mouse up
-     */
-    onMouseUp(event) {
-        // Si el evento fue manejado por otro sistema (como DragDropHandler), no hacer nada
-        if (event.defaultPrevented) return;
-        
-        if (!this.isDragging) return;
-
-        this.finalizeDragSelection(event);
-        this.hideSelectionBox();
-        this.isDragging = false;
-
-        console.log('📦 Finalizando drag selection');
-    }
-
-    /**
-     * 🎮 ADAPTADO: Actualizar caja de selección visual
-     */
-    updateSelectionBox() {
-        const minX = Math.min(this.dragStartX, this.dragCurrentX);
-        const minY = Math.min(this.dragStartY, this.dragCurrentY);
-        const width = Math.abs(this.dragCurrentX - this.dragStartX);
-        const height = Math.abs(this.dragCurrentY - this.dragStartY);
-
-        if (this.overlaySystem) {
-            // Canvas: usar overlay system
-            this.overlaySystem.addSelectionBox('drag-selection', minX, minY, width, height, {
-                color: '#00ff88',
-                borderWidth: 2,
-                fillOpacity: 0.1,
-                borderOpacity: 0.8
-            });
-        }
-    }
-
-    /**
-     * 🎮 ADAPTADO: Ocultar caja de selección
-     */
-    hideSelectionBox() {
-        if (this.overlaySystem) {
-            // Canvas: remover del overlay system
-            this.overlaySystem.removeSelectionBox('drag-selection');
-        }
-    }
-
-    /**
-     * Actualizar selección durante drag
-     */
-    updateDragSelection() {
-        const rect = this.getSelectionRect();
-        const planetsInRect = this.getPlanetsInRect(rect);
-        
-        // Preview de selección
-        this.previewSelection(planetsInRect);
-    }
-
-    /**
-     * Finalizar selección por drag
-     */
-    finalizeDragSelection(event) {
-        const rect = this.getSelectionRect();
-        const planetsInRect = this.getPlanetsInRect(rect);
-        
-        const isMultiSelect = event[this.config.multiSelectKey];
-        
-        if (isMultiSelect) {
-            // Añadir a selección existente
-            planetsInRect.forEach(planet => {
-                if (planet.owner === 'player') {
-                    this.addToSelection(planet);
-                }
-            });
-        } else {
-            // Reemplazar selección
-            this.clearSelection();
-            planetsInRect.forEach(planet => {
-                if (planet.owner === 'player') {
-                    this.addToSelection(planet);
-                }
-            });
-        }
-
-        eventBus.emit(GAME_EVENTS.SELECTION_END, {
-            selectedCount: this.selectedPlanets.size,
-            rect: rect
-        });
-    }
-
-    /**
-     * Obtener rectángulo de selección
-     */
-    getSelectionRect() {
-        return {
-            x: Math.min(this.dragStartX, this.dragCurrentX),
-            y: Math.min(this.dragStartY, this.dragCurrentY),
-            width: Math.abs(this.dragCurrentX - this.dragStartX),
-            height: Math.abs(this.dragCurrentY - this.dragStartY)
-        };
-    }
-
-    /**
-     * Obtener planetas en rectángulo
-     */
-    getPlanetsInRect(rect) {
-        const allPlanets = this.gameEngine.getAllPlanets();
-        return allPlanets.filter(planet => this.isPlanetInRect(planet, rect));
-    }
-
-    /**
-     * Verificar si planeta está en rectángulo
-     */
-    isPlanetInRect(planet, rect) {
-        const planetCenterX = planet.x;
-        const planetCenterY = planet.y;
-        const planetRadius = planet.radius;
-
-        // Verificar si el centro del planeta está dentro del rectángulo
-        // O si el rectángulo intersecta con el círculo del planeta
-        return (planetCenterX >= rect.x - planetRadius &&
-                planetCenterX <= rect.x + rect.width + planetRadius &&
-                planetCenterY >= rect.y - planetRadius &&
-                planetCenterY <= rect.y + rect.height + planetRadius);
-    }
-
-    /**
-     * Preview de selección (visual feedback)
-     */
-    previewSelection(planets) {
-        // TODO: Implementar preview visual de planetas que serán seleccionados
-    }
-
-    /**
-     * Seleccionar un solo planeta
-     */
-    selectSinglePlanet(planet) {
-        this.clearSelection();
-        this.addToSelection(planet);
-    }
-
-    /**
-     * Toggle selección de planeta
-     */
-    togglePlanetSelection(planet) {
-        if (this.selectedPlanets.has(planet.id)) {
-            this.removeFromSelection(planet);
-        } else {
-            this.addToSelection(planet);
-        }
-    }
-
-    /**
-     * Añadir planeta a selección
-     */
-    addToSelection(planet) {
-        if (planet.owner !== 'player') {
-            console.log(`⚠️ No se puede seleccionar planeta ${planet.id}: no es del jugador`);
-            return;
-        }
-
-        if (!this.selectedPlanets.has(planet.id)) {
-            this.selectedPlanets.add(planet.id);
-            
-            // Marcar planeta como seleccionado
-            planet.isSelected = true;
-            
-            eventBus.emit(GAME_EVENTS.PLANET_SELECTED, {
-                planetId: planet.id,
-                totalSelected: this.selectedPlanets.size
-            });
-            
-            console.log(`✅ Planeta ${planet.id} añadido a selección (total: ${this.selectedPlanets.size})`);
-        }
-    }
-
-    /**
-     * Remover planeta de selección
-     */
-    removeFromSelection(planet) {
-        if (this.selectedPlanets.has(planet.id)) {
-            this.selectedPlanets.delete(planet.id);
-            
-            // Desmarcar planeta
-            planet.isSelected = false;
-            
-            eventBus.emit(GAME_EVENTS.PLANET_DESELECTED, {
-                planetId: planet.id,
-                totalSelected: this.selectedPlanets.size
-            });
-            
-            console.log(`❌ Planeta ${planet.id} removido de selección (total: ${this.selectedPlanets.size})`);
-        }
-    }
-
-    /**
-     * Limpiar selección
-     */
-    clearSelection() {
-        const previousCount = this.selectedPlanets.size;
-        
-        // Desmarcar todos los planetas seleccionados
-        this.selectedPlanets.forEach(planetId => {
-            const planet = this.gameEngine.getPlanet(planetId);
-            if (planet) {
-                planet.isSelected = false;
-            }
-        });
-        
-        this.selectedPlanets.clear();
-        
-        if (previousCount > 0) {
-            eventBus.emit(GAME_EVENTS.SELECTION_CLEARED, {
-                previousCount: previousCount
-            });
-            
-            console.log(`🧹 Selección limpiada (${previousCount} planetas deseleccionados)`);
-        }
-    }
-
-    /**
-     * Manejar teclas
-     */
-    onKeyDown(event) {
-        switch (event.key) {
+    handleKeyDown({ event, key, ctrlKey, shiftKey }) {
+        switch (key.toLowerCase()) {
             case 'a':
-            case 'A':
-                if (event.ctrlKey || event.metaKey) {
+                if (ctrlKey) {
                     event.preventDefault();
                     this.selectAllPlayerPlanets();
                 }
                 break;
-            case 'Escape':
+            case 'escape':
                 this.clearSelection();
                 break;
         }
     }
 
     /**
-     * 🎛️ NUEVO: Seleccionar todos los planetas del jugador
+     * 🔄 Manejar cambio de selección
+     */
+    handleSelectionChanged({ selectedPlanets, stats, lastSelected }) {
+        // Actualizar visualización
+        this.visualizationManager.updateSelectedPlanets(selectedPlanets);
+        
+        // Actualizar overlay si está habilitado
+        if (this.config.showSelectionStats && stats.count > 0) {
+            this.overlayManager.createSelectionInfoOverlay(stats, this.config.statsPosition);
+        } else {
+            this.overlayManager.removeSelectionInfoOverlay();
+        }
+        
+        // Emitir evento global
+        this.gameEngine.eventBus?.emit(GAME_EVENTS.SELECTION_CHANGED, {
+            selectedPlanets,
+            stats
+        });
+        
+        console.log(`🔄 Selección actualizada: ${stats.count} planetas`);
+    }
+
+    /**
+     * ✅ Manejar planeta seleccionado
+     */
+    handlePlanetSelected({ planet, planetId }) {
+        console.log(`✅ Planeta ${planetId} seleccionado`);
+    }
+
+    /**
+     * ❌ Manejar planeta deseleccionado
+     */
+    handlePlanetDeselected({ planet, planetId }) {
+        console.log(`❌ Planeta ${planetId} deseleccionado`);
+    }
+
+    /**
+     * 🧹 Manejar limpieza de selección
+     */
+    handleSelectionCleared({ previousCount }) {
+        console.log(`🧹 Selección limpiada (${previousCount} planetas)`);
+    }
+
+    /**
+     * 🎨 Manejar inicio de visualización de drag
+     */
+    handleDragVisualizationStart({ startX, startY, isMultiSelect }) {
+        this.overlayManager.createDragOverlay({
+            startX, startY,
+            currentX: startX,
+            currentY: startY,
+            isMultiSelect
+        });
+    }
+
+    /**
+     * 🔄 Manejar actualización de visualización de drag
+     */
+    handleDragVisualizationUpdate({ currentX, currentY, area }) {
+        const dragState = this.dragManager.getDragState();
+        this.overlayManager.updateDragOverlay({
+            startX: dragState.startX,
+            startY: dragState.startY,
+            currentX,
+            currentY,
+            isMultiSelect: dragState.isMultiSelect
+        });
+    }
+
+    /**
+     * 🏁 Manejar fin de visualización de drag
+     */
+    handleDragVisualizationEnd({ endX, endY, area, selectedPlanets, cancelled }) {
+        this.overlayManager.removeDragOverlay();
+        
+        if (!cancelled && selectedPlanets && selectedPlanets.length > 0) {
+            // Actualizar selección con planetas encontrados
+            const dragState = this.dragManager.getDragState();
+            selectedPlanets.forEach(planet => {
+                this.stateManager.selectPlanet(planet.id, { 
+                    isMultiSelect: dragState.isMultiSelect,
+                    addToHistory: false 
+                });
+            });
+        }
+    }
+
+    /**
+     * 🎯 Manejar planetas seleccionados por drag
+     */
+    handleDragPlanetsSelected({ planets, area, isMultiSelect }) {
+        console.log(`🎯 ${planets.length} planetas seleccionados por drag`);
+    }
+
+    /**
+     * 🎨 Manejar renderizado completo
+     */
+    handleRenderComplete({ renderedCount, renderTime }) {
+        // Opcional: métricas de rendimiento
+    }
+
+    /**
+     * 🎬 Manejar actualización de animación
+     */
+    handleAnimationUpdate({ animationTime, deltaTime }) {
+        // Opcional: sincronización de animaciones
+    }
+
+    /**
+     * 🖼️ Manejar overlay creado
+     */
+    handleOverlayCreated({ overlayElement }) {
+        console.log('🖼️ Overlay de selección creado');
+    }
+
+    /**
+     * 🔄 Manejar overlay actualizado
+     */
+    handleOverlayUpdated({ type, dragData, element }) {
+        // Opcional: tracking de cambios de overlay
+    }
+
+    /**
+     * 💥 Manejar overlay destruido
+     */
+    handleOverlayDestroyed() {
+        console.log('💥 Overlay de selección destruido');
+    }
+
+    /**
+     * 🚀 Mostrar feedback de ataque
+     */
+    showAttackFeedback(targetPlanet) {
+        // Implementar feedback visual de ataque
+        console.log(`🚀 Feedback de ataque a planeta ${targetPlanet.id}`);
+        
+        // Opcional: crear efecto visual temporal
+        if (this.overlayManager) {
+            // Crear indicador temporal de ataque
+            // Implementación específica según necesidades
+        }
+    }
+
+    /**
+     * 🌟 Seleccionar todos los planetas del jugador
      */
     selectAllPlayerPlanets() {
-        const allPlanets = this.gameEngine.getAllPlanets();
-        const playerPlanets = allPlanets.filter(p => p.owner === 'player');
-        
-        this.clearSelection();
-        playerPlanets.forEach(planet => {
-            this.addToSelection(planet);
-        });
-        
-        console.log(`🎯 Seleccionados todos los planetas del jugador: ${playerPlanets.length}`);
+        const playerPlanets = this.gameEngine.getPlayerPlanets(this.gameEngine.getCurrentPlayer());
+        if (playerPlanets.length > 0) {
+            this.stateManager.selectAllPlanetsOfType(playerPlanets[0]);
+        }
     }
 
     /**
-     * Obtener número de planetas seleccionados
+     * 🧹 Limpiar selección
      */
-    getSelectedCount() {
-        return this.selectedPlanets.size;
+    clearSelection() {
+        this.stateManager.clearSelection();
     }
 
     /**
-     * Event handlers
+     * 🔄 Actualizar sistema (llamado desde game loop)
      */
-    onPlanetSelected(data) {
-        // Manejar selección de planeta
-    }
-
-    onPlanetDeselected(data) {
-        // Manejar deselección de planeta
+    update(deltaTime) {
+        if (!this.isInitialized) return;
+        
+        this.lastUpdateTime += deltaTime;
+        
+        // Actualizar animaciones
+        this.visualizationManager.updateAnimations(deltaTime);
     }
 
     /**
-     * Obtener planetas seleccionados
+     * 🎨 Renderizar (llamado desde render loop)
+     */
+    render(ctx, camera) {
+        if (!this.isInitialized) return;
+        
+        // Renderizar visualización de selección
+        this.visualizationManager.render(ctx, camera);
+        
+        // Renderizar drag selection si está activo
+        const dragRenderData = this.dragManager.getRenderData();
+        if (dragRenderData) {
+            this.renderDragSelection(ctx, dragRenderData);
+        }
+    }
+
+    /**
+     * 🔲 Renderizar selección por drag
+     */
+    renderDragSelection(ctx, renderData) {
+        const { area, style } = renderData;
+        
+        ctx.save();
+        ctx.strokeStyle = style.strokeColor;
+        ctx.fillStyle = style.fillColor;
+        ctx.lineWidth = style.lineWidth;
+        ctx.globalAlpha = style.alpha;
+        
+        ctx.fillRect(area.minX, area.minY, area.width, area.height);
+        ctx.strokeRect(area.minX, area.minY, area.width, area.height);
+        
+        ctx.restore();
+    }
+
+    // ==================== API PÚBLICA ====================
+
+    /**
+     * 📋 Obtener planetas seleccionados
      */
     getSelectedPlanets() {
-        const selectedPlanetsArray = [];
-        this.selectedPlanets.forEach(planetId => {
-            const planet = this.gameEngine.getPlanet(planetId);
-            if (planet) {
-                selectedPlanetsArray.push(planet);
-            }
-        });
-        return selectedPlanetsArray;
+        return this.stateManager ? this.stateManager.getSelectedPlanets() : [];
     }
 
     /**
-     * Obtener información de debug
+     * 📊 Obtener objetos de planetas seleccionados
+     */
+    getSelectedPlanetObjects() {
+        return this.stateManager ? this.stateManager.getSelectedPlanetObjects() : [];
+    }
+
+    /**
+     * 📈 Obtener estadísticas de selección
+     */
+    getSelectionStats() {
+        return this.stateManager ? this.stateManager.getSelectionStats() : null;
+    }
+
+    /**
+     * 🔍 Verificar si un planeta está seleccionado
+     */
+    isPlanetSelected(planetId) {
+        return this.stateManager ? this.stateManager.isPlanetSelected(planetId) : false;
+    }
+
+    /**
+     * 📊 Obtener información de debug
      */
     getDebugInfo() {
+        if (!this.isInitialized) {
+            return { initialized: false };
+        }
+        
         return {
-            selectedCount: this.selectedPlanets.size,
-            selectedPlanets: Array.from(this.selectedPlanets),
-            isDragging: this.isDragging,
-            dragPosition: {
-                startX: this.dragStartX,
-                startY: this.dragStartY,
-                currentX: this.dragCurrentX,
-                currentY: this.dragCurrentY
-            }
+            initialized: this.isInitialized,
+            lastUpdateTime: this.lastUpdateTime,
+            eventManager: this.eventManager.getDebugInfo(),
+            stateManager: this.stateManager.getDebugInfo(),
+            dragManager: this.dragManager.getDebugInfo(),
+            visualizationManager: this.visualizationManager.getDebugInfo(),
+            overlayManager: this.overlayManager.getDebugInfo(),
+            config: this.config
         };
     }
 
     /**
-     * Destruir sistema
+     * 🔄 Actualizar configuración
+     */
+    updateConfig(newConfig) {
+        this.config = { ...this.config, ...newConfig };
+        
+        // Propagar configuración a gestores
+        if (this.eventManager) this.eventManager.updateConfig(this.config);
+        if (this.stateManager) this.stateManager.updateConfig(this.config);
+        if (this.dragManager) this.dragManager.updateConfig(this.config);
+        if (this.visualizationManager) this.visualizationManager.updateConfig(this.config);
+        if (this.overlayManager) this.overlayManager.updateConfig(this.config);
+        
+        console.log('🔄 Configuración de SelectionSystem actualizada');
+    }
+
+    /**
+     * 💥 Destruir el sistema
      */
     destroy() {
-        const canvas = document.getElementById('gameCanvas');
-        if (canvas) {
-            canvas.removeEventListener('mousedown', this.onMouseDown);
-            canvas.removeEventListener('mousemove', this.onMouseMove);
-            canvas.removeEventListener('mouseup', this.onMouseUp);
-            canvas.removeEventListener('contextmenu', this.onRightClick);
+        // Destruir gestores en orden inverso
+        if (this.overlayManager) {
+            this.overlayManager.destroy();
+            this.overlayManager = null;
         }
         
-        document.removeEventListener('keydown', this.onKeyDown);
-        
-        // Limpiar selección
-        this.clearSelection();
-        
-        // Limpiar caja de selección
-        if (this.overlaySystem) {
-            this.overlaySystem.removeSelectionBox('drag-selection');
+        if (this.visualizationManager) {
+            this.visualizationManager.destroy();
+            this.visualizationManager = null;
         }
+        
+        if (this.dragManager) {
+            this.dragManager.destroy();
+            this.dragManager = null;
+        }
+        
+        if (this.stateManager) {
+            this.stateManager.destroy();
+            this.stateManager = null;
+        }
+        
+        if (this.eventManager) {
+            this.eventManager.destroy();
+            this.eventManager = null;
+        }
+        
+        // Limpiar referencias
+        this.gameEngine = null;
+        this.config = null;
+        this.isInitialized = false;
         
         console.log('💥 SelectionSystem destruido');
     }
-}
-
-export default SelectionSystem; 
+} 
