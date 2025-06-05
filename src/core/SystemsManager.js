@@ -9,13 +9,13 @@
  * - Proporcionar acceso controlado a sistemas
  */
 
-import AISystem from '../systems/AISystem.js';
-import PercentageSelector from '../ui/PercentageSelector.js';
-import FleetRedirectionSystem from '../systems/FleetRedirectionSystem.js';
-import PerformanceProfiler from '../debug/PerformanceProfiler.js';
-import CullingSystem from '../visual/CullingSystem.js';
+import { AISystem } from '../systems/AISystem.js';
+import { PercentageSelector } from '../ui/PercentageSelector.js';
+import { FleetRedirectionSystem } from '../systems/FleetRedirectionSystem.js';
+import { PerformanceProfiler } from '../debug/PerformanceProfiler.js';
+import { CullingSystem } from '../visual/CullingSystem.js';
 import { FleetFormationSystem } from '../systems/FleetFormationSystem.js';
-import NavigationSystem from '../navigation/NavigationSystem.js';
+import { NavigationSystem } from '../navigation/NavigationSystem.js';
 
 export class SystemsManager {
     constructor(gameEngine, configurationManager) {
