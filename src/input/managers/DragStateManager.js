@@ -10,6 +10,7 @@ export class DragStateManager {
         this.isDragging = false;
         this.dragStartPlanet = null;
         this.targetPlanet = null;
+        this.dragEligible = false;
         
         // Coordenadas
         this.currentX = 0;
@@ -35,6 +36,7 @@ export class DragStateManager {
         this.currentX = x;
         this.currentY = y;
         this.targetPlanet = null;
+        this.dragEligible = false;
     }
 
     /**
@@ -83,12 +85,28 @@ export class DragStateManager {
     }
 
     /**
+     * 🎯 Establecer elegibilidad de drag
+     */
+    setDragEligible(eligible) {
+        this.dragEligible = eligible;
+        console.log(`🎯 Drag elegibilidad: ${eligible ? 'SÍ' : 'NO'}`);
+    }
+
+    /**
+     * 🎯 Verificar si el drag es elegible
+     */
+    isDragEligible() {
+        return this.dragEligible;
+    }
+
+    /**
      * 🎯 Resetear estado del drag
      */
     resetDrag() {
         this.isDragging = false;
         this.dragStartPlanet = null;
         this.targetPlanet = null;
+        this.dragEligible = false;
         console.log('🎯 Estado de drag reseteado');
     }
 
@@ -101,7 +119,8 @@ export class DragStateManager {
             hasTarget: this.hasValidTarget(),
             targetPlanet: this.targetPlanet?.id || null,
             currentPosition: { x: this.currentX, y: this.currentY },
-            startPosition: { x: this.dragStartX, y: this.dragStartY }
+            startPosition: { x: this.dragStartX, y: this.dragStartY },
+            dragEligible: this.dragEligible
         };
     }
 

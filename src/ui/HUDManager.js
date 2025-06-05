@@ -88,41 +88,42 @@ export class HUDManager {
             try {
                 this.updatePlanetsCount();
             } catch (error) {
-                console.warn('⚠️ Error actualizando planetas count:', error);
+                console.warn('⚠️ Error actualizando planetas count:', error.message);
             }
             
             try {
                 this.updateFleetsCount();
             } catch (error) {
-                console.warn('⚠️ Error actualizando flotas count:', error);
+                console.warn('⚠️ Error actualizando flotas count:', error.message);
             }
             
             try {
                 this.updatePercentage();
             } catch (error) {
-                console.warn('⚠️ Error actualizando porcentaje:', error);
+                console.warn('⚠️ Error actualizando porcentaje:', error.message);
             }
             
             try {
                 this.updateFPS();
             } catch (error) {
-                console.warn('⚠️ Error actualizando FPS:', error);
+                console.warn('⚠️ Error actualizando FPS:', error.message);
             }
             
             try {
                 this.updateSelectedCount();
             } catch (error) {
-                console.warn('⚠️ Error actualizando selección count:', error);
+                console.warn('⚠️ Error actualizando selección count:', error.message);
             }
             
             try {
                 this.updateGameState();
             } catch (error) {
-                console.warn('⚠️ Error actualizando estado del juego:', error);
+                console.warn('⚠️ Error actualizando estado del juego:', error.message);
             }
             
         } catch (error) {
-            console.warn('⚠️ Error crítico actualizando HUD:', error);
+            // Silenciado temporalmente para evitar spam
+            // console.warn('⚠️ Error actualizando HUD:', error.message);
         }
     }
 

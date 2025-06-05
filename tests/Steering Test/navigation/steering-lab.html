@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧭 Laboratorio de Steering Behaviors - Project Ara</title>
+    <style>
+        /* 🧭 Estilos del laboratorio de steering */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000011;
+            color: #ffffff;
+            overflow: hidden;
+        }
+        
+        .lab-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(ellipse at center, #001122 0%, #000011 70%, #000000 100%);
+        }
+        
+        .controls-panel {
+            width: 350px;
+            background: rgba(0, 20, 40, 0.95);
+            border-left: 2px solid #00ff88;
+            padding: 20px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        
+        .control-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(0, 255, 136, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 8px;
+        }
+        
+        .control-section h3 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #88ccff;
+            margin-bottom: 5px;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        .control-group input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        .control-value {
+            color: #ffffff;
+            font-size: 10px;
+            text-align: right;
+        }
+        
+        .action-button {
+            width: 100%;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            padding: 8px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .action-button:hover {
+            background: rgba(0, 255, 136, 0.3);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+        }
+        
+        .debug-info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            color: #cccccc;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .debug-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        
+        .debug-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        #steeringCanvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+        
+        .lab-header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            z-index: 100;
+        }
+        
+        .lab-instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #88ccff;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px;
+            border-radius: 6px;
+            max-width: 320px;
+            line-height: 1.4;
+        }
+        
+        .force-legend {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            color: #cccccc;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="lab-container">
+        <!-- Área del canvas -->
+        <div class="canvas-area">
+            <div class="lab-header">
+                🧭 STEERING BEHAVIORS LAB
+            </div>
+            
+            <!-- Leyenda de fuerzas -->
+            <div class="force-legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00aaff;"></div>
+                    <span>Seek Force (Búsqueda)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff4444;"></div>
+                    <span>Avoidance Force (Evasión)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00ff88;"></div>
+                    <span>Resultant Force (Resultante)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ffaa00;"></div>
+                    <span>Velocity (Velocidad)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff88ff;"></div>
+                    <span>Sensors (Sensores)</span>
+                </div>
+            </div>
+            
+            <canvas id="steeringCanvas"></canvas>
+            
+            <div class="lab-instructions">
+                <strong>🧭 STEERING BEHAVIORS:</strong><br>
+                • <strong>Drag & Drop:</strong> Crear nave/flota con destino<br>
+                • <strong>Shift + Click:</strong> Crear obstáculo<br>
+                • <strong>Ctrl/Cmd + Click:</strong> Cambiar modo Individual/Flota<br>
+                • <strong>Click obstáculo:</strong> Remover<br>
+                • <strong>Ajustar parámetros:</strong> Panel derecho<br>
+                • <strong>Debug visual:</strong> Ver fuerzas en tiempo real<br><br>
+                <strong>Objetivo:</strong> Navegación sutil y orgánica con flotas
+            </div>
+        </div>
+        
+        <!-- Panel de controles -->
+        <div class="controls-panel">
+            <!-- Modo de Operación -->
+            <div class="control-section">
+                <h3>🎮 Modo de Operación</h3>
+                
+                <div class="control-group">
+                    <label>Modo Actual</label>
+                    <div class="control-value" id="operationMode">INDIVIDUAL</div>
+                    <small style="color: #88ccff;">Ctrl/Cmd + Click para cambiar</small>
+                </div>
+            </div>
+            
+            <!-- Configuración de Flotas -->
+            <div class="control-section">
+                <h3>🚁 Configuración de Flotas</h3>
+                
+                <div class="control-group">
+                    <label>Tamaño de Flota</label>
+                    <input type="range" id="fleetSize" min="3" max="15" value="5">
+                    <div class="control-value" id="fleetSizeValue">5 naves</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Formación</label>
+                    <select id="fleetFormation" style="width: 100%; background: rgba(0,255,136,0.1); border: 1px solid #00ff88; color: #ffffff; padding: 5px;">
+                        <option value="spread">Dispersa (Spread)</option>
+                        <option value="line">Línea</option>
+                        <option value="wedge">Cuña (Wedge)</option>
+                        <option value="circle">Círculo</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Espaciado de Formación</label>
+                    <input type="range" id="formationSpacing" min="10" max="30" value="15">
+                    <div class="control-value" id="formationSpacingValue">15px</div>
+                </div>
+                
+                <div class="control-group">
+                    <input type="checkbox" id="enableBoids" checked>
+                    <label for="enableBoids">Comportamientos de Boids</label>
+                </div>
+            </div>
+            
+            <!-- Configuración de Boids -->
+            <div class="control-section">
+                <h3>🐦 Comportamientos de Boids</h3>
+                
+                <div class="control-group">
+                    <label>Peso de Separación</label>
+                    <input type="range" id="separationWeight" min="0.5" max="3.0" step="0.1" value="1.5">
+                    <div class="control-value" id="separationWeightValue">1.5</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Peso de Alineación</label>
+                    <input type="range" id="alignmentWeight" min="0.5" max="3.0" step="0.1" value="1.0">
+                    <div class="control-value" id="alignmentWeightValue">1.0</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Peso de Cohesión</label>
+                    <input type="range" id="cohesionWeight" min="0.5" max="3.0" step="0.1" value="0.8">
+                    <div class="control-value" id="cohesionWeightValue">0.8</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Radio de Separación</label>
+                    <input type="range" id="separationRadius" min="10" max="40" value="20">
+                    <div class="control-value" id="separationRadiusValue">20px</div>
+                </div>
+            </div>
+
+            <!-- Configuración de Sensores -->
+            <div class="control-section">
+                <h3>🔍 Sensores de Detección</h3>
+                
+                <div class="control-group">
+                    <label>Longitud del Sensor Principal</label>
+                    <input type="range" id="sensorLength" min="30" max="150" value="80">
+                    <div class="control-value" id="sensorLengthValue">80px</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Ancho del Sensor</label>
+                    <input type="range" id="sensorWidth" min="5" max="30" value="15">
+                    <div class="control-value" id="sensorWidthValue">15px</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Sensores Laterales</label>
+                    <input type="range" id="lateralSensors" min="0" max="4" value="2">
+                    <div class="control-value" id="lateralSensorsValue">2 sensores</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Ángulo de Sensores Laterales</label>
+                    <input type="range" id="sensorAngle" min="15" max="60" value="30">
+                    <div class="control-value" id="sensorAngleValue">30°</div>
+                </div>
+            </div>
+            
+            <!-- Configuración de Fuerzas -->
+            <div class="control-section">
+                <h3>⚡ Configuración de Fuerzas</h3>
+                
+                <div class="control-group">
+                    <label>Fuerza Máxima</label>
+                    <input type="range" id="maxForce" min="50" max="500" value="200">
+                    <div class="control-value" id="maxForceValue">200</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Velocidad Máxima</label>
+                    <input type="range" id="maxSpeed" min="50" max="300" value="120">
+                    <div class="control-value" id="maxSpeedValue">120 px/s</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Peso de Búsqueda</label>
+                    <input type="range" id="seekWeight" min="0.1" max="2.0" step="0.1" value="1.0">
+                    <div class="control-value" id="seekWeightValue">1.0</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Peso de Evasión</label>
+                    <input type="range" id="avoidanceWeight" min="0.5" max="5.0" step="0.1" value="2.0">
+                    <div class="control-value" id="avoidanceWeightValue">2.0</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Suavizado (Smoothing)</label>
+                    <input type="range" id="smoothing" min="0.01" max="0.3" step="0.01" value="0.1">
+                    <div class="control-value" id="smoothingValue">0.1</div>
+                </div>
+            </div>
+            
+            <!-- Configuración de Comportamiento -->
+            <div class="control-section">
+                <h3>🎯 Comportamiento</h3>
+                
+                <div class="control-group">
+                    <label>Radio de Llegada</label>
+                    <input type="range" id="arrivalRadius" min="10" max="50" value="25">
+                    <div class="control-value" id="arrivalRadiusValue">25px</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Distancia de Desaceleración</label>
+                    <input type="range" id="slowingDistance" min="30" max="120" value="60">
+                    <div class="control-value" id="slowingDistanceValue">60px</div>
+                </div>
+                
+                <div class="control-group">
+                    <input type="checkbox" id="enableArrival" checked>
+                    <label for="enableArrival">Comportamiento de Llegada</label>
+                </div>
+                
+                <div class="control-group">
+                    <input type="checkbox" id="enableWander">
+                    <label for="enableWander">Vagabundeo (Wander)</label>
+                </div>
+            </div>
+            
+            <!-- Visualización Debug -->
+            <div class="control-section">
+                <h3>🎨 Debug Visual</h3>
+                
+                <div class="control-group">
+                    <input type="checkbox" id="showSensors" checked>
+                    <label for="showSensors">Mostrar Sensores</label>
+                </div>
+                
+                <div class="control-group">
+                    <input type="checkbox" id="showForces" checked>
+                    <label for="showForces">Mostrar Fuerzas</label>
+                </div>
+                
+                <div class="control-group">
+                    <input type="checkbox" id="showVelocity" checked>
+                    <label for="showVelocity">Mostrar Velocidad</label>
+                </div>
+                
+                <div class="control-group">
+                    <input type="checkbox" id="showTrails" checked>
+                    <label for="showTrails">Mostrar Rastros</label>
+                </div>
+                
+                <div class="control-group">
+                    <input type="checkbox" id="showObstacleZones">
+                    <label for="showObstacleZones">Zonas de Obstáculos</label>
+                </div>
+                
+                <div class="control-group">
+                    <input type="checkbox" id="showSpatialGrid">
+                    <label for="showSpatialGrid">Grid Espacial</label>
+                </div>
+                
+                <div class="control-group">
+                    <input type="checkbox" id="showFleetConnections" checked>
+                    <label for="showFleetConnections">Conexiones de Flota</label>
+                </div>
+                
+                <div class="control-group">
+                    <input type="checkbox" id="showFleetCenter" checked>
+                    <label for="showFleetCenter">Centro de Flota</label>
+                </div>
+            </div>
+            
+            <!-- Acciones -->
+            <div class="control-section">
+                <h3>⚡ Acciones</h3>
+                
+                <button class="action-button" id="clearAll">🧹 Limpiar Todo</button>
+                <button class="action-button" id="addRandomObstacles">🎲 Obstáculos Aleatorios</button>
+                <button class="action-button" id="spawnFleet">🚀 Crear Nave/Flota</button>
+                <button class="action-button" id="startDemo">🎬 Demo Automática</button>
+                <button class="action-button" id="pauseResume">⏸️ Pausar/Reanudar</button>
+                
+                <!-- Nuevos botones de configuración optimizada -->
+                <button class="action-button" id="applyOptimalConfig" style="background: rgba(0, 255, 136, 0.3); border-color: #00ff88;">🎯 Config. Navegación Suave</button>
+                <button class="action-button" id="applyGalconConfig" style="background: rgba(255, 170, 0, 0.3); border-color: #ffaa00;">🚁 Config. Galcon Optimizada</button>
+                
+                <button class="action-button" id="resetToDefaults">🔄 Valores por Defecto</button>
+                <button class="action-button" id="exportConfig">💾 Exportar Config</button>
+            </div>
+            
+            <!-- Información en Tiempo Real -->
+            <div class="control-section">
+                <h3>📊 Métricas en Tiempo Real</h3>
+                <div class="debug-info">
+                    <div class="debug-line">
+                        <span>FPS:</span>
+                        <span class="debug-value" id="debugFPS">60</span>
+                    </div>
+                    <div class="debug-line">
+                        <span>Naves Activas:</span>
+                        <span class="debug-value" id="debugFleets">0</span>
+                    </div>
+                    <div class="debug-line">
+                        <span>Flotas Activas:</span>
+                        <span class="debug-value" id="debugTotalFleets">0</span>
+                    </div>
+                    <div class="debug-line">
+                        <span>Obstáculos:</span>
+                        <span class="debug-value" id="debugObstacles">0</span>
+                    </div>
+                    <div class="debug-line">
+                        <span>Cálculos/Frame:</span>
+                        <span class="debug-value" id="debugCalculations">0</span>
+                    </div>
+                    <div class="debug-line">
+                        <span>Tiempo Promedio:</span>
+                        <span class="debug-value" id="debugAvgTime">0.0ms</span>
+                    </div>
+                    <div class="debug-line">
+                        <span>Colisiones Evitadas:</span>
+                        <span class="debug-value" id="debugAvoidances">0</span>
+                    </div>
+                    <div class="debug-line">
+                        <span>Consultas Espaciales:</span>
+                        <span class="debug-value" id="debugSpatialQueries">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts del laboratorio -->
+    <script type="module">
+        import { SteeringLab } from './SteeringLab.js';
+        import { FleetDemo } from './fleet-demo.js';
+        import { Vector2D } from './Vector2D.js';
+        import { applyOptimalConfig, OPTIMAL_STEERING_CONFIG, GALCON_OPTIMIZED_CONFIG } from './optimal-config.js';
+        
+        // Inicializar laboratorio cuando la página esté lista
+        document.addEventListener('DOMContentLoaded', () => {
+            const lab = new SteeringLab();
+            lab.init();
+            
+            // Crear demostración
+            const demo = new FleetDemo(lab);
+            
+            // Configurar botón de demo
+            document.getElementById('startDemo').addEventListener('click', () => {
+                if (demo.isRunning) {
+                    demo.stop();
+                    document.getElementById('startDemo').textContent = '🎬 Demo Automática';
+                } else {
+                    demo.start();
+                    document.getElementById('startDemo').textContent = '🛑 Detener Demo';
+                }
+            });
+            
+            // Configurar botones de configuración optimizada
+            document.getElementById('applyOptimalConfig').addEventListener('click', () => {
+                applyOptimalConfig(lab, 'optimal');
+                console.log('🎯 Configuración de navegación suave aplicada');
+                
+                // Mostrar notificación
+                showConfigNotification('Navegación Suave', 'Detección anticipada y movimiento gradual activados');
+            });
+            
+            document.getElementById('applyGalconConfig').addEventListener('click', () => {
+                applyOptimalConfig(lab, 'galcon');
+                console.log('🚁 Configuración Galcon optimizada aplicada');
+                
+                // Mostrar notificación
+                showConfigNotification('Galcon Optimizada', 'Configuración táctica para flotas de combate activada');
+            });
+            
+            // Función para mostrar notificaciones
+            function showConfigNotification(title, message) {
+                // Crear notificación temporal
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: rgba(0, 255, 136, 0.9);
+                    color: #000000;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    font-family: 'Courier New', monospace;
+                    font-weight: bold;
+                    z-index: 2000;
+                    box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+                    animation: slideIn 0.3s ease-out;
+                `;
+                
+                notification.innerHTML = `
+                    <div style="font-size: 14px; margin-bottom: 5px;">🎯 ${title}</div>
+                    <div style="font-size: 12px;">${message}</div>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Remover después de 3 segundos
+                setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.3s ease-in';
+                    setTimeout(() => notification.remove(), 300);
+                }, 3000);
+            }
+            
+            // Agregar estilos de animación
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Integrar demo en el loop principal
+            const originalGameLoop = lab.gameLoop.bind(lab);
+            lab.gameLoop = function() {
+                const currentTime = performance.now();
+                const deltaTime = (currentTime - this.lastFrameTime) / 1000;
+                
+                // Actualizar demo
+                demo.update(deltaTime);
+                
+                // Llamar al loop original
+                originalGameLoop();
+            };
+            
+            // Hacer accesibles globalmente para debugging
+            window.steeringLab = lab;
+            window.fleetDemo = demo;
+            window.Vector2D = Vector2D;
+            window.applyOptimalConfig = applyOptimalConfig;
+            
+            console.log('🧭 Steering Behaviors Lab iniciado con configuraciones optimizadas');
+        });
+    </script>
+</body>
+</html> 

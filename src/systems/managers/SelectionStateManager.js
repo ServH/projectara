@@ -81,6 +81,11 @@ export class SelectionStateManager {
             this.selectedPlanets.add(planetId);
             this.lastSelectedPlanet = planetId;
             
+            // 🔄 SINCRONIZAR: Marcar planeta como seleccionado
+            if (planet) {
+                planet.isSelected = true;
+            }
+            
             if (addToHistory) {
                 this.addToHistory('select', planetId);
             }
@@ -110,6 +115,12 @@ export class SelectionStateManager {
 
         this.selectedPlanets.delete(planetId);
         
+        // 🔄 SINCRONIZAR: Desmarcar planeta como seleccionado
+        const planet = this.gameEngine.getPlanetById(planetId);
+        if (planet) {
+            planet.isSelected = false;
+        }
+        
         if (this.lastSelectedPlanet === planetId) {
             this.lastSelectedPlanet = this.selectedPlanets.size > 0 ? 
                 Array.from(this.selectedPlanets)[this.selectedPlanets.size - 1] : null;
@@ -120,7 +131,6 @@ export class SelectionStateManager {
         }
 
         // Emitir eventos
-        const planet = this.gameEngine.getPlanetById(planetId);
         if (this.callbacks.onPlanetDeselected) {
             this.callbacks.onPlanetDeselected({ planet, planetId });
         }
@@ -141,6 +151,8 @@ export class SelectionStateManager {
         playerPlanets.forEach(planet => {
             if (this.canSelectPlanet(planet)) {
                 this.selectedPlanets.add(planet.id);
+                // 🔄 SINCRONIZAR: Marcar planeta como seleccionado
+                planet.isSelected = true;
                 selectedCount++;
             }
         });
@@ -164,6 +176,15 @@ export class SelectionStateManager {
         }
 
         const previousCount = this.selectedPlanets.size;
+        
+        // 🔄 SINCRONIZAR: Desmarcar todos los planetas como seleccionados
+        this.selectedPlanets.forEach(planetId => {
+            const planet = this.gameEngine.getPlanetById(planetId);
+            if (planet) {
+                planet.isSelected = false;
+            }
+        });
+        
         this.selectedPlanets.clear();
         this.lastSelectedPlanet = null;
         
@@ -204,6 +225,8 @@ export class SelectionStateManager {
                 this.canSelectPlanet(planet)) {
                 
                 this.selectedPlanets.add(planet.id);
+                // 🔄 SINCRONIZAR: Marcar planeta como seleccionado
+                planet.isSelected = true;
                 selectedCount++;
             }
         });

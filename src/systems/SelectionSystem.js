@@ -147,27 +147,47 @@ export class SelectionSystem {
      * 🎬 Inicializar cuando esté listo
      */
     initializeWhenReady() {
+        // Inicializar inmediatamente el StateManager que no necesita canvas
+        this.initializeCoreManagers();
+        
+        // Luego intentar inicializar los gestores que sí necesitan canvas
         const checkCanvas = () => {
             const canvas = document.getElementById('gameCanvas');
             if (canvas && this.gameEngine) {
-                this.initializeManagers();
+                this.initializeVisualManagers();
                 this.setupCallbacks();
                 this.isInitialized = true;
-                console.log('🎯 SelectionSystem completamente inicializado');
+                console.log('🎯 SelectionSystem completamente inicializado con canvas');
             } else {
-                setTimeout(checkCanvas, 100);
+                // Si no hay canvas, inicializar solo los callbacks básicos
+                this.setupCoreCallbacks();
+                this.isInitialized = true;
+                console.log('🎯 SelectionSystem inicializado sin canvas (solo funcionalidad core)');
             }
         };
+        
+        // Intentar inmediatamente, luego con timeout si es necesario
         checkCanvas();
+        if (!this.isInitialized) {
+            setTimeout(checkCanvas, 100);
+        }
     }
 
     /**
-     * 🏗️ Inicializar gestores especializados
+     * 🏗️ Inicializar gestores core (no necesitan canvas)
      */
-    initializeManagers() {
-        // Crear gestores con dependency injection
-        this.eventManager = new SelectionEventManager(this.gameEngine, this.config);
+    initializeCoreManagers() {
+        // StateManager es esencial y no necesita canvas
         this.stateManager = new SelectionStateManager(this.gameEngine, this.config);
+        console.log('🏗️ Gestores core inicializados (StateManager)');
+    }
+
+    /**
+     * 🎨 Inicializar gestores visuales (necesitan canvas)
+     */
+    initializeVisualManagers() {
+        // Crear gestores que sí necesitan canvas
+        this.eventManager = new SelectionEventManager(this.gameEngine, this.config);
         this.dragManager = new SelectionDragManager(this.gameEngine, this.config);
         this.visualizationManager = new SelectionVisualizationManager(this.gameEngine, this.config);
         this.overlayManager = new SelectionOverlayManager(this.gameEngine, this.config);
@@ -177,53 +197,78 @@ export class SelectionSystem {
         this.overlayManager.initializeOverlay();
         this.overlayManager.addDynamicStyles();
         
-        console.log('🏗️ Gestores especializados inicializados');
+        console.log('🎨 Gestores visuales inicializados');
     }
 
     /**
-     * 🔗 Configurar callbacks entre gestores
+     * 🔗 Configurar callbacks básicos (solo StateManager)
+     */
+    setupCoreCallbacks() {
+        if (this.stateManager) {
+            // Callbacks del StateManager
+            this.stateManager.setCallbacks({
+                onSelectionChanged: this.handleSelectionChanged.bind(this),
+                onPlanetSelected: this.handlePlanetSelected.bind(this),
+                onPlanetDeselected: this.handlePlanetDeselected.bind(this),
+                onSelectionCleared: this.handleSelectionCleared.bind(this)
+            });
+            
+            console.log('🔗 Callbacks core configurados (StateManager)');
+        }
+    }
+
+    /**
+     * 🔗 Configurar callbacks completos entre gestores
      */
     setupCallbacks() {
-        // Callbacks del EventManager
-        this.eventManager.setCallbacks({
-            onPlanetClick: this.handlePlanetClick.bind(this),
-            onDragStart: this.handleDragStart.bind(this),
-            onDragMove: this.handleDragMove.bind(this),
-            onDragEnd: this.handleDragEnd.bind(this),
-            onRightClick: this.handleRightClick.bind(this),
-            onKeyDown: this.handleKeyDown.bind(this)
-        });
+        // Primero configurar callbacks core
+        this.setupCoreCallbacks();
+        
+        // Luego callbacks de gestores visuales si existen
+        if (this.eventManager) {
+            this.eventManager.setCallbacks({
+                onPlanetClick: this.handlePlanetClick.bind(this),
+                onDragStart: this.handleDragStart.bind(this),
+                onDragMove: this.handleDragMove.bind(this),
+                onDragEnd: this.handleDragEnd.bind(this),
+                onRightClick: this.handleRightClick.bind(this),
+                onKeyDown: this.handleKeyDown.bind(this)
+            });
+        }
 
-        // Callbacks del StateManager
-        this.stateManager.setCallbacks({
-            onSelectionChanged: this.handleSelectionChanged.bind(this),
-            onPlanetSelected: this.handlePlanetSelected.bind(this),
-            onPlanetDeselected: this.handlePlanetDeselected.bind(this),
-            onSelectionCleared: this.handleSelectionCleared.bind(this)
-        });
+        if (this.dragManager) {
+            this.dragManager.setCallbacks({
+                onDragStart: this.handleDragVisualizationStart.bind(this),
+                onDragUpdate: this.handleDragVisualizationUpdate.bind(this),
+                onDragEnd: this.handleDragVisualizationEnd.bind(this),
+                onPlanetsSelected: this.handleDragPlanetsSelected.bind(this)
+            });
+        }
 
-        // Callbacks del DragManager
-        this.dragManager.setCallbacks({
-            onDragStart: this.handleDragVisualizationStart.bind(this),
-            onDragUpdate: this.handleDragVisualizationUpdate.bind(this),
-            onDragEnd: this.handleDragVisualizationEnd.bind(this),
-            onPlanetsSelected: this.handleDragPlanetsSelected.bind(this)
-        });
+        if (this.visualizationManager) {
+            this.visualizationManager.setCallbacks({
+                onRenderComplete: this.handleRenderComplete.bind(this),
+                onAnimationUpdate: this.handleAnimationUpdate.bind(this)
+            });
+        }
 
-        // Callbacks del VisualizationManager
-        this.visualizationManager.setCallbacks({
-            onRenderComplete: this.handleRenderComplete.bind(this),
-            onAnimationUpdate: this.handleAnimationUpdate.bind(this)
-        });
+        if (this.overlayManager) {
+            this.overlayManager.setCallbacks({
+                onOverlayCreated: this.handleOverlayCreated.bind(this),
+                onOverlayUpdated: this.handleOverlayUpdated.bind(this),
+                onOverlayDestroyed: this.handleOverlayDestroyed.bind(this)
+            });
+        }
 
-        // Callbacks del OverlayManager
-        this.overlayManager.setCallbacks({
-            onOverlayCreated: this.handleOverlayCreated.bind(this),
-            onOverlayUpdated: this.handleOverlayUpdated.bind(this),
-            onOverlayDestroyed: this.handleOverlayDestroyed.bind(this)
-        });
+        console.log('🔗 Callbacks completos configurados entre gestores');
+    }
 
-        console.log('🔗 Callbacks configurados entre gestores');
+    /**
+     * 🏗️ Inicializar gestores especializados (DEPRECATED - usar initializeCoreManagers + initializeVisualManagers)
+     */
+    initializeManagers() {
+        this.initializeCoreManagers();
+        this.initializeVisualManagers();
     }
 
     /**
@@ -305,13 +350,15 @@ export class SelectionSystem {
      * 🔄 Manejar cambio de selección
      */
     handleSelectionChanged({ selectedPlanets, stats, lastSelected }) {
-        // Actualizar visualización
-        this.visualizationManager.updateSelectedPlanets(selectedPlanets);
+        // Actualizar visualización solo si el manager existe
+        if (this.visualizationManager) {
+            this.visualizationManager.updateSelectedPlanets(selectedPlanets);
+        }
         
-        // Actualizar overlay si está habilitado
-        if (this.config.showSelectionStats && stats.count > 0) {
+        // Actualizar overlay si está habilitado y el manager existe
+        if (this.overlayManager && this.config.showSelectionStats && stats.count > 0) {
             this.overlayManager.createSelectionInfoOverlay(stats, this.config.statsPosition);
-        } else {
+        } else if (this.overlayManager) {
             this.overlayManager.removeSelectionInfoOverlay();
         }
         
@@ -470,8 +517,10 @@ export class SelectionSystem {
         
         this.lastUpdateTime += deltaTime;
         
-        // Actualizar animaciones
-        this.visualizationManager.updateAnimations(deltaTime);
+        // Actualizar animaciones solo si el manager existe
+        if (this.visualizationManager) {
+            this.visualizationManager.updateAnimations(deltaTime);
+        }
     }
 
     /**
@@ -480,13 +529,17 @@ export class SelectionSystem {
     render(ctx, camera) {
         if (!this.isInitialized) return;
         
-        // Renderizar visualización de selección
-        this.visualizationManager.render(ctx, camera);
+        // Renderizar visualización de selección solo si el manager existe
+        if (this.visualizationManager) {
+            this.visualizationManager.render(ctx, camera);
+        }
         
         // Renderizar drag selection si está activo
-        const dragRenderData = this.dragManager.getRenderData();
-        if (dragRenderData) {
-            this.renderDragSelection(ctx, dragRenderData);
+        if (this.dragManager) {
+            const dragRenderData = this.dragManager.getRenderData();
+            if (dragRenderData) {
+                this.renderDragSelection(ctx, dragRenderData);
+            }
         }
     }
 
@@ -546,16 +599,35 @@ export class SelectionSystem {
             return { initialized: false };
         }
         
-        return {
+        const debugInfo = {
             initialized: this.isInitialized,
             lastUpdateTime: this.lastUpdateTime,
-            eventManager: this.eventManager.getDebugInfo(),
-            stateManager: this.stateManager.getDebugInfo(),
-            dragManager: this.dragManager.getDebugInfo(),
-            visualizationManager: this.visualizationManager.getDebugInfo(),
-            overlayManager: this.overlayManager.getDebugInfo(),
-            config: this.config
+            config: this.config,
+            hasStateManager: !!this.stateManager,
+            hasEventManager: !!this.eventManager,
+            hasDragManager: !!this.dragManager,
+            hasVisualizationManager: !!this.visualizationManager,
+            hasOverlayManager: !!this.overlayManager
         };
+        
+        // Agregar debug info de gestores que existen
+        if (this.stateManager) {
+            debugInfo.stateManager = this.stateManager.getDebugInfo();
+        }
+        if (this.eventManager) {
+            debugInfo.eventManager = this.eventManager.getDebugInfo();
+        }
+        if (this.dragManager) {
+            debugInfo.dragManager = this.dragManager.getDebugInfo();
+        }
+        if (this.visualizationManager) {
+            debugInfo.visualizationManager = this.visualizationManager.getDebugInfo();
+        }
+        if (this.overlayManager) {
+            debugInfo.overlayManager = this.overlayManager.getDebugInfo();
+        }
+        
+        return debugInfo;
     }
 
     /**

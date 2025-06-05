@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Cache Refresh - Project Ara</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+            background: rgba(0, 50, 0, 0.3);
+        }
+        
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #0a0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔄 Force Cache Refresh - Project Ara</h1>
+    
+    <div class="status">
+        <h2>Acciones para limpiar caché:</h2>
+        <button onclick="hardRefresh()">🔄 Hard Refresh (Ctrl+F5)</button>
+        <button onclick="clearCache()">🗑️ Clear Cache & Reload</button>
+        <button onclick="testHUD()">🔧 Test HUD Fix</button>
+        <button onclick="goToGame()">🎮 Ir al Juego Principal</button>
+    </div>
+    
+    <div class="status">
+        <h2>Estado:</h2>
+        <div id="status">Listo para limpiar caché...</div>
+    </div>
+    
+    <div class="status">
+        <h2>Instrucciones:</h2>
+        <p>1. Presiona "Hard Refresh" o usa Ctrl+F5 / Cmd+Shift+R</p>
+        <p>2. Abre las DevTools (F12)</p>
+        <p>3. Ve a Network tab</p>
+        <p>4. Marca "Disable cache"</p>
+        <p>5. Recarga la página del juego</p>
+        <p>6. Verifica que no hay errores de "Cannot read properties of undefined"</p>
+    </div>
+
+    <script>
+        const status = document.getElementById('status');
+        
+        function updateStatus(message) {
+            status.innerHTML += '<br>' + message;
+            console.log('🔄 CACHE:', message);
+        }
+        
+        function hardRefresh() {
+            updateStatus('Ejecutando hard refresh...');
+            location.reload(true);
+        }
+        
+        function clearCache() {
+            updateStatus('Intentando limpiar caché...');
+            
+            // Limpiar localStorage
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Forzar recarga sin caché
+            window.location.href = window.location.href + '?nocache=' + Date.now();
+        }
+        
+        function testHUD() {
+            updateStatus('Redirigiendo al test del HUD...');
+            window.location.href = './test-hud-fix.html?nocache=' + Date.now();
+        }
+        
+        function goToGame() {
+            updateStatus('Redirigiendo al juego principal...');
+            window.location.href = './index.html?nocache=' + Date.now();
+        }
+        
+        // Auto-detectar si venimos de una página con errores
+        if (document.referrer.includes('index.html')) {
+            updateStatus('⚠️ Detectado acceso desde index.html');
+            updateStatus('🔧 Recomendación: Usar Hard Refresh para limpiar caché');
+        }
+        
+        // Mostrar información del caché
+        updateStatus('🕒 Timestamp actual: ' + Date.now());
+        updateStatus('📦 LocalStorage items: ' + localStorage.length);
+        updateStatus('📦 SessionStorage items: ' + sessionStorage.length);
+    </script>
+</body>
+</html> 

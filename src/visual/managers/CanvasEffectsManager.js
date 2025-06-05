@@ -510,16 +510,18 @@ export class CanvasEffectsManager {
     }
     
     /**
-     * 🎭 Renderizar animaciones especiales
+     * 🎨 Renderizar animaciones
      */
     renderAnimations(currentTime) {
+        this.ctx.save();
+        
         for (const [id, animation] of this.activeEffects.animations) {
-            switch (animation.type) {
-                case 'pulse':
-                    this.renderPulseAnimation(animation, currentTime);
-                    break;
+            if (animation.type === 'pulse') {
+                this.renderPulseAnimation(animation, currentTime);
             }
         }
+        
+        this.ctx.restore();
     }
     
     /**
@@ -576,5 +578,28 @@ export class CanvasEffectsManager {
         this.effectCache.patterns.clear();
         
         console.log('🧹 CanvasEffectsManager destruido');
+    }
+
+    /**
+     * ✨ Renderizar partículas
+     */
+    renderParticles(currentTime) {
+        this.ctx.save();
+        
+        // Renderizar partículas de efectos activos
+        for (const explosion of this.activeEffects.explosions) {
+            if (explosion.particles) {
+                const age = currentTime - explosion.startTime;
+                const progress = age / explosion.duration;
+                
+                if (progress < 1) {
+                    for (const particle of explosion.particles) {
+                        this.renderExplosionParticle(particle, progress);
+                    }
+                }
+            }
+        }
+        
+        this.ctx.restore();
     }
 } 

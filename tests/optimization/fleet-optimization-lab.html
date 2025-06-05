@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Fleet Optimization Laboratory</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', monospace;
+            background: #000011;
+            color: #00ff88;
+            overflow: hidden;
+        }
+
+        .lab-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .control-panel {
+            width: 350px;
+            background: rgba(0, 0, 0, 0.9);
+            border-right: 2px solid #00ff88;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .test-area {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(ellipse at center, #000033 0%, #000011 70%, #000000 100%);
+        }
+
+        .lab-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #ff6666;
+            text-transform: uppercase;
+        }
+
+        .section {
+            margin-bottom: 25px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ffaa00;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 5px;
+            background: #111;
+            border: 1px solid #333;
+            color: #00ff88;
+            border-radius: 3px;
+        }
+
+        .control-button {
+            width: 100%;
+            padding: 8px;
+            background: #003322;
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+
+        .control-button:hover {
+            background: #004433;
+        }
+
+        .control-button.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .stats-display {
+            background: #001122;
+            border: 1px solid #0066cc;
+            border-radius: 3px;
+            padding: 10px;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .stats-value {
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        .warning {
+            color: #ff6666;
+            font-weight: bold;
+        }
+
+        .good {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        #testCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .technique-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .technique-button {
+            padding: 5px;
+            background: #222;
+            border: 1px solid #444;
+            color: #ccc;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            text-align: center;
+        }
+
+        .technique-button.enabled {
+            background: #003322;
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+
+        .performance-chart {
+            height: 100px;
+            background: #001122;
+            border: 1px solid #0066cc;
+            border-radius: 3px;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-line {
+            position: absolute;
+            bottom: 0;
+            width: 2px;
+            background: #00ff88;
+            transition: height 0.1s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="lab-container">
+        <!-- Panel de Control -->
+        <div class="control-panel">
+            <div class="lab-title">🧪 Fleet Optimization Lab</div>
+            
+            <!-- Configuración de Escenario -->
+            <div class="section">
+                <div class="section-title">📊 Scenario Configuration</div>
+                
+                <div class="control-group">
+                    <label class="control-label">Fleet Count:</label>
+                    <input type="range" class="control-input" id="fleetCount" min="100" max="5000" value="1000" step="100">
+                    <div id="fleetCountDisplay" class="stats-value">1000 fleets</div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Speed Multiplier:</label>
+                    <input type="range" class="control-input" id="speedMultiplier" min="0.1" max="3.0" value="1.0" step="0.1">
+                    <div id="speedDisplay" class="stats-value">1.0x speed</div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Spawn Pattern:</label>
+                    <select class="control-input" id="spawnPattern">
+                        <option value="random">Random</option>
+                        <option value="grid">Grid</option>
+                        <option value="clusters">Clusters</option>
+                        <option value="lines">Lines</option>
+                        <option value="spiral">Spiral</option>
+                    </select>
+                </div>
+
+                <button class="control-button" id="generateScenario">🚀 Generate Scenario</button>
+                <button class="control-button" id="clearScenario">🗑️ Clear All</button>
+            </div>
+
+            <!-- Técnicas de Optimización -->
+            <div class="section">
+                <div class="section-title">⚡ Optimization Techniques</div>
+                
+                <div class="technique-selector">
+                    <div class="technique-button" data-technique="pooling">Object Pooling</div>
+                    <div class="technique-button" data-technique="culling">Viewport Culling</div>
+                    <div class="technique-button" data-technique="lod">Level of Detail</div>
+                    <div class="technique-button" data-technique="batching">Batch Rendering</div>
+                    <div class="technique-button" data-technique="spatial">Spatial Grid</div>
+                    <div class="technique-button" data-technique="adaptive">Adaptive Quality</div>
+                    <div class="technique-button" data-technique="canvas">Canvas Mode</div>
+                    <div class="technique-button" data-technique="workers">Web Workers</div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Culling Distance:</label>
+                    <input type="range" class="control-input" id="cullingDistance" min="50" max="500" value="200" step="25">
+                    <div id="cullingDisplay" class="stats-value">200px margin</div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">LOD Threshold:</label>
+                    <input type="range" class="control-input" id="lodThreshold" min="100" max="1000" value="300" step="50">
+                    <div id="lodDisplay" class="stats-value">300px distance</div>
+                </div>
+
+                <button class="control-button" id="applyOptimizations">✨ Apply Optimizations</button>
+                <button class="control-button" id="resetOptimizations">🔄 Reset to Baseline</button>
+            </div>
+
+            <!-- Métricas de Rendimiento -->
+            <div class="section">
+                <div class="section-title">📈 Performance Metrics</div>
+                
+                <div class="stats-display" id="performanceStats">
+                    <div>FPS: <span class="stats-value" id="fpsDisplay">--</span></div>
+                    <div>Frame Time: <span class="stats-value" id="frameTimeDisplay">--</span>ms</div>
+                    <div>Rendered Fleets: <span class="stats-value" id="renderedDisplay">--</span></div>
+                    <div>Culled Fleets: <span class="stats-value" id="culledDisplay">--</span></div>
+                    <div>Memory Usage: <span class="stats-value" id="memoryDisplay">--</span>MB</div>
+                    <div>DOM Elements: <span class="stats-value" id="domDisplay">--</span></div>
+                    <div>Status: <span class="stats-value" id="statusDisplay">Ready</span></div>
+                </div>
+
+                <div class="performance-chart" id="performanceChart"></div>
+            </div>
+
+            <!-- Controles de Testing -->
+            <div class="section">
+                <div class="section-title">🧪 Testing Controls</div>
+                
+                <button class="control-button" id="startBenchmark">📊 Start Benchmark</button>
+                <button class="control-button" id="stressTesting">🔥 Stress Test</button>
+                <button class="control-button" id="exportResults">💾 Export Results</button>
+                <button class="control-button" id="compareResults">📋 Compare Results</button>
+            </div>
+
+            <!-- Presets de Escenarios -->
+            <div class="section">
+                <div class="section-title">🎯 Quick Scenarios</div>
+                
+                <button class="control-button" data-preset="light">Light (500 fleets)</button>
+                <button class="control-button" data-preset="medium">Medium (1000 fleets)</button>
+                <button class="control-button" data-preset="heavy">Heavy (2000 fleets)</button>
+                <button class="control-button" data-preset="extreme">Extreme (3000 fleets)</button>
+                <button class="control-button" data-preset="insane">Insane (5000 fleets)</button>
+            </div>
+        </div>
+
+        <!-- Área de Testing -->
+        <div class="test-area">
+            <canvas id="testCanvas"></canvas>
+        </div>
+    </div>
+
+    <script type="module">
+        // 🧪 FLEET OPTIMIZATION LABORATORY
+        // Entorno aislado para probar optimizaciones con miles de flotas
+
+        class FleetOptimizationLab {
+            constructor() {
+                this.canvas = document.getElementById('testCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // Estado del laboratorio
+                this.fleets = [];
+                this.isRunning = false;
+                this.lastTime = 0;
+                this.frameCount = 0;
+                this.fpsHistory = [];
+                
+                // Configuración
+                this.config = {
+                    fleetCount: 1000,
+                    speedMultiplier: 1.0,
+                    spawnPattern: 'random',
+                    cullingDistance: 200,
+                    lodThreshold: 300
+                };
+
+                // Técnicas de optimización habilitadas
+                this.optimizations = {
+                    pooling: false,
+                    culling: false,
+                    lod: false,
+                    batching: false,
+                    spatial: false,
+                    adaptive: false,
+                    canvas: true, // Por defecto Canvas
+                    workers: false
+                };
+
+                // Métricas
+                this.metrics = {
+                    fps: 0,
+                    frameTime: 0,
+                    renderedFleets: 0,
+                    culledFleets: 0,
+                    memoryUsage: 0,
+                    domElements: 0
+                };
+
+                // Viewport
+                this.viewport = {
+                    x: 0,
+                    y: 0,
+                    width: 0,
+                    height: 0,
+                    zoom: 1
+                };
+
+                this.init();
+            }
+
+            init() {
+                this.setupCanvas();
+                this.setupControls();
+                this.setupPerformanceMonitoring();
+                this.start();
+                
+                console.log('🧪 Fleet Optimization Lab initialized');
+            }
+
+            setupCanvas() {
+                const resizeCanvas = () => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.canvas.width = rect.width;
+                    this.canvas.height = rect.height;
+                    this.viewport.width = rect.width;
+                    this.viewport.height = rect.height;
+                };
+
+                window.addEventListener('resize', resizeCanvas);
+                resizeCanvas();
+
+                // Controles de cámara
+                let isDragging = false;
+                let lastMouseX = 0;
+                let lastMouseY = 0;
+
+                this.canvas.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                });
+
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (isDragging) {
+                        const deltaX = e.clientX - lastMouseX;
+                        const deltaY = e.clientY - lastMouseY;
+                        
+                        this.viewport.x -= deltaX / this.viewport.zoom;
+                        this.viewport.y -= deltaY / this.viewport.zoom;
+                        
+                        lastMouseX = e.clientX;
+                        lastMouseY = e.clientY;
+                    }
+                });
+
+                this.canvas.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                    this.viewport.zoom *= zoomFactor;
+                    this.viewport.zoom = Math.max(0.1, Math.min(5, this.viewport.zoom));
+                });
+            }
+
+            setupControls() {
+                // Sliders
+                document.getElementById('fleetCount').addEventListener('input', (e) => {
+                    this.config.fleetCount = parseInt(e.target.value);
+                    document.getElementById('fleetCountDisplay').textContent = `${this.config.fleetCount} fleets`;
+                });
+
+                document.getElementById('speedMultiplier').addEventListener('input', (e) => {
+                    this.config.speedMultiplier = parseFloat(e.target.value);
+                    document.getElementById('speedDisplay').textContent = `${this.config.speedMultiplier}x speed`;
+                });
+
+                document.getElementById('cullingDistance').addEventListener('input', (e) => {
+                    this.config.cullingDistance = parseInt(e.target.value);
+                    document.getElementById('cullingDisplay').textContent = `${this.config.cullingDistance}px margin`;
+                });
+
+                document.getElementById('lodThreshold').addEventListener('input', (e) => {
+                    this.config.lodThreshold = parseInt(e.target.value);
+                    document.getElementById('lodDisplay').textContent = `${this.config.lodThreshold}px distance`;
+                });
+
+                // Botones de escenario
+                document.getElementById('generateScenario').addEventListener('click', () => {
+                    this.generateScenario();
+                });
+
+                document.getElementById('clearScenario').addEventListener('click', () => {
+                    this.clearScenario();
+                });
+
+                // Técnicas de optimización
+                document.querySelectorAll('.technique-button').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const technique = button.dataset.technique;
+                        this.optimizations[technique] = !this.optimizations[technique];
+                        button.classList.toggle('enabled', this.optimizations[technique]);
+                        console.log(`🔧 ${technique}: ${this.optimizations[technique] ? 'ON' : 'OFF'}`);
+                    });
+                });
+
+                // Presets
+                document.querySelectorAll('[data-preset]').forEach(button => {
+                    button.addEventListener('click', () => {
+                        this.loadPreset(button.dataset.preset);
+                    });
+                });
+
+                // Controles de testing
+                document.getElementById('startBenchmark').addEventListener('click', () => {
+                    this.startBenchmark();
+                });
+
+                document.getElementById('stressTesting').addEventListener('click', () => {
+                    this.startStressTest();
+                });
+            }
+
+            setupPerformanceMonitoring() {
+                // Crear gráfico de rendimiento
+                this.performanceChart = document.getElementById('performanceChart');
+                this.chartBars = [];
+                
+                for (let i = 0; i < 100; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'chart-line';
+                    bar.style.left = `${i * 2}px`;
+                    bar.style.height = '0px';
+                    this.performanceChart.appendChild(bar);
+                    this.chartBars.push(bar);
+                }
+            }
+
+            generateScenario() {
+                this.fleets = [];
+                const count = this.config.fleetCount;
+                const pattern = this.config.spawnPattern;
+
+                console.log(`🚀 Generating ${count} fleets with ${pattern} pattern`);
+
+                for (let i = 0; i < count; i++) {
+                    const fleet = this.createFleet(i, pattern);
+                    this.fleets.push(fleet);
+                }
+
+                document.getElementById('statusDisplay').textContent = `Generated ${count} fleets`;
+            }
+
+            createFleet(index, pattern) {
+                let x, y;
+                const mapSize = 2000;
+
+                switch (pattern) {
+                    case 'grid':
+                        const cols = Math.ceil(Math.sqrt(this.config.fleetCount));
+                        const spacing = mapSize / cols;
+                        x = (index % cols) * spacing;
+                        y = Math.floor(index / cols) * spacing;
+                        break;
+                    
+                    case 'clusters':
+                        const clusterCount = 5;
+                        const clusterIndex = index % clusterCount;
+                        const clusterX = (clusterIndex % 3) * (mapSize / 3) + mapSize / 6;
+                        const clusterY = Math.floor(clusterIndex / 3) * (mapSize / 2) + mapSize / 4;
+                        x = clusterX + (Math.random() - 0.5) * 200;
+                        y = clusterY + (Math.random() - 0.5) * 200;
+                        break;
+                    
+                    case 'lines':
+                        const lineCount = 10;
+                        const lineIndex = index % lineCount;
+                        x = (index / lineCount) * (mapSize / (this.config.fleetCount / lineCount));
+                        y = lineIndex * (mapSize / lineCount);
+                        break;
+                    
+                    case 'spiral':
+                        const angle = index * 0.1;
+                        const radius = index * 2;
+                        x = mapSize / 2 + Math.cos(angle) * radius;
+                        y = mapSize / 2 + Math.sin(angle) * radius;
+                        break;
+                    
+                    default: // random
+                        x = Math.random() * mapSize;
+                        y = Math.random() * mapSize;
+                }
+
+                return {
+                    id: index,
+                    x: x,
+                    y: y,
+                    targetX: Math.random() * mapSize,
+                    targetY: Math.random() * mapSize,
+                    speed: 50 + Math.random() * 100,
+                    size: 2 + Math.random() * 3,
+                    color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                    visible: true,
+                    lodLevel: 0 // 0=full detail, 1=simplified, 2=point
+                };
+            }
+
+            clearScenario() {
+                this.fleets = [];
+                document.getElementById('statusDisplay').textContent = 'Cleared';
+            }
+
+            loadPreset(preset) {
+                const presets = {
+                    light: { fleetCount: 500, speedMultiplier: 1.0 },
+                    medium: { fleetCount: 1000, speedMultiplier: 1.2 },
+                    heavy: { fleetCount: 2000, speedMultiplier: 1.5 },
+                    extreme: { fleetCount: 3000, speedMultiplier: 2.0 },
+                    insane: { fleetCount: 5000, speedMultiplier: 2.5 }
+                };
+
+                const config = presets[preset];
+                if (config) {
+                    this.config.fleetCount = config.fleetCount;
+                    this.config.speedMultiplier = config.speedMultiplier;
+                    
+                    // Actualizar UI
+                    document.getElementById('fleetCount').value = config.fleetCount;
+                    document.getElementById('speedMultiplier').value = config.speedMultiplier;
+                    document.getElementById('fleetCountDisplay').textContent = `${config.fleetCount} fleets`;
+                    document.getElementById('speedDisplay').textContent = `${config.speedMultiplier}x speed`;
+                    
+                    this.generateScenario();
+                }
+            }
+
+            start() {
+                this.isRunning = true;
+                this.gameLoop();
+            }
+
+            gameLoop() {
+                if (!this.isRunning) return;
+
+                const currentTime = performance.now();
+                const deltaTime = (currentTime - this.lastTime) / 1000;
+                this.lastTime = currentTime;
+
+                // Actualizar métricas
+                this.updateMetrics(deltaTime);
+
+                // Actualizar flotas
+                this.updateFleets(deltaTime);
+
+                // Renderizar
+                this.render();
+
+                // Continuar loop
+                requestAnimationFrame(() => this.gameLoop());
+            }
+
+            updateMetrics(deltaTime) {
+                this.frameCount++;
+                
+                // Calcular FPS
+                if (deltaTime > 0) {
+                    const currentFPS = 1 / deltaTime;
+                    this.fpsHistory.push(currentFPS);
+                    if (this.fpsHistory.length > 60) {
+                        this.fpsHistory.shift();
+                    }
+                    
+                    this.metrics.fps = Math.round(this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length);
+                    this.metrics.frameTime = Math.round(deltaTime * 1000 * 100) / 100;
+                }
+
+                // Actualizar UI cada 10 frames
+                if (this.frameCount % 10 === 0) {
+                    this.updateUI();
+                    this.updatePerformanceChart();
+                }
+            }
+
+            updateFleets(deltaTime) {
+                let renderedCount = 0;
+                let culledCount = 0;
+
+                this.fleets.forEach(fleet => {
+                    // Movimiento básico hacia target
+                    const dx = fleet.targetX - fleet.x;
+                    const dy = fleet.targetY - fleet.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance > 5) {
+                        const moveDistance = fleet.speed * deltaTime * this.config.speedMultiplier;
+                        fleet.x += (dx / distance) * moveDistance;
+                        fleet.y += (dy / distance) * moveDistance;
+                    } else {
+                        // Nuevo target
+                        fleet.targetX = Math.random() * 2000;
+                        fleet.targetY = Math.random() * 2000;
+                    }
+
+                    // Viewport culling
+                    if (this.optimizations.culling) {
+                        const margin = this.config.cullingDistance;
+                        fleet.visible = (
+                            fleet.x > this.viewport.x - margin &&
+                            fleet.x < this.viewport.x + this.viewport.width + margin &&
+                            fleet.y > this.viewport.y - margin &&
+                            fleet.y < this.viewport.y + this.viewport.height + margin
+                        );
+                    } else {
+                        fleet.visible = true;
+                    }
+
+                    // Level of Detail
+                    if (this.optimizations.lod) {
+                        const centerX = this.viewport.x + this.viewport.width / 2;
+                        const centerY = this.viewport.y + this.viewport.height / 2;
+                        const distanceToCenter = Math.sqrt(
+                            (fleet.x - centerX) ** 2 + (fleet.y - centerY) ** 2
+                        );
+
+                        if (distanceToCenter > this.config.lodThreshold * 2) {
+                            fleet.lodLevel = 2; // Point
+                        } else if (distanceToCenter > this.config.lodThreshold) {
+                            fleet.lodLevel = 1; // Simplified
+                        } else {
+                            fleet.lodLevel = 0; // Full detail
+                        }
+                    } else {
+                        fleet.lodLevel = 0;
+                    }
+
+                    if (fleet.visible) {
+                        renderedCount++;
+                    } else {
+                        culledCount++;
+                    }
+                });
+
+                this.metrics.renderedFleets = renderedCount;
+                this.metrics.culledFleets = culledCount;
+            }
+
+            render() {
+                // Limpiar canvas
+                this.ctx.fillStyle = '#000011';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Configurar transformación de viewport
+                this.ctx.save();
+                this.ctx.scale(this.viewport.zoom, this.viewport.zoom);
+                this.ctx.translate(-this.viewport.x, -this.viewport.y);
+
+                // Renderizar flotas visibles
+                this.fleets.forEach(fleet => {
+                    if (!fleet.visible) return;
+
+                    this.ctx.fillStyle = fleet.color;
+
+                    switch (fleet.lodLevel) {
+                        case 0: // Full detail
+                            this.renderFleetDetailed(fleet);
+                            break;
+                        case 1: // Simplified
+                            this.renderFleetSimplified(fleet);
+                            break;
+                        case 2: // Point
+                            this.renderFleetPoint(fleet);
+                            break;
+                    }
+                });
+
+                this.ctx.restore();
+
+                // Renderizar UI overlay
+                this.renderOverlay();
+            }
+
+            renderFleetDetailed(fleet) {
+                // Triángulo detallado
+                this.ctx.beginPath();
+                this.ctx.moveTo(fleet.x, fleet.y - fleet.size);
+                this.ctx.lineTo(fleet.x - fleet.size, fleet.y + fleet.size);
+                this.ctx.lineTo(fleet.x + fleet.size, fleet.y + fleet.size);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+
+            renderFleetSimplified(fleet) {
+                // Círculo simple
+                this.ctx.beginPath();
+                this.ctx.arc(fleet.x, fleet.y, fleet.size / 2, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+
+            renderFleetPoint(fleet) {
+                // Punto mínimo
+                this.ctx.fillRect(fleet.x - 1, fleet.y - 1, 2, 2);
+            }
+
+            renderOverlay() {
+                // Información de viewport
+                this.ctx.fillStyle = 'rgba(0, 255, 136, 0.7)';
+                this.ctx.font = '12px Courier New';
+                this.ctx.fillText(`Viewport: (${Math.round(this.viewport.x)}, ${Math.round(this.viewport.y)}) Zoom: ${this.viewport.zoom.toFixed(2)}`, 10, 20);
+                this.ctx.fillText(`Visible: ${this.metrics.renderedFleets} / ${this.fleets.length}`, 10, 40);
+            }
+
+            updateUI() {
+                document.getElementById('fpsDisplay').textContent = this.metrics.fps;
+                document.getElementById('frameTimeDisplay').textContent = this.metrics.frameTime;
+                document.getElementById('renderedDisplay').textContent = this.metrics.renderedFleets;
+                document.getElementById('culledDisplay').textContent = this.metrics.culledFleets;
+                document.getElementById('domDisplay').textContent = document.querySelectorAll('*').length;
+
+                // Colores según rendimiento
+                const fpsElement = document.getElementById('fpsDisplay');
+                if (this.metrics.fps >= 55) {
+                    fpsElement.className = 'stats-value good';
+                } else if (this.metrics.fps >= 30) {
+                    fpsElement.className = 'stats-value';
+                } else {
+                    fpsElement.className = 'stats-value warning';
+                }
+            }
+
+            updatePerformanceChart() {
+                // Actualizar gráfico de FPS
+                this.chartBars.forEach((bar, index) => {
+                    if (index < this.chartBars.length - 1) {
+                        const nextHeight = this.chartBars[index + 1].style.height;
+                        bar.style.height = nextHeight;
+                    }
+                });
+
+                // Nuevo valor
+                const lastBar = this.chartBars[this.chartBars.length - 1];
+                const height = Math.min(100, (this.metrics.fps / 60) * 100);
+                lastBar.style.height = `${height}px`;
+                
+                // Color según rendimiento
+                if (this.metrics.fps >= 55) {
+                    lastBar.style.background = '#00ff88';
+                } else if (this.metrics.fps >= 30) {
+                    lastBar.style.background = '#ffaa00';
+                } else {
+                    lastBar.style.background = '#ff6666';
+                }
+            }
+
+            startBenchmark() {
+                console.log('📊 Starting benchmark...');
+                document.getElementById('statusDisplay').textContent = 'Benchmarking...';
+                
+                // TODO: Implementar benchmark completo
+                setTimeout(() => {
+                    document.getElementById('statusDisplay').textContent = 'Benchmark complete';
+                }, 5000);
+            }
+
+            startStressTest() {
+                console.log('🔥 Starting stress test...');
+                
+                // Incrementar gradualmente las flotas
+                const originalCount = this.config.fleetCount;
+                let currentCount = 500;
+                
+                const stressInterval = setInterval(() => {
+                    this.config.fleetCount = currentCount;
+                    this.generateScenario();
+                    
+                    document.getElementById('statusDisplay').textContent = `Stress: ${currentCount} fleets`;
+                    
+                    currentCount += 500;
+                    if (currentCount > 5000 || this.metrics.fps < 15) {
+                        clearInterval(stressInterval);
+                        document.getElementById('statusDisplay').textContent = `Stress complete. Max: ${currentCount - 500}`;
+                    }
+                }, 3000);
+            }
+        }
+
+        // Inicializar laboratorio
+        const lab = new FleetOptimizationLab();
+        
+        // Exponer para debugging
+        window.lab = lab;
+        
+        console.log('🧪 Fleet Optimization Laboratory ready!');
+        console.log('Use window.lab to access the lab instance');
+    </script>
+</body>
+</html> 

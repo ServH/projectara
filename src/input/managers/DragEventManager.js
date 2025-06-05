@@ -20,8 +20,8 @@ export class DragEventManager {
         this.onDragUpdate = null;
         this.onDragEnd = null;
         
+        console.log('🖱️ DragEventManager inicializado - Listo para detectar drag and drop');
         this.setupEventListeners();
-        console.log('🖱️ DragEventManager inicializado');
     }
 
     /**
@@ -70,8 +70,24 @@ export class DragEventManager {
         // Actualizar estado
         this.dragStateManager.initializeDrag(x, y);
 
+        // ⏰ RETRASAR verificación para permitir que SelectionSystem procese el click primero
+        setTimeout(() => {
+            this.checkDragEligibility(x, y);
+        }, 10); // 10ms es suficiente para que SelectionSystem procese el click
+    }
+
+    /**
+     * 🔍 Verificar si se puede hacer drag después del click
+     */
+    checkDragEligibility(x, y) {
+        // Verificar que tenemos los managers necesarios
+        if (!this.dragStateManager || !this.selectionSystem || !this.gameEngine) {
+            console.warn('⚠️ Managers no disponibles para verificar elegibilidad de drag');
+            return;
+        }
+
         // Verificar planetas seleccionados
-        const selectedPlanets = this.selectionSystem.getSelectedPlanets();
+        const selectedPlanets = this.selectionSystem.getSelectedPlanetObjects();
         const playerSelectedPlanets = selectedPlanets.filter(p => p.owner === 'player');
         
         console.log(`🖱️ Click en (${Math.round(x)}, ${Math.round(y)}) - Planetas player: ${playerSelectedPlanets.length}`);
@@ -86,12 +102,16 @@ export class DragEventManager {
         // Solo preparar drag si hay planetas seleccionados Y no estamos clickeando en un planeta del jugador
         if (playerSelectedPlanets.length > 0 && (!clickedPlanet || clickedPlanet.owner !== 'player')) {
             console.log(`🎯 Preparando drag desde ${playerSelectedPlanets.length} planetas seleccionados`);
+            // Marcar como elegible para drag
+            this.dragStateManager.setDragEligible(true);
         } else {
             if (playerSelectedPlanets.length === 0) {
                 console.log(`❌ No se puede hacer drag: no hay planetas del player seleccionados`);
             } else if (clickedPlanet && clickedPlanet.owner === 'player') {
                 console.log(`❌ No se puede hacer drag: clickeando en planeta propio ${clickedPlanet.id}`);
             }
+            // Marcar como no elegible para drag
+            this.dragStateManager.setDragEligible(false);
         }
     }
 
@@ -99,16 +119,18 @@ export class DragEventManager {
      * 🖱️ Manejar movimiento del mouse
      */
     onMouseMove(event) {
+        // Verificar que tenemos dragStateManager
+        if (!this.dragStateManager) {
+            return;
+        }
+
         const coords = this.getMouseCoordinates(event);
         this.dragStateManager.updatePosition(coords.x, coords.y);
 
         // Si no estamos dragging, verificar si debemos iniciar
         if (!this.dragStateManager.isActive()) {
-            // Verificar si hay planetas seleccionados
-            const selectedPlanets = this.selectionSystem.getSelectedPlanets();
-            const playerSelectedPlanets = selectedPlanets.filter(p => p.owner === 'player');
-            
-            if (this.dragStateManager.shouldStartDrag() && playerSelectedPlanets.length > 0) {
+            // Verificar si el drag es elegible y si se debe iniciar
+            if (this.dragStateManager.shouldStartDrag() && this.dragStateManager.isDragEligible()) {
                 this.startDrag();
                 event.stopPropagation();
             }
@@ -172,12 +194,12 @@ export class DragEventManager {
         
         // Emitir evento
         eventBus.emit('dragdrop:start', {
-            selectedPlanets: this.selectionSystem.getSelectedPlanets().length,
+            selectedPlanets: this.selectionSystem.getSelectedPlanetObjects().length,
             x: this.dragStateManager.currentX,
             y: this.dragStateManager.currentY
         });
         
-        console.log(`🎯 Drag iniciado desde ${this.selectionSystem.getSelectedPlanets().length} planetas`);
+        console.log(`🎯 Drag iniciado desde ${this.selectionSystem.getSelectedPlanetObjects().length} planetas`);
     }
 
     /**

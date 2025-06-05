@@ -495,6 +495,20 @@ export class GameEngine {
     // Event Handlers
     handleFleetLaunched(data) {
         console.log(`🚀 Fleet launched: ${data.ships} ships from ${data.fromPlanet} to ${data.toPlanet}`);
+        
+        // Crear flota real en el sistema usando FleetFormationSystem
+        if (this.systemsManager.fleetFormationSystem) {
+            const fleets = this.systemsManager.fleetFormationSystem.createOrganicFormation(data);
+            
+            // Agregar flotas al estado del juego
+            fleets.forEach(fleet => {
+                this.stateManager.addFleet(fleet);
+            });
+            
+            console.log(`✅ ${fleets.length} flotas creadas en el sistema de navegación`);
+        } else {
+            console.warn('⚠️ FleetFormationSystem no disponible para crear flotas');
+        }
     }
 
     handleFleetArrived(data) {
@@ -538,6 +552,13 @@ export class GameEngine {
         return this.stateManager.getPlanet(id);
     }
 
+    /**
+     * Alias para getPlanet (compatibilidad)
+     */
+    getPlanetById(id) {
+        return this.getPlanet(id);
+    }
+
     getAllPlanets() {
         return this.stateManager.getAllPlanets();
     }
@@ -571,6 +592,20 @@ export class GameEngine {
         eventBus.off(GAME_EVENTS.PLANET_CONQUERED, this.handlePlanetConquered);
         
         console.log('💥 GameEngine destroyed');
+    }
+
+    /**
+     * Obtener jugador actual (siempre 'player' para el humano)
+     */
+    getCurrentPlayer() {
+        return 'player';
+    }
+
+    /**
+     * Obtener planetas del jugador especificado
+     */
+    getPlayerPlanets(playerId = 'player') {
+        return this.stateManager.getPlanetsByOwner(playerId);
     }
 }
 

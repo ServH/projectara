@@ -1,0 +1,107 @@
+{
+  "sensors": {
+    "length": 30,
+    "width": 5,
+    "lateralCount": 1,
+    "lateralAngle": 15
+  },
+  "forces": {
+    "maxForce": 200,
+    "maxSpeed": 120,
+    "seekWeight": 1,
+    "avoidanceWeight": 2,
+    "smoothing": 0.3
+  },
+  "behavior": {
+    "arrivalRadius": 25,
+    "slowingDistance": 60,
+    "enableArrival": true,
+    "enableWander": false
+  },
+  "fleet": {
+    "size": 15,
+    "formation": "circle",
+    "spacing": 30,
+    "enableBoids": true,
+    "separationWeight": 1.5,
+    "alignmentWeight": 1,
+    "cohesionWeight": 0.8
+  },
+  "debug": {
+    "showSensors": true,
+    "showForces": true,
+    "showVelocity": true,
+    "showTrails": true,
+    "showObstacleZones": false,
+    "showSpatialGrid": true,
+    "showFleetConnections": true,
+    "showFleetCenter": true
+  },
+  "obstacles": [
+    {
+      "x": 336,
+      "y": 212.4,
+      "radius": 25
+    },
+    {
+      "x": 784,
+      "y": 283.2,
+      "radius": 30
+    },
+    {
+      "x": 560,
+      "y": 424.8,
+      "radius": 20
+    },
+    {
+      "x": 224,
+      "y": 495.59999999999997,
+      "radius": 35
+    },
+    {
+      "x": 157.44825989921534,
+      "y": 165.17866558999336,
+      "radius": 26.388791675369873
+    },
+    {
+      "x": 362.85791320298597,
+      "y": 208.51407650330432,
+      "radius": 27.50704228413077
+    },
+    {
+      "x": 746.5234396205095,
+      "y": 310.67695719658235,
+      "radius": 19.85641630906053
+    },
+    {
+      "x": 780.714880014802,
+      "y": 370.45988651290963,
+      "radius": 38.974572871434475
+    },
+    {
+      "x": 127.10699930370448,
+      "y": 428.3983860786006,
+      "radius": 32.309323183509505
+    },
+    {
+      "x": 722.1452798284848,
+      "y": 254.49449107451275,
+      "radius": 31.733179376573595
+    },
+    {
+      "x": 129.353111109575,
+      "y": 296.81909466826744,
+      "radius": 20.907769029507264
+    },
+    {
+      "x": 995.8407557851274,
+      "y": 482.3180331543636,
+      "radius": 20.861994693068723
+    },
+    {
+      "x": 226.84565267256636,
+      "y": 580.3800895479637,
+      "radius": 25.9675038730439
+    }
+  ]
+}

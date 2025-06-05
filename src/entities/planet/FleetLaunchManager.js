@@ -5,6 +5,7 @@
  */
 
 import { FormationFactory } from '../formations/FormationFactory.js';
+import eventBus, { GAME_EVENTS } from '../../core/EventBus.js';
 
 export class FleetLaunchManager {
     constructor() {
@@ -161,8 +162,9 @@ export class FleetLaunchManager {
     launchWaveNow(waveData) {
         console.log(`🚀 Lanzando oleada ${waveData.waveIndex + 1}/${waveData.totalWaves}: ${waveData.fleetData.ships} naves`);
         
-        // Aquí se emitiría el evento para crear la flota real
-        // Por ahora solo registramos el lanzamiento
+        // Emitir evento para crear la flota real en el sistema de navegación
+        eventBus.emit(GAME_EVENTS.FLEET_LAUNCHED, waveData.fleetData);
+        
         return waveData.fleetData;
     }
 
