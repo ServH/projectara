@@ -10,7 +10,7 @@
  */
 
 import eventBus, { GAME_EVENTS } from './EventBus.js';
-import Planet from '../entities/Planet.js';
+import { Planet } from '../entities/Planet.js';
 import { Fleet } from '../entities/Fleet.js';
 import ConfigurationManager from './ConfigurationManager.js';
 import StateManager from './StateManager.js';
