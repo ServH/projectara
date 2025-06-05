@@ -73,13 +73,13 @@ export class GameLoader {
 
     async loadModules() {
         const moduleSpecs = [
-            { path: '../core/GameEngine.js', name: 'GameEngine' },
-            { path: '../systems/AISystem.js', name: 'AISystem' },
-            { path: '../systems/FleetRedirectionSystem.js', name: 'FleetRedirectionSystem' },
-            { path: '../visual/CanvasRenderer.js', name: 'CanvasRenderer' },
-            { path: '../systems/SelectionSystem.js', name: 'SelectionSystem' },
-            { path: '../input/DragDropHandler.js', name: 'DragDropHandler' },
-            { path: './HUDManager.js', name: 'HUDManager' }
+            { path: '/src/core/GameEngine.js', name: 'GameEngine' },
+            { path: '/src/systems/AISystem.js', name: 'AISystem' },
+            { path: '/src/systems/FleetRedirectionSystem.js', name: 'FleetRedirectionSystem' },
+            { path: '/src/visual/CanvasRenderer.js', name: 'CanvasRenderer' },
+            { path: '/src/systems/SelectionSystem.js', name: 'SelectionSystem' },
+            { path: '/src/input/DragDropHandler.js', name: 'DragDropHandler' },
+            { path: '/src/ui/HUDManager.js', name: 'HUDManager' }
         ];
         
         const modules = {};
