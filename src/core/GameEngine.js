@@ -27,6 +27,9 @@ export class GameEngine {
         this.lastFrameTime = 0;
         this.deltaTime = 0;
         
+        // 🎨 Referencia al renderer
+        this.renderer = null;
+        
         // Cache de colores para rendimiento
         this.ownerColors = {
             player: '#00ff88',
@@ -284,6 +287,11 @@ export class GameEngine {
             this.update(this.deltaTime / 1000); // Convertir a segundos
         }
         
+        // 🎨 CRÍTICO: Renderizar usando el CanvasRenderer
+        if (this.renderer && typeof this.renderer.render === 'function') {
+            this.renderer.render();
+        }
+        
         // Continuar loop
         requestAnimationFrame(() => this.gameLoop());
     }
@@ -539,7 +547,13 @@ export class GameEngine {
     }
 
     connectNavigationRenderer(canvasRenderer) {
+        // 🎨 Almacenar referencia al renderer para el game loop
+        this.renderer = canvasRenderer;
+        
+        // Conectar al sistema de navegación
         this.systemsManager.connectNavigationRenderer(canvasRenderer);
+        
+        console.log('🎨 CanvasRenderer conectado al GameEngine y NavigationSystem');
     }
 
     /**
