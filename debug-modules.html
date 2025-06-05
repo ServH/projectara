@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Debug Modules - Galcon</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .module-test {
+            background: #111;
+            border: 1px solid #333;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success { border-color: #00ff88; }
+        .error { border-color: #ff4444; }
+        .warning { border-color: #ffaa00; }
+        .loading { border-color: #0088ff; }
+        .status {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .details {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+        .error-details {
+            color: #ff6666;
+            white-space: pre-wrap;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Modules - Galcon Game</h1>
+    <div id="results"></div>
+    
+    <script type="module">
+        const results = document.getElementById('results');
+        
+        // Lista de módulos a probar
+        const modulesToTest = [
+            { path: './src/core/EventBus.js', name: 'EventBus' },
+            { path: './src/utils/Vector2D.js', name: 'Vector2D' },
+            { path: './src/config/SteeringConfig.js', name: 'SteeringConfig' },
+            { path: './src/entities/formations/FormationFactory.js', name: 'FormationFactory' },
+            { path: './src/entities/behaviors/BoidsManager.js', name: 'BoidsManager' },
+            { path: './src/entities/SteeringVehicle.js', name: 'SteeringVehicle' },
+            { path: './src/entities/Fleet.js', name: 'Fleet' },
+            { path: './src/entities/Planet.js', name: 'Planet' },
+            { path: './src/core/GameEngine.js', name: 'GameEngine' },
+            { path: './src/visual/CanvasRenderer.js', name: 'CanvasRenderer' },
+            { path: './src/systems/AISystem.js', name: 'AISystem' },
+            { path: './src/systems/FleetRedirectionSystem.js', name: 'FleetRedirectionSystem' },
+            { path: './src/systems/SelectionSystem.js', name: 'SelectionSystem' },
+            { path: './src/input/DragDropHandler.js', name: 'DragDropHandler' },
+            { path: './src/ui/HUDManager.js', name: 'HUDManager' },
+            { path: './src/ui/managers/LoadingUIManager.js', name: 'LoadingUIManager' },
+            { path: './src/ui/managers/ModuleLoadingManager.js', name: 'ModuleLoadingManager' },
+            { path: './src/ui/managers/CanvasSetupManager.js', name: 'CanvasSetupManager' },
+            { path: './src/ui/managers/SystemInitializationManager.js', name: 'SystemInitializationManager' },
+            { path: './src/ui/managers/GlobalControlsManager.js', name: 'GlobalControlsManager' },
+            { path: './src/ui/managers/DebugToolsManager.js', name: 'DebugToolsManager' },
+            { path: './src/ui/GameLoader.js', name: 'GameLoader' }
+        ];
+        
+        function createModuleDiv(moduleName) {
+            const div = document.createElement('div');
+            div.className = 'module-test loading';
+            div.innerHTML = `
+                <div class="status">🔄 ${moduleName}</div>
+                <div class="details">Cargando...</div>
+            `;
+            results.appendChild(div);
+            return div;
+        }
+        
+        function updateModuleDiv(div, status, message, details = '', error = null) {
+            const statusIcons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                loading: '🔄'
+            };
+            
+            div.className = `module-test ${status}`;
+            div.innerHTML = `
+                <div class="status">${statusIcons[status]} ${message}</div>
+                <div class="details">${details}</div>
+                ${error ? `<div class="error-details">${error}</div>` : ''}
+            `;
+        }
+        
+        async function testModule(moduleSpec) {
+            const div = createModuleDiv(moduleSpec.name);
+            const startTime = performance.now();
+            
+            try {
+                const module = await import(moduleSpec.path);
+                const loadTime = performance.now() - startTime;
+                
+                // Verificar que el módulo tiene exportaciones
+                const exports = Object.keys(module);
+                const hasDefault = module.default !== undefined;
+                const hasNamed = exports.filter(key => key !== 'default').length > 0;
+                
+                let exportInfo = '';
+                if (hasDefault && hasNamed) {
+                    exportInfo = `Default + Named exports (${exports.length - 1} named)`;
+                } else if (hasDefault) {
+                    exportInfo = 'Default export only';
+                } else if (hasNamed) {
+                    exportInfo = `Named exports: ${exports.join(', ')}`;
+                } else {
+                    exportInfo = 'No exports found';
+                }
+                
+                updateModuleDiv(
+                    div, 
+                    'success', 
+                    `${moduleSpec.name} - Cargado`,
+                    `Tiempo: ${loadTime.toFixed(2)}ms | ${exportInfo}`
+                );
+                
+                return { success: true, module, loadTime, exports };
+                
+            } catch (error) {
+                const loadTime = performance.now() - startTime;
+                updateModuleDiv(
+                    div, 
+                    'error', 
+                    `${moduleSpec.name} - Error`,
+                    `Tiempo: ${loadTime.toFixed(2)}ms`,
+                    `${error.message}\n\nStack:\n${error.stack}`
+                );
+                
+                return { success: false, error, loadTime };
+            }
+        }
+        
+        async function testAllModules() {
+            console.log('🔍 Iniciando prueba de módulos...');
+            
+            const results = [];
+            for (const moduleSpec of modulesToTest) {
+                const result = await testModule(moduleSpec);
+                results.push({ ...moduleSpec, ...result });
+                
+                // Pequeña pausa para no saturar
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            // Resumen final
+            const successful = results.filter(r => r.success).length;
+            const failed = results.filter(r => !r.success).length;
+            
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'module-test';
+            summaryDiv.innerHTML = `
+                <div class="status">📊 Resumen Final</div>
+                <div class="details">
+                    ✅ Exitosos: ${successful}<br>
+                    ❌ Fallidos: ${failed}<br>
+                    📊 Total: ${results.length}
+                </div>
+            `;
+            results.appendChild(summaryDiv);
+            
+            console.log('🔍 Prueba de módulos completada', {
+                successful,
+                failed,
+                results: results
+            });
+        }
+        
+        // Iniciar pruebas
+        testAllModules();
+    </script>
+</body>
+</html> 
