@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Test Galcon Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            font-family: monospace;
+        }
+        #error-log {
+            background: #222;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #444;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            color: #ff4444;
+            margin: 5px 0;
+        }
+        .success {
+            color: #00ff88;
+            margin: 5px 0;
+        }
+        .warning {
+            color: #ffaa00;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Test Galcon Game - Debug Mode</h1>
+    <div id="status">Iniciando pruebas...</div>
+    <div id="error-log"></div>
+    
+    <script type="module">
+        const errorLog = document.getElementById('error-log');
+        const status = document.getElementById('status');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            errorLog.appendChild(div);
+            errorLog.scrollTop = errorLog.scrollHeight;
+            console.log(message);
+        }
+        
+        // Capturar errores globales
+        window.addEventListener('error', (e) => {
+            log(`ERROR: ${e.message} at ${e.filename}:${e.lineno}`, 'error');
+        });
+        
+        window.addEventListener('unhandledrejection', (e) => {
+            log(`PROMISE REJECTION: ${e.reason}`, 'error');
+        });
+        
+        // Probar carga del GameLoader
+        async function testGameLoader() {
+            try {
+                log('Intentando cargar GameLoader...', 'info');
+                status.textContent = 'Cargando GameLoader...';
+                
+                const module = await import('./src/ui/GameLoader.js');
+                log('GameLoader importado exitosamente', 'success');
+                
+                const { GameLoader } = module;
+                log('Clase GameLoader extraída', 'success');
+                
+                window.PREFERRED_RENDERER = 'canvas';
+                log('Renderer configurado a Canvas', 'info');
+                
+                const gameLoader = new GameLoader();
+                log('GameLoader instanciado', 'success');
+                
+                status.textContent = 'Iniciando carga del juego...';
+                await gameLoader.load();
+                
+                log('¡Juego cargado exitosamente!', 'success');
+                status.textContent = '✅ Juego cargado exitosamente';
+                
+            } catch (error) {
+                log(`ERROR EN CARGA: ${error.message}`, 'error');
+                log(`STACK: ${error.stack}`, 'error');
+                status.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        // Iniciar prueba
+        testGameLoader();
+    </script>
+</body>
+</html> 
