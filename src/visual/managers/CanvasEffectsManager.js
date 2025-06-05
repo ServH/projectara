@@ -275,6 +275,67 @@ export class CanvasEffectsManager {
     }
     
     /**
+     * ⚔️ Crear efecto de batalla
+     */
+    createBattleEffect(x, y, options = {}) {
+        const effect = {
+            type: 'battle',
+            x, y,
+            startTime: Date.now(),
+            duration: 600,
+            maxRadius: options.radius || 35,
+            color: options.color || '#ff4444',
+            particles: this.generateBattleParticles(x, y, options.color)
+        };
+        
+        this.activeEffects.explosions.push(effect);
+        
+        // Añadir animación de pulso intermitente
+        this.addPulseAnimation(`battle_${Date.now()}`, x, y, {
+            baseRadius: 20,
+            color: options.color || '#ff4444',
+            intensity: 0.7,
+            duration: 1500
+        });
+        
+        return effect;
+    }
+    
+    /**
+     * 💀 Crear efecto de destrucción
+     */
+    createDestructionEffect(x, y, options = {}) {
+        const effect = {
+            type: 'destruction',
+            x, y,
+            startTime: Date.now(),
+            duration: 1000,
+            maxRadius: options.radius || 50,
+            color: options.color || '#ff0000',
+            particles: this.generateDestructionParticles(x, y, options.color)
+        };
+        
+        this.activeEffects.explosions.push(effect);
+        
+        // Añadir múltiples pulsos para efecto dramático
+        this.addPulseAnimation(`destruction_${Date.now()}_1`, x, y, {
+            baseRadius: 30,
+            color: '#ff0000',
+            intensity: 1.0,
+            duration: 2500
+        });
+        
+        this.addPulseAnimation(`destruction_${Date.now()}_2`, x, y, {
+            baseRadius: 45,
+            color: '#ff4444',
+            intensity: 0.8,
+            duration: 3000
+        });
+        
+        return effect;
+    }
+    
+    /**
      * 🌟 Añadir trail a una flota
      */
     addFleetTrail(fleetId, x, y, color = '#00ff88') {
@@ -380,6 +441,50 @@ export class CanvasEffectsManager {
                 velocityY: Math.sin(angle) * (Math.random() * 3 + 1),
                 size: Math.random() * 4 + 1,
                 color: i % 3 === 0 ? '#ffffff' : color
+            });
+        }
+        
+        return particles;
+    }
+    
+    /**
+     * ⚔️ Generar partículas de batalla
+     */
+    generateBattleParticles(x, y, color = '#ff4444') {
+        const particles = [];
+        const count = this.config.explosions.particleCount * 1.2;
+        
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            particles.push({
+                startX: x,
+                startY: y,
+                velocityX: Math.cos(angle) * (Math.random() * 2.5 + 0.8),
+                velocityY: Math.sin(angle) * (Math.random() * 2.5 + 0.8),
+                size: Math.random() * 3 + 0.8,
+                color: i % 4 === 0 ? '#ffaa00' : color
+            });
+        }
+        
+        return particles;
+    }
+    
+    /**
+     * 💀 Generar partículas de destrucción
+     */
+    generateDestructionParticles(x, y, color = '#ff0000') {
+        const particles = [];
+        const count = this.config.explosions.particleCount * 2;
+        
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            particles.push({
+                startX: x,
+                startY: y,
+                velocityX: Math.cos(angle) * (Math.random() * 4 + 1.5),
+                velocityY: Math.sin(angle) * (Math.random() * 4 + 1.5),
+                size: Math.random() * 5 + 1,
+                color: i % 5 === 0 ? '#ffffff' : (i % 3 === 0 ? '#ffaa00' : color)
             });
         }
         
