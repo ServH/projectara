@@ -2,7 +2,7 @@
  * 🔧 SYSTEM INITIALIZATION MANAGER - REFACTORIZADO
  * Gestor de inicialización de sistemas con arquitectura modular
  * 
- * ÚLTIMA ACTUALIZACIÓN: 2025-06-05 14:03 - Corregido CanvasRenderer import
+ * ÚLTIMA ACTUALIZACIÓN: 2025-06-05 14:47 - Corregido SelectionSystem, DragDropHandler y HUDManager imports
  * 
  * FUNCIONALIDADES:
  * - Inicialización secuencial de sistemas
