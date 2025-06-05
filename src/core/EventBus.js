@@ -116,6 +116,15 @@ export const GAME_EVENTS = {
     GAME_RESUME: 'game:resume',
     GAME_END: 'game:end',
     GAME_RESET: 'game:reset',
+    GAME_STOP: 'game:stop',
+
+    // State Management Events
+    STATE_CHANGED: 'state:changed',
+    PLANET_ADDED: 'state:planet:added',
+    PLANET_REMOVED: 'state:planet:removed',
+    FLEET_ADDED: 'state:fleet:added',
+    FLEET_REMOVED: 'state:fleet:removed',
+    PLAYER_ADDED: 'state:player:added',
 
     // Planet Events
     PLANET_SELECTED: 'planet:selected',
@@ -128,7 +137,7 @@ export const GAME_EVENTS = {
     FLEET_ARRIVED: 'fleet:arrived',
     FLEET_DESTROYED: 'fleet:destroyed',
     
-    // 🆕 NUEVOS EVENTOS DE ENJAMBRE - Fase 3
+    // Fleet Swarm Events - Fase 3
     FLEET_SWARM_COMPLETE: 'fleet:swarm:complete',
     FLEET_WAVE_LAUNCHED: 'fleet:wave:launched',
     FLEET_FORMATION_CHANGED: 'fleet:formation:changed',
@@ -153,7 +162,7 @@ export const GAME_EVENTS = {
     EFFECT_TRAIL: 'effect:trail',
     EFFECT_CONQUEST: 'effect:conquest',
     
-    // 🆕 NUEVOS EFECTOS VISUALES DE STEERING - Fase 3
+    // Visual Effects for Steering - Fase 3
     EFFECT_SWARM_LAUNCH: 'effect:swarm:launch',
     EFFECT_FORMATION_CHANGE: 'effect:formation:change',
     EFFECT_OBSTACLE_AVOIDANCE: 'effect:obstacle:avoidance'
