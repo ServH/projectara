@@ -273,9 +273,16 @@ export class SystemInitializationManager {
      * @param {Object} modules - Módulos cargados
      */
     async initializeSelectionSystem(modules) {
-        const SelectionSystem = modules.SelectionSystem?.default || modules.SelectionSystem;
+        // Corregir acceso al módulo SelectionSystem
+        const SelectionSystemModule = modules.SelectionSystem;
+        const SelectionSystem = SelectionSystemModule?.SelectionSystem || SelectionSystemModule?.default || SelectionSystemModule;
+        
         if (!SelectionSystem) {
             throw new Error('SelectionSystem module not found');
+        }
+        
+        if (typeof SelectionSystem !== 'function') {
+            throw new Error(`SelectionSystem is not a constructor: ${typeof SelectionSystem}`);
         }
         
         if (!this.gameEngine) {
@@ -293,9 +300,16 @@ export class SystemInitializationManager {
      * @param {Object} modules - Módulos cargados
      */
     async initializeDragDropHandler(modules) {
-        const DragDropHandler = modules.DragDropHandler?.default || modules.DragDropHandler;
+        // Corregir acceso al módulo DragDropHandler
+        const DragDropHandlerModule = modules.DragDropHandler;
+        const DragDropHandler = DragDropHandlerModule?.DragDropHandler || DragDropHandlerModule?.default || DragDropHandlerModule;
+        
         if (!DragDropHandler) {
             throw new Error('DragDropHandler module not found');
+        }
+        
+        if (typeof DragDropHandler !== 'function') {
+            throw new Error(`DragDropHandler is not a constructor: ${typeof DragDropHandler}`);
         }
         
         if (!this.gameEngine || !this.selectionSystem) {
@@ -313,9 +327,16 @@ export class SystemInitializationManager {
      * @param {Object} modules - Módulos cargados
      */
     async initializeHUDManager(modules) {
-        const HUDManager = modules.HUDManager?.default || modules.HUDManager;
+        // Corregir acceso al módulo HUDManager
+        const HUDManagerModule = modules.HUDManager;
+        const HUDManager = HUDManagerModule?.HUDManager || HUDManagerModule?.default || HUDManagerModule;
+        
         if (!HUDManager) {
             throw new Error('HUDManager module not found');
+        }
+        
+        if (typeof HUDManager !== 'function') {
+            throw new Error(`HUDManager is not a constructor: ${typeof HUDManager}`);
         }
         
         if (!this.gameEngine || !this.selectionSystem || !this.dragDropHandler) {
