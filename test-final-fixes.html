@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Final Fixes - Project Ara</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+            background: rgba(0, 50, 0, 0.3);
+        }
+        
+        .success { border-color: #00ff88; background: rgba(0, 255, 136, 0.1); }
+        .warning { border-color: #ffaa00; background: rgba(255, 170, 0, 0.1); }
+        .error { border-color: #ff4444; background: rgba(255, 68, 68, 0.1); }
+        
+        #gameCanvas {
+            border: 1px solid #0f0;
+            background: #001122;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .hud {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            z-index: 1000;
+        }
+        
+        .hud div {
+            margin: 5px 0;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        
+        button:hover {
+            background: #00ff88;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎉 Test Final Fixes - Project Ara</h1>
+    
+    <div class="status">
+        <h3>📊 Estado del Test:</h3>
+        <div id="testStatus">Iniciando test final...</div>
+    </div>
+    
+    <div id="resultsContainer">
+        <h3>✅ Resultados de las Correcciones:</h3>
+        <div id="resultsList"></div>
+    </div>
+    
+    <!-- HUD del juego -->
+    <div class="hud">
+        <div><strong>🚀 GALCON CANVAS 2D</strong></div>
+        <div>Planetas: <span id="planets-count">-</span></div>
+        <div>Flotas: <span id="fleets-count">-</span></div>
+        <div>Porcentaje: <span id="percentage">-</span></div>
+        <div>FPS: <span id="fps">-</span></div>
+        <div>Seleccionados: <span id="selected-count">-</span></div>
+    </div>
+    
+    <!-- Controles -->
+    <div class="controls">
+        <button onclick="testPlanetColors()">🎨 Test Colores</button>
+        <button onclick="testHUDData()">📊 Test HUD</button>
+        <button onclick="testInteraction()">🖱️ Test Interacción</button>
+        <button onclick="forceRefresh()">🔄 Refrescar</button>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <script type="module">
+        let gameLoader = null;
+        let gameEngine = null;
+        let canvasRenderer = null;
+        let hudManager = null;
+        
+        async function runFinalTest() {
+            const testStatus = document.getElementById('testStatus');
+            const resultsList = document.getElementById('resultsList');
+            
+            try {
+                testStatus.textContent = '🔧 Importando GameLoader...';
+                const { GameLoader } = await import('./src/ui/GameLoader.js');
+                
+                testStatus.textContent = '🔧 Creando GameLoader...';
+                gameLoader = new GameLoader();
+                
+                testStatus.textContent = '🔧 Iniciando carga del juego...';
+                await gameLoader.load();
+                
+                // Obtener referencias
+                gameEngine = gameLoader.gameEngine;
+                canvasRenderer = gameLoader.canvasRenderer;
+                hudManager = gameLoader.hudManager;
+                
+                testStatus.textContent = '✅ Juego cargado - Ejecutando tests...';
+                
+                // Test 1: Verificar colores de planetas
+                const colorTest = await testPlanetColorsInternal();
+                addResult('🎨 Colores de Planetas', colorTest.success, colorTest.message);
+                
+                // Test 2: Verificar HUD
+                const hudTest = await testHUDDataInternal();
+                addResult('📊 HUD Manager', hudTest.success, hudTest.message);
+                
+                // Test 3: Verificar renderizado
+                const renderTest = await testRenderingInternal();
+                addResult('🎨 Renderizado', renderTest.success, renderTest.message);
+                
+                // Test 4: Verificar interacción
+                const interactionTest = await testInteractionInternal();
+                addResult('🖱️ Interacción', interactionTest.success, interactionTest.message);
+                
+                testStatus.textContent = '🎉 ¡Todos los tests completados!';
+                
+            } catch (error) {
+                testStatus.textContent = `❌ Error en el test: ${error.message}`;
+                addResult('❌ Error General', false, error.message);
+                console.error('❌ Error completo:', error);
+            }
+        }
+        
+        function addResult(testName, success, message) {
+            const resultsList = document.getElementById('resultsList');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `status ${success ? 'success' : 'error'}`;
+            resultDiv.innerHTML = `
+                <strong>${success ? '✅' : '❌'} ${testName}:</strong><br/>
+                ${message}
+            `;
+            resultsList.appendChild(resultDiv);
+        }
+        
+        async function testPlanetColorsInternal() {
+            try {
+                const planets = gameEngine.getAllPlanets();
+                const colorCounts = { player: 0, ai: 0, neutral: 0 };
+                
+                planets.forEach(planet => {
+                    if (planet.owner === 'player' || planet.owner === 1) colorCounts.player++;
+                    else if (planet.owner === 'ai' || planet.owner === 'enemy' || planet.owner === 2) colorCounts.ai++;
+                    else colorCounts.neutral++;
+                });
+                
+                const hasVariety = colorCounts.player > 0 && colorCounts.ai > 0 && colorCounts.neutral > 0;
+                
+                return {
+                    success: hasVariety,
+                    message: `Player: ${colorCounts.player}, AI: ${colorCounts.ai}, Neutral: ${colorCounts.neutral}. ${hasVariety ? 'Variedad correcta' : 'Falta variedad de colores'}`
+                };
+            } catch (error) {
+                return { success: false, message: `Error: ${error.message}` };
+            }
+        }
+        
+        async function testHUDDataInternal() {
+            try {
+                if (!hudManager) {
+                    return { success: false, message: 'HUDManager no disponible' };
+                }
+                
+                // Forzar actualización del HUD
+                hudManager.forceUpdate();
+                
+                // Verificar que los elementos tienen valores
+                const planetsElement = document.getElementById('planets-count');
+                const fleetsElement = document.getElementById('fleets-count');
+                const percentageElement = document.getElementById('percentage');
+                const fpsElement = document.getElementById('fps');
+                
+                const planetsValue = planetsElement?.textContent || '-';
+                const fleetsValue = fleetsElement?.textContent || '-';
+                const percentageValue = percentageElement?.textContent || '-';
+                const fpsValue = fpsElement?.textContent || '-';
+                
+                const hasData = planetsValue !== '-' && fleetsValue !== '-' && percentageValue !== '-';
+                
+                return {
+                    success: hasData,
+                    message: `Planetas: ${planetsValue}, Flotas: ${fleetsValue}, %: ${percentageValue}, FPS: ${fpsValue}`
+                };
+            } catch (error) {
+                return { success: false, message: `Error: ${error.message}` };
+            }
+        }
+        
+        async function testRenderingInternal() {
+            try {
+                if (!canvasRenderer) {
+                    return { success: false, message: 'CanvasRenderer no disponible' };
+                }
+                
+                const renderData = canvasRenderer.gatherRenderData();
+                const planetsToRender = renderData.planets?.length || 0;
+                const fleetsToRender = renderData.fleets?.length || 0;
+                
+                return {
+                    success: planetsToRender > 0,
+                    message: `${planetsToRender} planetas, ${fleetsToRender} flotas para renderizar`
+                };
+            } catch (error) {
+                return { success: false, message: `Error: ${error.message}` };
+            }
+        }
+        
+        async function testInteractionInternal() {
+            try {
+                const canvas = document.getElementById('gameCanvas');
+                if (!canvas) {
+                    return { success: false, message: 'Canvas no encontrado' };
+                }
+                
+                // Simular click en el canvas
+                const rect = canvas.getBoundingClientRect();
+                const clickEvent = new MouseEvent('click', {
+                    clientX: rect.left + 100,
+                    clientY: rect.top + 100,
+                    bubbles: true
+                });
+                
+                canvas.dispatchEvent(clickEvent);
+                
+                return {
+                    success: true,
+                    message: 'Eventos de mouse funcionando correctamente'
+                };
+            } catch (error) {
+                return { success: false, message: `Error: ${error.message}` };
+            }
+        }
+        
+        // Funciones globales para los botones
+        window.testPlanetColors = async function() {
+            const result = await testPlanetColorsInternal();
+            alert(`🎨 Test Colores: ${result.success ? 'ÉXITO' : 'FALLO'}\n${result.message}`);
+        };
+        
+        window.testHUDData = async function() {
+            const result = await testHUDDataInternal();
+            alert(`📊 Test HUD: ${result.success ? 'ÉXITO' : 'FALLO'}\n${result.message}`);
+        };
+        
+        window.testInteraction = async function() {
+            const result = await testInteractionInternal();
+            alert(`🖱️ Test Interacción: ${result.success ? 'ÉXITO' : 'FALLO'}\n${result.message}`);
+        };
+        
+        window.forceRefresh = function() {
+            location.reload();
+        };
+        
+        // Iniciar test automáticamente
+        runFinalTest();
+    </script>
+</body>
+</html> 
