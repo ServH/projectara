@@ -220,9 +220,16 @@ export class SystemInitializationManager {
      * @param {Object} modules - Módulos cargados
      */
     async initializeRenderer(modules) {
-        const CanvasRenderer = modules.CanvasRenderer?.default || modules.CanvasRenderer;
+        // Corregir acceso al módulo CanvasRenderer
+        const CanvasRendererModule = modules.CanvasRenderer;
+        const CanvasRenderer = CanvasRendererModule?.CanvasRenderer || CanvasRendererModule?.default || CanvasRendererModule;
+        
         if (!CanvasRenderer) {
             throw new Error('CanvasRenderer module not found');
+        }
+        
+        if (typeof CanvasRenderer !== 'function') {
+            throw new Error(`CanvasRenderer is not a constructor: ${typeof CanvasRenderer}`);
         }
         
         if (!this.gameEngine) {
