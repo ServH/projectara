@@ -334,28 +334,38 @@ export class CanvasRenderer {
             effects: []
         };
         
-        // Obtener planetas
-        if (this.gameEngine.planets) {
-            renderData.planets = this.gameEngine.planets.map(planet => ({
-                x: planet.x,
-                y: planet.y,
-                radius: planet.radius,
-                owner: planet.owner,
-                population: planet.population,
-                maxPopulation: planet.maxPopulation
-            }));
+        // Obtener planetas usando el método correcto del GameEngine refactorizado
+        try {
+            const planets = this.gameEngine.getAllPlanets();
+            if (planets && planets.length > 0) {
+                renderData.planets = planets.map(planet => ({
+                    x: planet.x,
+                    y: planet.y,
+                    radius: planet.radius,
+                    owner: planet.owner,
+                    population: planet.ships || planet.population,
+                    maxPopulation: planet.maxPopulation
+                }));
+            }
+        } catch (error) {
+            console.warn('⚠️ Error obteniendo planetas para renderizado:', error);
         }
         
-        // Obtener flotas
-        if (this.gameEngine.fleets) {
-            renderData.fleets = this.gameEngine.fleets.map(fleet => ({
-                x: fleet.x,
-                y: fleet.y,
-                angle: fleet.angle || 0,
-                size: fleet.size || 5,
-                owner: fleet.owner,
-                population: fleet.population
-            }));
+        // Obtener flotas usando el método correcto del GameEngine refactorizado
+        try {
+            const fleets = this.gameEngine.getAllFleets();
+            if (fleets && fleets.length > 0) {
+                renderData.fleets = fleets.map(fleet => ({
+                    x: fleet.x,
+                    y: fleet.y,
+                    angle: fleet.angle || 0,
+                    size: fleet.size || 5,
+                    owner: fleet.owner,
+                    population: fleet.ships || fleet.population
+                }));
+            }
+        } catch (error) {
+            console.warn('⚠️ Error obteniendo flotas para renderizado:', error);
         }
         
         return renderData;
@@ -368,10 +378,10 @@ export class CanvasRenderer {
         this.renderState.lastRenderTime = Date.now();
         this.renderState.frameCount++;
         
-        // Actualizar estadísticas en gestores
+        // Actualizar estadísticas en gestores usando métodos correctos del GameEngine refactorizado
         const stats = {
-            planetsRendered: this.gameEngine?.planets?.length || 0,
-            fleetsRendered: this.gameEngine?.fleets?.length || 0,
+            planetsRendered: this.gameEngine?.getAllPlanets()?.length || 0,
+            fleetsRendered: this.gameEngine?.getAllFleets()?.length || 0,
             effectsRendered: this.managers.effects.getEffectsStats().explosions + 
                            this.managers.effects.getEffectsStats().trails,
             overlaysRendered: Object.values(this.managers.overlay.getOverlayStats()).reduce((a, b) => a + b, 0)
