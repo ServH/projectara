@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test HUD Fix - Project Ara</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #gameCanvas {
+            border: 1px solid #0f0;
+            background: #001122;
+        }
+        
+        .hud {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        
+        .hud div {
+            margin: 5px 0;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+            background: rgba(0, 50, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test HUD Fix - Project Ara</h1>
+    
+    <div class="status">
+        <h2>Estado del Test:</h2>
+        <div id="testStatus">Iniciando...</div>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <!-- HUD Elements -->
+    <div class="hud">
+        <div>Planetas: <span id="planets-count">0</span></div>
+        <div>Flotas: <span id="fleets-count">0</span></div>
+        <div>Seleccionados: <span id="selected-count">0</span></div>
+        <div>Porcentaje: <span id="percentage">50%</span></div>
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Estado: <span id="game-state">CARGANDO</span></div>
+        <div class="status-indicator" id="status-indicator"></div>
+    </div>
+
+    <script type="module">
+        const testStatus = document.getElementById('testStatus');
+        
+        function updateStatus(message) {
+            testStatus.innerHTML += '<br>' + message;
+            console.log('🔧 TEST:', message);
+        }
+        
+        updateStatus('Iniciando test del HUD corregido...');
+        
+        try {
+            // Importar módulos necesarios
+            updateStatus('Importando GameLoader...');
+            const { GameLoader } = await import('./src/ui/GameLoader.js');
+            
+            updateStatus('Creando GameLoader...');
+            const gameLoader = new GameLoader();
+            
+            updateStatus('Iniciando carga del juego...');
+            await gameLoader.loadGame();
+            
+            updateStatus('✅ Juego cargado exitosamente');
+            updateStatus('🎮 El HUD debería estar funcionando sin errores');
+            updateStatus('📊 Revisa la consola para confirmar que no hay errores de "Cannot read properties of undefined"');
+            
+            // Verificar que el HUD está funcionando
+            setTimeout(() => {
+                const hudManager = gameLoader.hudManager;
+                if (hudManager) {
+                    updateStatus('✅ HUDManager encontrado y funcionando');
+                    updateStatus('🔧 Forzando actualización del HUD...');
+                    hudManager.forceUpdate();
+                    updateStatus('✅ Actualización forzada completada');
+                } else {
+                    updateStatus('❌ HUDManager no encontrado');
+                }
+            }, 2000);
+            
+        } catch (error) {
+            updateStatus('❌ Error en el test: ' + error.message);
+            console.error('❌ Error completo:', error);
+        }
+    </script>
+</body>
+</html> 
