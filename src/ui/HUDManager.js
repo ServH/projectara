@@ -12,13 +12,13 @@ export class HUDManager {
         
         // Elementos del HUD
         this.hudElements = {
-            planets: document.getElementById('hud-planets'),
-            fleets: document.getElementById('hud-fleets'),
-            percentage: document.getElementById('hud-percentage'),
-            fps: document.getElementById('hud-fps'),
-            selected: document.getElementById('hud-selected'),
-            state: document.getElementById('hud-state'),
-            statusIndicator: document.getElementById('statusIndicator')
+            planets: document.getElementById('hud-planets') || document.getElementById('planets-count'),
+            fleets: document.getElementById('hud-fleets') || document.getElementById('fleets-count'),
+            percentage: document.getElementById('hud-percentage') || document.getElementById('percentage'),
+            fps: document.getElementById('hud-fps') || document.getElementById('fps'),
+            selected: document.getElementById('hud-selected') || document.getElementById('selected-count'),
+            state: document.getElementById('hud-state') || document.getElementById('game-state'),
+            statusIndicator: document.getElementById('statusIndicator') || document.getElementById('status-indicator')
         };
         
         // Estado del HUD

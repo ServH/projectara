@@ -411,15 +411,41 @@ export class CanvasRenderer {
         this.renderState.frameCount++;
         
         // Actualizar estadísticas en gestores usando métodos correctos del GameEngine refactorizado
-        const stats = {
-            planetsRendered: this.gameEngine?.getAllPlanets()?.length || 0,
-            fleetsRendered: this.gameEngine?.getAllFleets()?.length || 0,
-            effectsRendered: this.managers.effects.getEffectsStats().explosions + 
-                           this.managers.effects.getEffectsStats().trails,
-            overlaysRendered: Object.values(this.managers.overlay.getOverlayStats()).reduce((a, b) => a + b, 0)
-        };
-        
-        this.managers.metrics.updateRenderStats(stats);
+        try {
+            const stats = {
+                planetsRendered: this.gameEngine?.getAllPlanets()?.length || 0,
+                fleetsRendered: this.gameEngine?.getAllFleets()?.length || 0,
+                effectsRendered: 0,
+                overlaysRendered: 0
+            };
+            
+            // Verificar si effects manager existe y tiene el método
+            if (this.managers.effects && typeof this.managers.effects.getEffectsStats === 'function') {
+                try {
+                    const effectsStats = this.managers.effects.getEffectsStats();
+                    stats.effectsRendered = (effectsStats.explosions || 0) + (effectsStats.trails || 0);
+                } catch (error) {
+                    console.warn('⚠️ Error obteniendo stats de efectos:', error);
+                }
+            }
+            
+            // Verificar si overlay manager existe y tiene el método
+            if (this.managers.overlay && typeof this.managers.overlay.getOverlayStats === 'function') {
+                try {
+                    const overlayStats = this.managers.overlay.getOverlayStats();
+                    stats.overlaysRendered = Object.values(overlayStats).reduce((a, b) => a + b, 0);
+                } catch (error) {
+                    console.warn('⚠️ Error obteniendo stats de overlay:', error);
+                }
+            }
+            
+            // Verificar si metrics manager existe y tiene el método
+            if (this.managers.metrics && typeof this.managers.metrics.updateRenderStats === 'function') {
+                this.managers.metrics.updateRenderStats(stats);
+            }
+        } catch (error) {
+            console.warn('⚠️ Error actualizando estado del renderizador:', error);
+        }
     }
     
     /**
