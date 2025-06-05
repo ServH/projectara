@@ -1,7 +1,18 @@
 /**
- * ⚙️ SYSTEM INITIALIZATION MANAGER
- * Gestiona la inicialización ordenada de sistemas del juego
- * Patrón: Chain of Responsibility
+ * 🔧 SYSTEM INITIALIZATION MANAGER - REFACTORIZADO
+ * Gestor de inicialización de sistemas con arquitectura modular
+ * 
+ * ÚLTIMA ACTUALIZACIÓN: 2025-06-05 14:03 - Corregido CanvasRenderer import
+ * 
+ * FUNCIONALIDADES:
+ * - Inicialización secuencial de sistemas
+ * - Gestión de dependencias entre sistemas
+ * - Manejo de errores y timeouts
+ * - Métricas de rendimiento
+ * - Configuración flexible
+ * 
+ * PATRÓN: Chain of Responsibility + Factory Pattern
+ * PRINCIPIOS: SOLID, Dependency Injection, Error Handling
  */
 
 export class SystemInitializationManager {
