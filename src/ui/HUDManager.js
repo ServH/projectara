@@ -21,12 +21,13 @@ export class HUDManager {
             statusIndicator: document.getElementById('statusIndicator')
         };
         
-        // OPTIMIZACIÓN: Control de actualización optimizado
+        // Estado del HUD
         this.isRunning = false;
+        this.updateInterval = 100; // ms
         this.lastUpdate = 0;
-        this.updateInterval = 100; // 100ms = 10 FPS para HUD (suficiente)
+        this.lastFrameTime = 0; // Para cálculo de FPS
         
-        // Cache de valores anteriores para evitar actualizaciones innecesarias
+        // Cache de valores previos para optimización
         this.previousValues = {
             planetsCount: -1,
             fleetsCount: -1,
@@ -127,55 +128,79 @@ export class HUDManager {
 
     // OPTIMIZACIÓN: Métodos individuales para cada elemento con cache
     updatePlanetsCount() {
-        if (!this.gameEngine?.stats) return;
+        if (!this.gameEngine) return;
         
-        const count = this.gameEngine.stats.planetsCount || 0;
-        if (count !== this.previousValues.planetsCount) {
-            if (this.hudElements.planets) {
-                this.hudElements.planets.textContent = count;
+        try {
+            const planets = this.gameEngine.getAllPlanets();
+            const count = planets ? planets.length : 0;
+            
+            if (count !== this.previousValues.planetsCount) {
+                if (this.hudElements.planets) {
+                    this.hudElements.planets.textContent = count;
+                }
+                this.previousValues.planetsCount = count;
             }
-            this.previousValues.planetsCount = count;
+        } catch (error) {
+            console.warn('⚠️ Error obteniendo planetas count:', error);
         }
     }
 
     updateFleetsCount() {
-        if (!this.gameEngine?.stats) return;
+        if (!this.gameEngine) return;
         
-        const count = this.gameEngine.stats.fleetsCount || 0;
-        if (count !== this.previousValues.fleetsCount) {
-            if (this.hudElements.fleets) {
-                this.hudElements.fleets.textContent = count;
+        try {
+            const fleets = this.gameEngine.getAllFleets();
+            const count = fleets ? fleets.length : 0;
+            
+            if (count !== this.previousValues.fleetsCount) {
+                if (this.hudElements.fleets) {
+                    this.hudElements.fleets.textContent = count;
+                }
+                this.previousValues.fleetsCount = count;
             }
-            this.previousValues.fleetsCount = count;
+        } catch (error) {
+            console.warn('⚠️ Error obteniendo flotas count:', error);
         }
     }
 
     updatePercentage() {
-        if (!this.gameEngine?.percentageSelector) return;
+        if (!this.gameEngine?.configurationManager) return;
         
-        const percentage = this.gameEngine.percentageSelector.getCurrentPercentage();
-        if (percentage !== this.previousValues.percentage) {
-            if (this.hudElements.percentage) {
-                this.hudElements.percentage.textContent = percentage + '%';
-                
-                // OPTIMIZACIÓN: Cache de colores
-                const color = this.getPercentageColor(percentage);
-                this.hudElements.percentage.style.color = color;
+        try {
+            // Obtener porcentaje de la configuración del juego
+            const config = this.gameEngine.configurationManager.getSection('gameplay');
+            const percentage = config?.fleetSendPercentage || 50;
+            
+            if (percentage !== this.previousValues.percentage) {
+                if (this.hudElements.percentage) {
+                    this.hudElements.percentage.textContent = percentage + '%';
+                    
+                    // OPTIMIZACIÓN: Cache de colores
+                    const color = this.getPercentageColor(percentage);
+                    this.hudElements.percentage.style.color = color;
+                }
+                this.previousValues.percentage = percentage;
             }
-            this.previousValues.percentage = percentage;
+        } catch (error) {
+            console.warn('⚠️ Error obteniendo porcentaje:', error);
         }
     }
 
     updateFPS() {
-        if (!this.gameEngine?.stats) return;
-        
-        const fps = Math.round(this.gameEngine.stats.fps) || 0;
-        if (fps !== this.previousValues.fps) {
-            if (this.hudElements.fps) {
-                this.hudElements.fps.textContent = fps;
+        // Calcular FPS basado en el tiempo entre frames
+        const now = performance.now();
+        if (this.lastFrameTime) {
+            const deltaTime = now - this.lastFrameTime;
+            const fps = Math.round(1000 / deltaTime);
+            
+            if (fps !== this.previousValues.fps) {
+                if (this.hudElements.fps) {
+                    this.hudElements.fps.textContent = fps;
+                }
+                this.previousValues.fps = fps;
             }
-            this.previousValues.fps = fps;
         }
+        this.lastFrameTime = now;
     }
 
     updateSelectedCount() {
