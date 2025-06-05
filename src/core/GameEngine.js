@@ -434,18 +434,9 @@ export class GameEngine {
         
         if (this.isPaused) return;
         
-        // 🚀 OPTIMIZACIÓN: Spatial grid optimizado (solo limpiar si es necesario)
-        if (this.config.performance.enableSpatialGrid && this.cullingSystem) {
-            this.cullingSystem.clear();
-        }
-        
         // Actualizar planetas
         for (const planet of this.planets.values()) {
             planet.update(dt);
-            
-            if (this.config.performance.enableSpatialGrid && this.cullingSystem) {
-                this.cullingSystem.insert(planet);
-            }
         }
         
         // Actualizar flotas
@@ -463,21 +454,12 @@ export class GameEngine {
                     fleet.update(dt);
                 }
             }
-            
-            if (this.config.performance.enableSpatialGrid && this.cullingSystem) {
-                this.cullingSystem.insert(fleet);
-            }
         }
         
         // Actualizar física de flotas (experimental)
         if (this.config.performance.enableFleetPhysics && this.fleetPhysics) {
             const activeFleets = Array.from(this.fleets.values()).filter(f => !f.hasArrived);
             this.fleetPhysics.updateFleetPhysics(activeFleets, dt);
-        }
-        
-        // Actualizar cache del spatial grid
-        if (this.config.performance.enableSpatialGrid && this.cullingSystem) {
-            this.cullingSystem.updateCache();
         }
         
         // Limpiar flotas que han llegado
