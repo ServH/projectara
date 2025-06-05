@@ -152,7 +152,10 @@ export class HUDManager {
     updateSelectedCount() {
         if (!this.selectionSystem) return;
         
-        const count = this.selectionSystem.selectedPlanets.size || 0;
+        // Usar la API correcta del SelectionSystem refactorizado
+        const selectedPlanets = this.selectionSystem.getSelectedPlanets();
+        const count = selectedPlanets ? selectedPlanets.length : 0;
+        
         if (count !== this.previousValues.selectedCount) {
             if (this.hudElements.selected) {
                 this.hudElements.selected.textContent = count;
