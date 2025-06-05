@@ -316,9 +316,13 @@ export class CanvasRenderingManager {
      * 🎨 Obtener color de planeta
      */
     getPlanetColor(owner) {
-        if (owner === 0) return this.config.colors.neutral;
-        if (owner === 1) return this.config.colors.player;
-        return this.config.colors.enemy;
+        // Manejar tanto valores numéricos como strings
+        if (owner === 0 || owner === 'neutral') return this.config.colors.neutral;
+        if (owner === 1 || owner === 'player') return this.config.colors.player;
+        if (owner === 2 || owner === 'ai' || owner === 'enemy') return this.config.colors.enemy;
+        
+        // Fallback para valores desconocidos
+        return this.config.colors.neutral;
     }
     
     /**
@@ -328,9 +332,11 @@ export class CanvasRenderingManager {
         // Usar cache de colores
         let color = this.renderCache.fleetColors.get(owner);
         if (!color) {
-            if (owner === 0) color = this.config.colors.neutral;
-            else if (owner === 1) color = this.config.colors.player;
-            else color = this.config.colors.enemy;
+            // Manejar tanto valores numéricos como strings
+            if (owner === 0 || owner === 'neutral') color = this.config.colors.neutral;
+            else if (owner === 1 || owner === 'player') color = this.config.colors.player;
+            else if (owner === 2 || owner === 'ai' || owner === 'enemy') color = this.config.colors.enemy;
+            else color = this.config.colors.neutral; // Fallback
             
             this.renderCache.fleetColors.set(owner, color);
         }
