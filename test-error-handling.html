@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Error Handling - Project Ara</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #gameCanvas {
+            border: 1px solid #0f0;
+            background: #001122;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+            background: rgba(0, 50, 0, 0.3);
+        }
+        
+        .hud {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        
+        .hud div {
+            margin: 5px 0;
+        }
+        
+        .error-log {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 400px;
+            max-height: 500px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            border: 1px solid #f00;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .error-log h3 {
+            color: #f00;
+            margin: 0 0 10px 0;
+        }
+        
+        .error-log .error {
+            color: #f00;
+            margin: 2px 0;
+        }
+        
+        .error-log .warning {
+            color: #fa0;
+            margin: 2px 0;
+        }
+        
+        .error-log .info {
+            color: #0f0;
+            margin: 2px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Error Handling - Project Ara</h1>
+    
+    <div class="status">
+        <h3>📊 Estado del Test:</h3>
+        <div id="testStatus">Iniciando...</div>
+    </div>
+    
+    <!-- Elementos HUD requeridos -->
+    <div class="hud">
+        <h3>🎮 HUD</h3>
+        <div>Planetas: <span id="planets-count">0</span></div>
+        <div>Flotas: <span id="fleets-count">0</span></div>
+        <div>Porcentaje: <span id="percentage">50%</span></div>
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Seleccionados: <span id="selected-count">0</span></div>
+        <div>Estado: <span id="game-state">INICIANDO</span></div>
+    </div>
+    
+    <!-- Log de errores en tiempo real -->
+    <div class="error-log">
+        <h3>🚨 Log de Errores</h3>
+        <div id="errorLog"></div>
+    </div>
+    
+    <!-- Canvas del juego -->
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <script type="module">
+        // Interceptar console.log, console.warn y console.error
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        const errorLog = document.getElementById('errorLog');
+        
+        function addToErrorLog(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            errorLog.appendChild(div);
+            errorLog.scrollTop = errorLog.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToErrorLog(args.join(' '), 'info');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addToErrorLog(args.join(' '), 'warning');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToErrorLog(args.join(' '), 'error');
+        };
+        
+        // Test principal
+        async function runErrorHandlingTest() {
+            const testStatus = document.getElementById('testStatus');
+            
+            try {
+                testStatus.textContent = '🔧 Importando GameLoader...';
+                const { GameLoader } = await import('./src/ui/GameLoader.js');
+                
+                testStatus.textContent = '🔧 Creando GameLoader...';
+                const gameLoader = new GameLoader();
+                
+                testStatus.textContent = '🔧 Iniciando carga del juego...';
+                await gameLoader.load();
+                
+                testStatus.textContent = '✅ Juego cargado - Monitoreando errores...';
+                
+                // Monitorear errores cada 5 segundos
+                setInterval(() => {
+                    console.log('🔍 Verificación periódica - Sistema funcionando');
+                }, 5000);
+                
+            } catch (error) {
+                testStatus.textContent = `❌ Error en el test: ${error.message}`;
+                console.error('❌ Error completo:', error);
+            }
+        }
+        
+        // Iniciar test
+        runErrorHandlingTest();
+    </script>
+</body>
+</html> 
