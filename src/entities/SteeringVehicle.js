@@ -65,6 +65,7 @@ export class SteeringVehicle {
         // Propiedades de debug
         this.debugFrameCounter = 0;
         this.lastAvoidanceForce = Vector2D.zero();
+        this.lastSteeringForce = Vector2D.zero(); // 🆕 NUEVO: Para suavizado de steering
         this.sensors = [];
         this.trail = [];
         
@@ -145,10 +146,24 @@ export class SteeringVehicle {
             totalForce.add(Vector2D.multiply(orbitalForce, 0.6));
         }
         
+        // 🆕 NUEVO: Aplicar suavizado específico para steering
+        const steeringSmoothing = config.forces.steeringSmoothing || 0.8;
+        totalForce.multiply(steeringSmoothing);
+        
         // Aplicar límites dinámicos
         totalForce.limit(dynamicMaxForce);
         
-        // Aplicar suavizado
+        // 🆕 NUEVO: Aplicar amortiguación para reducir oscilaciones
+        const dampening = config.forces.dampening || 0.85;
+        if (this.lastSteeringForce) {
+            // Interpolar entre la fuerza anterior y la nueva para suavizar
+            totalForce = Vector2D.lerp(this.lastSteeringForce, totalForce, 1 - dampening);
+        }
+        
+        // Guardar para la próxima iteración
+        this.lastSteeringForce = totalForce.copy();
+        
+        // Aplicar suavizado final
         totalForce.multiply(smoothing);
         
         return totalForce;

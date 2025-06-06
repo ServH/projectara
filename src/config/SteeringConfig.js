@@ -13,13 +13,15 @@ export const GALCON_STEERING_CONFIG_PROBADA = {
         lateralAngle: 10   // ✅ PROBADO: Ángulo óptimo
     },
     
-    // ⚡ FUERZAS - Configuración exacta del JSON probado
+    // ⚡ FUERZAS - Configuración ajustada para navegación más suave
     forces: {
-        maxForce: 200,     // ✅ PROBADO: Responsivo para gameplay
-        maxSpeed: 60,     // ✅ PROBADO: Velocidad perfecta
+        maxForce: 120,     // 🔧 REDUCIDO: Menos fuerza = menos temblor (era 200)
+        maxSpeed: 60,      // ✅ PROBADO: Velocidad perfecta
         seekWeight: 1,     // ✅ PROBADO: Prioridad al objetivo
-        avoidanceWeight: 3, // ✅ PROBADO: Evasión balanceada
-        smoothing: 0.5     // ✅ PROBADO: Suavizado visual
+        avoidanceWeight: 2, // 🔧 REDUCIDO: Menos reacción exagerada (era 3)
+        smoothing: 0.75,   // 🔧 AUMENTADO: Más suavizado (era 0.5)
+        dampening: 0.85,   // 🆕 NUEVO: Factor de amortiguación para reducir oscilaciones
+        steeringSmoothing: 0.8  // 🆕 NUEVO: Suavizado específico para steering
     },
     
     // 🎯 COMPORTAMIENTOS - Configuración exacta del JSON probado
@@ -30,14 +32,14 @@ export const GALCON_STEERING_CONFIG_PROBADA = {
         enableWander: false    // ✅ PROBADO: Sin vagabundeo
     },
     
-    // 🚁 FLOTAS - Configuración exacta del JSON probado
+    // 🚁 FLOTAS - Configuración ajustada para movimiento más suave
     fleet: {
         size: 15,              // ✅ PROBADO: Tamaño óptimo
         spacing: 30,           // ✅ PROBADO: Espaciado perfecto
         enableBoids: true,     // ✅ PROBADO: Comportamientos de grupo
-        separationWeight: 1.5, // ✅ PROBADO: Separación balanceada
-        alignmentWeight: 1,    // ✅ PROBADO: Alineación suave
-        cohesionWeight: 0.8    // ✅ PROBADO: Cohesión natural
+        separationWeight: 1.2, // 🔧 REDUCIDO: Menos separación agresiva (era 1.5)
+        alignmentWeight: 0.8,  // 🔧 REDUCIDO: Menos corrección de alineación (era 1)
+        cohesionWeight: 0.6    // 🔧 REDUCIDO: Menos atracción al grupo (era 0.8)
     },
     
     // 🎨 DEBUG - Sin visualización para el juego final
