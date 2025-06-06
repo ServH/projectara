@@ -11,6 +11,7 @@ import { SpatialHashSystem } from '../systems/SpatialHashSystem.js';
 import { LegacyFleetAdapter } from '../adapters/LegacyFleetAdapter.js';
 import { GALCON_STEERING_CONFIG_PROBADA } from '../config/SteeringConfig.js';
 import eventBus, { GAME_EVENTS } from '../core/EventBus.js';
+import gameLogger from '../debug/GameLogger.js';
 
 // Gestores especializados
 import { NavigationModeManager } from './managers/NavigationModeManager.js';
@@ -341,19 +342,40 @@ export class NavigationSystem {
         // Escuchar cuando se remueven flotas del StateManager
         eventBus.on(GAME_EVENTS.FLEET_REMOVED, this.handleFleetRemoved.bind(this));
         
-        console.log('🔗 NavigationSystem event listeners configurados');
+        // Escuchar directamente fleet:launched para diagnóstico
+        eventBus.on(GAME_EVENTS.FLEET_LAUNCHED, this.handleFleetLaunched.bind(this));
+        
+        gameLogger.info('NAVIGATION_SYSTEM', 'Event listeners configurados correctamente');
     }
 
     /**
-     * 🚀 Manejar flota agregada al StateManager
+     * 🚀 Manejar evento fleet:launched directamente (diagnóstico)
      */
-    handleFleetAdded({ fleetId, fleet }) {
-        // Solo procesar en modo steering
-        if (this.modeManager.isSteeringMode()) {
-            console.log(`🧭 NavigationSystem recibió nueva flota: ${fleetId}`);
-            
-            // Agregar flota al adaptador para navegación
-            this.fleetAdapter.addFleet(fleet);
+    handleFleetLaunched(data) {
+        gameLogger.debug('NAVIGATION_SYSTEM', `Evento FLEET_LAUNCHED recibido: ${data.ships} naves de ${data.fromPlanet} a ${data.toPlanet}`);
+    }
+
+    /**
+     * ➕ Manejar cuando se agrega una flota al StateManager
+     */
+    handleFleetAdded(data) {
+        gameLogger.info('NAVIGATION_SYSTEM', `Flota agregada: ${data.fleetId}`);
+        
+        if (!data.fleet) {
+            gameLogger.error('NAVIGATION_SYSTEM', 'Datos de flota inválidos en FLEET_ADDED', data);
+            return;
+        }
+        
+        try {
+            // Agregar flota al adaptador legacy
+            const success = this.legacyFleetAdapter.addFleet(data.fleet);
+            if (success) {
+                gameLogger.debug('NAVIGATION_SYSTEM', `Flota ${data.fleetId} agregada exitosamente al LegacyFleetAdapter`);
+            } else {
+                gameLogger.warn('NAVIGATION_SYSTEM', `Falló agregar flota ${data.fleetId} al LegacyFleetAdapter`);
+            }
+        } catch (error) {
+            gameLogger.error('NAVIGATION_SYSTEM', `Error agregando flota ${data.fleetId}:`, error);
         }
     }
 

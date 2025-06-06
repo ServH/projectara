@@ -6,14 +6,35 @@
  */
 
 import { Vector2D } from '../utils/Vector2D.js';
+import { VectorFactory } from '../utils/vector/VectorFactory.js';
+import gameLogger from '../debug/GameLogger.js';
 
 export class SteeringVehicle {
     constructor(position, target, config, fleetData = null) {
-        // Propiedades físicas
-        this.position = position.copy();
+        // 🔧 VALIDACIÓN MEJORADA: Asegurar que position sea un Vector2D válido
+        if (position instanceof Vector2D) {
+            this.position = position.copy();
+        } else if (position && typeof position === 'object' && 'x' in position && 'y' in position) {
+            this.position = new Vector2D(position.x, position.y);
+            gameLogger.warn('STEERING_VEHICLE', `Position convertido de objeto plano a Vector2D: (${position.x}, ${position.y})`);
+        } else {
+            gameLogger.error('STEERING_VEHICLE', 'Position inválido en constructor, usando (0,0)', position);
+            this.position = new Vector2D(0, 0);
+        }
+        
         this.velocity = Vector2D.zero();
         this.acceleration = Vector2D.zero();
-        this.target = target.copy();
+        
+        // 🔧 VALIDACIÓN MEJORADA: Asegurar que target sea un Vector2D válido
+        if (target instanceof Vector2D) {
+            this.target = target.copy();
+        } else if (target && typeof target === 'object' && 'x' in target && 'y' in target) {
+            this.target = new Vector2D(target.x, target.y);
+            gameLogger.warn('STEERING_VEHICLE', `Target convertido de objeto plano a Vector2D: (${target.x}, ${target.y})`);
+        } else {
+            gameLogger.error('STEERING_VEHICLE', 'Target inválido en constructor, usando (0,0)', target);
+            this.target = new Vector2D(0, 0);
+        }
         
         // 🔧 NUEVO: Información del planeta destino y flota
         this.fleetData = fleetData;
@@ -42,7 +63,7 @@ export class SteeringVehicle {
         
         // 🔧 NUEVO: Sistema de detección de atascamiento
         this.stuckDetection = {
-            lastPosition: position.copy(),
+            lastPosition: this.position.copy(),
             stuckFrames: 0,
             stuckThreshold: 60,     // 60 frames = ~1 segundo
             minMovement: 2.0,       // Movimiento mínimo esperado por frame
@@ -68,7 +89,7 @@ export class SteeringVehicle {
         this.sensors = [];
         this.trail = [];
         
-        console.log(`🚁 SteeringVehicle creado en ${position.toString()} hacia ${target.toString()}`);
+        gameLogger.info('STEERING_VEHICLE', `🚁 SteeringVehicle creado en (${this.position.x}, ${this.position.y}) hacia (${this.target.x}, ${this.target.y})`);
     }
 
     /**
@@ -299,7 +320,17 @@ export class SteeringVehicle {
     detectStuckState() {
         const currentPosition = this.position.copy();
         const movement = Vector2D.subtract(currentPosition, this.stuckDetection.lastPosition);
-        const distanceMoved = movement.magnitude();
+        
+        // 🔧 VALIDACIÓN: Asegurar que movement sea un Vector2D válido
+        let distanceMoved = 0;
+        if (movement && typeof movement.magnitude === 'function') {
+            distanceMoved = movement.magnitude();
+        } else {
+            // Fallback: calcular distancia manualmente
+            const dx = currentPosition.x - this.stuckDetection.lastPosition.x;
+            const dy = currentPosition.y - this.stuckDetection.lastPosition.y;
+            distanceMoved = Math.sqrt(dx * dx + dy * dy);
+        }
         
         if (distanceMoved < this.stuckDetection.minMovement) {
             this.stuckDetection.stuckFrames++;

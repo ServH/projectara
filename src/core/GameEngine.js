@@ -15,6 +15,7 @@ import { Fleet } from '../entities/Fleet.js';
 import ConfigurationManager from './ConfigurationManager.js';
 import StateManager from './StateManager.js';
 import SystemsManager from './SystemsManager.js';
+import gameLogger from '../debug/GameLogger.js';
 
 export class GameEngine {
     constructor() {
@@ -494,21 +495,36 @@ export class GameEngine {
 
     // Event Handlers
     handleFleetLaunched(data) {
-        console.log(`🚀 Fleet launched: ${data.ships} ships from ${data.fromPlanet} to ${data.toPlanet}`);
+        gameLogger.info('FLEET_LAUNCH', `Fleet launched: ${data.ships} ships from ${data.fromPlanet} to ${data.toPlanet}`);
+        gameLogger.debug('FLEET_LAUNCH', 'Fleet data:', data);
         
         // Crear flota real en el sistema usando FleetFormationSystem
         const fleetFormationSystem = this.systemsManager.getSystem('fleetFormationSystem');
-        if (fleetFormationSystem) {
+        
+        if (!fleetFormationSystem) {
+            gameLogger.error('FLEET_LAUNCH', 'FleetFormationSystem no encontrado en SystemsManager');
+            console.error('❌ FleetFormationSystem no encontrado. Sistemas disponibles:', 
+                Array.from(this.systemsManager.systems.keys()));
+            return;
+        }
+        
+        gameLogger.debug('FLEET_FORMATION', `Creando formación orgánica para ${data.ships} naves...`);
+        
+        try {
             const fleets = fleetFormationSystem.createOrganicFormation(data);
+            gameLogger.info('FLEET_FORMATION', `Flotas creadas exitosamente: ${fleets.length}`);
             
             // Agregar flotas al estado del juego
-            fleets.forEach(fleet => {
+            fleets.forEach((fleet, index) => {
+                gameLogger.debug('STATE_MANAGER', `Agregando flota ${fleet.id} (${index + 1}/${fleets.length}) al StateManager`);
                 this.stateManager.addFleet(fleet);
             });
             
-            console.log(`✅ ${fleets.length} flotas creadas en el sistema de navegación`);
-        } else {
-            console.warn('⚠️ FleetFormationSystem no disponible para crear flotas');
+            gameLogger.info('FLEET_LAUNCH', `Proceso completado: ${fleets.length} flotas agregadas al juego`);
+            
+        } catch (error) {
+            gameLogger.error('FLEET_FORMATION', 'Error creando formación orgánica:', error);
+            console.error('❌ Error en createOrganicFormation:', error);
         }
     }
 

@@ -223,7 +223,7 @@ export class Vector2D {
      * ➕ Sumar dos vectores (sin modificar originales)
      */
     static add(v1, v2) {
-        const result = VectorFactory.copy(v1);
+        const result = new Vector2D(v1.x, v1.y);
         return VectorOperations.add(result, v2);
     }
 
@@ -231,7 +231,7 @@ export class Vector2D {
      * ➖ Restar dos vectores (sin modificar originales)
      */
     static subtract(v1, v2) {
-        const result = VectorFactory.copy(v1);
+        const result = new Vector2D(v1.x, v1.y);
         return VectorOperations.subtract(result, v2);
     }
 
@@ -239,7 +239,7 @@ export class Vector2D {
      * ✖️ Multiplicar vector por escalar (sin modificar original)
      */
     static multiply(vector, scalar) {
-        const result = VectorFactory.copy(vector);
+        const result = new Vector2D(vector.x, vector.y);
         return VectorOperations.multiply(result, scalar);
     }
 
@@ -247,7 +247,7 @@ export class Vector2D {
      * ➗ Dividir vector por escalar (sin modificar original)
      */
     static divide(vector, scalar) {
-        const result = VectorFactory.copy(vector);
+        const result = new Vector2D(vector.x, vector.y);
         return VectorOperations.divide(result, scalar);
     }
 
@@ -255,7 +255,7 @@ export class Vector2D {
      * 🧭 Normalizar vector (sin modificar original)
      */
     static normalize(vector) {
-        const result = VectorFactory.copy(vector);
+        const result = new Vector2D(vector.x, vector.y);
         return VectorOperations.normalize(result);
     }
 

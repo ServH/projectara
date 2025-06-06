@@ -1,3 +1,4 @@
+import eventBus, { GAME_EVENTS } from '../core/EventBus.js';
 /**
  * 🎯 SELECTION SYSTEM REFACTORIZADO
  * Sistema de selección modular con gestores especializados
@@ -11,7 +12,6 @@
  * - SelectionOverlayManager: Overlay y UI
  */
 
-import { GAME_EVENTS } from '../core/EventBus.js';
 import { SelectionEventManager } from './managers/SelectionEventManager.js';
 import { SelectionStateManager } from './managers/SelectionStateManager.js';
 import { SelectionDragManager } from './managers/SelectionDragManager.js';
@@ -683,5 +683,37 @@ export class SelectionSystem {
         this.isInitialized = false;
         
         console.log('💥 SelectionSystem destruido');
+    }
+
+    /**
+     * 🎯 Métodos de selección públicos (wrappers para compatibilidad)
+     */
+    selectPlanet(planet) {
+        if (!planet) return;
+        
+        if (this.stateManager) {
+            this.stateManager.selectPlanet(planet);
+        } else {
+            // Fallback si no hay stateManager inicializado
+            console.log('Planeta seleccionado (fallback):', planet.id);
+            eventBus.emit('PLANET_SELECTED', { planet });
+        }
+    }
+
+    deselectPlanet(planet) {
+        if (this.stateManager) {
+            this.stateManager.deselectPlanet(planet);
+        } else {
+            console.log('Planeta deseleccionado (fallback):', planet?.id);
+            eventBus.emit('PLANET_DESELECTED', { planet });
+        }
+    }
+
+    getSelectedPlanet() {
+        if (this.stateManager) {
+            const selected = this.stateManager.getSelectedPlanets();
+            return selected.length > 0 ? selected[0] : null;
+        }
+        return null;
     }
 } 

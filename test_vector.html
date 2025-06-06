@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Vector2D</title>
+</head>
+<body>
+    <h1>Test Vector2D</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        import { Vector2D } from './src/utils/Vector2D.js';
+        
+        const output = document.getElementById('output');
+        
+        try {
+            // Test básico de Vector2D
+            const v1 = new Vector2D(10, 20);
+            const v2 = v1.copy();
+            
+            output.innerHTML += `<p>✅ Vector2D creado: (${v1.x}, ${v1.y})</p>`;
+            output.innerHTML += `<p>✅ Vector2D copiado: (${v2.x}, ${v2.y})</p>`;
+            
+            // Test de métodos estáticos
+            const v3 = Vector2D.zero();
+            output.innerHTML += `<p>✅ Vector2D.zero(): (${v3.x}, ${v3.y})</p>`;
+            
+            console.log('✅ Vector2D funciona correctamente');
+            
+        } catch (error) {
+            output.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+            console.error('❌ Error en Vector2D:', error);
+        }
+    </script>
+</body>
+</html> 

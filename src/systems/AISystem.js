@@ -452,6 +452,43 @@ export class AISystem {
         
         console.log('🗑️ AISystem destruido');
     }
-}
 
-export default AISystem; 
+    update(deltaTime) {
+        if (!this.enabled) return;
+        
+        try {
+            // Actualizar configuración de IA
+            if (this.aiConfigurationManager) {
+                this.aiConfigurationManager.update(deltaTime);
+            }
+            
+            // Ejecutar decisiones de IA
+            if (this.aiDecisionManager) {
+                this.aiDecisionManager.makeDecisions(deltaTime);
+            }
+            
+            // Actualizar targeting
+            if (this.aiTargetingManager) {
+                this.aiTargetingManager.updateTargets(deltaTime);
+            }
+            
+        } catch (error) {
+            console.error('Error en AISystem update:', error);
+        }
+    }
+
+    enable() {
+        this.enabled = true;
+        console.log('AISystem habilitado');
+    }
+
+    disable() {
+        this.enabled = false;
+        console.log('AISystem deshabilitado');
+    }
+
+    isEnabled() {
+        return this.enabled;
+    }
+
+}

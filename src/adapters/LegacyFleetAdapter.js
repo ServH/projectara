@@ -119,10 +119,19 @@ export class LegacyFleetAdapter {
      */
     addFleet(fleet) {
         try {
+            console.log(`🔧 LegacyFleetAdapter.addFleet() llamado para flota ${fleet.id}`);
+            console.log(`🔧 Flota details:`, {
+                id: fleet.id,
+                vehicles: fleet.vehicles?.length || 0,
+                isActive: fleet.isActive,
+                hasArrived: fleet.hasArrived,
+                owner: fleet.owner
+            });
+            
             // Registrar la flota en el mapping manager
             this.mappingManager.registerFleetMapping(fleet.id, fleet, null);
             
-            console.log(`🔧 Flota ${fleet.id} agregada al LegacyFleetAdapter`);
+            console.log(`🔧 Flota ${fleet.id} agregada al LegacyFleetAdapter exitosamente`);
             return true;
         } catch (error) {
             console.error(`❌ Error agregando flota ${fleet.id} al adaptador:`, error);

@@ -1,3 +1,4 @@
+import eventBus from '../core/EventBus.js';
 /**
  * 🎯 DRAG & DROP HANDLER - REFACTORIZADO FASE 6
  * Sistema de drag & drop modular con gestores especializados
@@ -256,6 +257,40 @@ export class DragDropHandler {
         
         console.log('💥 DragDropHandler refactorizado destruido');
     }
-}
 
-export default DragDropHandler; 
+    setupEventListeners() {
+        if (this.canvas) {
+            this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+            this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+            this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        }
+    }
+
+    handleMouseDown(event) {
+        const rect = this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        
+        // Emitir evento de mouse down
+        eventBus.emit('MOUSE_DOWN', { x, y, event });
+    }
+
+    handleMouseUp(event) {
+        const rect = this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        
+        // Emitir evento de mouse up
+        eventBus.emit('MOUSE_UP', { x, y, event });
+    }
+
+    handleMouseMove(event) {
+        const rect = this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        
+        // Emitir evento de mouse move
+        eventBus.emit('MOUSE_MOVE', { x, y, event });
+    }
+
+}

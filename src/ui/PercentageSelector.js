@@ -263,6 +263,44 @@ export class PercentageSelector {
         
         console.log('💥 PercentageSelector destruido');
     }
-}
 
-export default PercentageSelector; 
+    updatePercentage(percentage) {
+        this.selectedPercentage = Math.max(0, Math.min(100, percentage));
+        this.updateUI();
+        
+        // Emitir evento de cambio de porcentaje
+        eventBus.emit('PERCENTAGE_CHANGED', { percentage: this.selectedPercentage });
+    }
+
+    getSelectedPercentage() {
+        return this.selectedPercentage || 50; // Default 50%
+    }
+
+    setPercentage(percentage) {
+        this.updatePercentage(percentage);
+    }
+
+    updateUI() {
+        // Actualizar botones de porcentaje en la UI
+        const buttons = document.querySelectorAll('.percentage-button');
+        buttons.forEach(button => {
+            const buttonPercentage = parseInt(button.dataset.percentage);
+            if (buttonPercentage === this.selectedPercentage) {
+                button.classList.add('selected');
+            } else {
+                button.classList.remove('selected');
+            }
+        });
+    }
+
+    setupEventListeners() {
+        const buttons = document.querySelectorAll('.percentage-button');
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                const percentage = parseInt(button.dataset.percentage);
+                this.updatePercentage(percentage);
+            });
+        });
+    }
+
+}

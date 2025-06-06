@@ -130,7 +130,20 @@ export class Fleet {
      * @returns {SteeringVehicle}
      */
     createVehicle(index, position, fleetData) {
-        const vehiclePosition = position || this.startPosition.copy();
+        // 🔧 VALIDACIÓN: Asegurar que position sea un Vector2D válido
+        let vehiclePosition;
+        
+        if (position instanceof Vector2D) {
+            vehiclePosition = position.copy();
+        } else if (position && typeof position === 'object' && 'x' in position && 'y' in position) {
+            // Convertir objeto plano a Vector2D
+            vehiclePosition = new Vector2D(position.x, position.y);
+        } else {
+            // Fallback: usar posición de inicio
+            console.warn(`Fleet: Posición inválida para vehículo ${index}, usando startPosition`);
+            vehiclePosition = this.startPosition.copy();
+        }
+        
         const vehicle = new SteeringVehicle(vehiclePosition, this.targetPosition, this.config, fleetData);
         
         // Configurar propiedades de flota

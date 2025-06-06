@@ -199,16 +199,21 @@ export class StateManager {
             throw new Error('Invalid fleet object');
         }
         
+        console.log(`🗃️ StateManager agregando flota ${fleet.id} (${fleet.fleetSize || fleet.vehicles?.length || 'unknown'} naves)`);
+        
         this.fleets.set(fleet.id, fleet);
         this.invalidateCache();
         this.updateStatistics();
         
         this.recordChange('fleets', 'add', fleet.id);
         
+        console.log(`🗃️ Emitiendo FLEET_ADDED para flota ${fleet.id}`);
         eventBus.emit(GAME_EVENTS.FLEET_ADDED, {
             fleetId: fleet.id,
             fleet: fleet
         });
+        
+        console.log(`🗃️ Total flotas en StateManager: ${this.fleets.size}`);
     }
 
     /**

@@ -1,0 +1,17 @@
+{
+  "name": "project-ara-game",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Galcon-style space strategy game with organic fleet movement",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8002",
+    "diagnostic": "node diagnostic.js",
+    "auto-fix": "node auto-fix.js",
+    "fix-game": "node fix-game.js",
+    "test": "node diagnostic.js"
+  },
+  "keywords": ["game", "strategy", "space", "galcon", "fleet"],
+  "author": "ProjectAra Team",
+  "license": "MIT"
+} 

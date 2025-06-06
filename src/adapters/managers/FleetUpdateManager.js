@@ -53,6 +53,13 @@ export class FleetUpdateManager {
         const updateCount = { updated: 0, removed: 0 };
         const fleetsToRemove = [];
         
+        const totalFleets = this.mappingManager.getMappingStats().totalFleets;
+        
+        // Log cada 60 frames (1 segundo a 60fps) para evitar spam
+        if (Math.random() < 0.016) { // ~1/60 probabilidad
+            console.log(`🔄 FleetUpdateManager actualizando ${totalFleets} flotas`);
+        }
+        
         this.mappingManager.forEachMapping((fleet, legacyId, legacyData) => {
             if (fleet.isActive && !fleet.hasArrived) {
                 // Obtener el planeta destino de esta flota
