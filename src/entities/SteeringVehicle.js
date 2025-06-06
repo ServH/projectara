@@ -38,22 +38,19 @@ export class SteeringVehicle {
         this.hasArrived = false;
         this.isAvoiding = false;
         this.wanderAngle = Math.random() * Math.PI * 2;
-        this.frameCounter = 0; // Para debugging y cleanup
+        this.frameCounter = 0;
         
-        // 🔧 NUEVO: Sistema de detección de atascamiento
+        // 🔧 NUEVO: Detección de atascamiento
         this.stuckDetection = {
             lastPosition: position.copy(),
             stuckFrames: 0,
-            stuckThreshold: 60,     // 60 frames = ~1 segundo
-            minMovement: 2.0,       // Movimiento mínimo esperado por frame
+            stuckThreshold: 60, // 60 frames sin movimiento = atascado
+            minMovement: 2, // Movimiento mínimo por frame
             escapeAttempts: 0,
             maxEscapeAttempts: 3
         };
         
-        // Configuración de sensores (puede ser modificada por Fleet)
-        this.sensorConfig = config.sensors;
-        
-        // Estado de histéresis para anti-bailoteo
+        // 🔧 NUEVO: Sistema de histéresis para evasión (anti-bailoteo)
         this.avoidanceState = {
             isActive: false,
             urgency: 0,
@@ -67,7 +64,12 @@ export class SteeringVehicle {
         this.lastAvoidanceForce = Vector2D.zero();
         this.lastSteeringForce = Vector2D.zero(); // 🆕 NUEVO: Para suavizado de steering
         this.sensors = [];
+        
+        // 🌟 OPTIMIZADO: Sistema de trail más eficiente
         this.trail = [];
+        this.maxTrailLength = 8; // 🔧 REDUCIDO: Era 15, ahora 8 para menos memoria
+        this.trailUpdateCounter = 0;
+        this.trailUpdateInterval = 3; // 🔧 NUEVO: Solo actualizar trail cada 3 frames
         
         console.log(`🚁 SteeringVehicle creado en ${position.toString()} hacia ${target.toString()}`);
     }
@@ -773,11 +775,35 @@ export class SteeringVehicle {
     }
 
     /**
-     * 📍 Actualizar rastro
+     * 📍 Actualizar rastro (OPTIMIZADO)
      */
     updateTrail() {
+        // 🔧 OPTIMIZACIÓN: Solo actualizar trail cada N frames
+        this.trailUpdateCounter++;
+        if (this.trailUpdateCounter < this.trailUpdateInterval) {
+            return;
+        }
+        this.trailUpdateCounter = 0;
+        
+        // 🔧 OPTIMIZACIÓN: Solo agregar al trail si la nave se está moviendo significativamente
+        const velocity = this.velocity.magnitude();
+        if (velocity < 5) { // Solo si se mueve a más de 5 px/s
+            return;
+        }
+        
+        // 🔧 OPTIMIZACIÓN: Solo agregar si la nueva posición está suficientemente lejos de la última
+        if (this.trail.length > 0) {
+            const lastTrailPoint = this.trail[this.trail.length - 1];
+            const distance = this.position.distance(lastTrailPoint);
+            if (distance < 8) { // Solo agregar si se movió más de 8 píxeles
+                return;
+            }
+        }
+        
+        // Agregar nueva posición al trail
         this.trail.push(this.position.copy());
         
+        // Mantener longitud máxima
         if (this.trail.length > this.maxTrailLength) {
             this.trail.shift();
         }
@@ -806,17 +832,50 @@ export class SteeringVehicle {
             this.hasArrived = true;
             this.velocity = Vector2D.zero();
             this.arrivalFrame = this.frameCounter || 0; // Para cleanup posterior
+            
+            // 🔧 OPTIMIZACIÓN: Limpiar memoria al llegar
+            this.cleanupMemory();
+            
             console.log(`🎯 Vehículo llegó al objetivo (distancia: ${distance.toFixed(1)}, radio: ${arrivalRadius.toFixed(1)})`);
         }
     }
+    
+    /**
+     * 🧹 NUEVO: Limpiar memoria para optimización
+     */
+    cleanupMemory() {
+        // Limpiar trail para liberar memoria
+        this.trail = [];
+        
+        // Limpiar sensores
+        this.sensors = [];
+        
+        // Limpiar fuerzas anteriores
+        this.lastSteeringForce = Vector2D.zero();
+        this.lastAvoidanceForce = Vector2D.zero();
+        
+        // Resetear contadores
+        this.trailUpdateCounter = 0;
+        this.debugFrameCounter = 0;
+        
+        console.log(`🧹 Memoria limpiada para vehículo que llegó`);
+    }
 
     /**
-     * 🎨 Renderizar vehículo (SIN DEBUG)
+     * 🎨 Renderizar vehículo (CON EFECTOS VISUALES)
      */
     render(ctx, debugConfig) {
         ctx.save();
         
-        // Solo renderizar el cuerpo del vehículo
+        // 🌟 NUEVO: Renderizar trail si existe y está habilitado
+        if (this.trail && this.trail.length > 1) {
+            this.renderTrail(ctx);
+        }
+        
+        // 🌟 NUEVO: Efecto de glow para las naves
+        this.renderGlowEffect(ctx);
+        
+        // Renderizar el cuerpo del vehículo
         this.renderBody(ctx);
         
         ctx.restore();
@@ -836,9 +895,31 @@ export class SteeringVehicle {
             ctx.rotate(this.velocity.angle());
         }
         
-        // Color según estado
-        const color = this.hasArrived ? '#00ff88' : 
-                     this.isAvoiding ? '#ff4444' : '#00aaff';
+        // 🎨 NUEVO: Color según propietario (player vs AI)
+        let color = '#00aaff'; // Color por defecto
+        
+        if (this.fleetData && this.fleetData.owner) {
+            switch (this.fleetData.owner) {
+                case 'player':
+                    color = '#00ff88'; // Verde para player
+                    break;
+                case 'ai':
+                case 'enemy':
+                    color = '#ff4444'; // Rojo para AI
+                    break;
+                default:
+                    color = '#ffaa00'; // Naranja para neutral
+            }
+        }
+        
+        // Modificar color según estado (mantener diferenciación visual)
+        if (this.hasArrived) {
+            // Hacer el color más brillante cuando llega
+            color = this.brightenColor(color, 0.3);
+        } else if (this.isAvoiding) {
+            // Hacer el color más intenso cuando evita obstáculos
+            color = this.intensifyColor(color, 0.2);
+        }
         
         // Dibujar triángulo (nave)
         ctx.fillStyle = color;
@@ -854,6 +935,140 @@ export class SteeringVehicle {
         
         ctx.fill();
         ctx.stroke();
+        
+        ctx.restore();
+    }
+    
+    /**
+     * 🎨 Hacer un color más brillante
+     */
+    brightenColor(color, factor) {
+        // Convertir hex a RGB, aumentar brillo y volver a hex
+        const hex = color.replace('#', '');
+        const r = Math.min(255, parseInt(hex.substr(0, 2), 16) + Math.floor(255 * factor));
+        const g = Math.min(255, parseInt(hex.substr(2, 2), 16) + Math.floor(255 * factor));
+        const b = Math.min(255, parseInt(hex.substr(4, 2), 16) + Math.floor(255 * factor));
+        
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    }
+    
+    /**
+     * 🎨 Intensificar un color
+     */
+    intensifyColor(color, factor) {
+        // Hacer el color más saturado
+        const hex = color.replace('#', '');
+        const r = Math.min(255, Math.floor(parseInt(hex.substr(0, 2), 16) * (1 + factor)));
+        const g = Math.min(255, Math.floor(parseInt(hex.substr(2, 2), 16) * (1 + factor)));
+        const b = Math.min(255, Math.floor(parseInt(hex.substr(4, 2), 16) * (1 + factor)));
+        
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    }
+
+    /**
+     * 🌟 OPTIMIZADO: Renderizar trail de la nave
+     */
+    renderTrail(ctx) {
+        if (this.trail.length < 2) return;
+        
+        ctx.save();
+        
+        // Color del trail según propietario
+        let trailColor = '#00aaff';
+        if (this.fleetData && this.fleetData.owner) {
+            switch (this.fleetData.owner) {
+                case 'player':
+                    trailColor = '#00ff88';
+                    break;
+                case 'ai':
+                case 'enemy':
+                    trailColor = '#ff4444';
+                    break;
+                default:
+                    trailColor = '#ffaa00';
+            }
+        }
+        
+        // 🔧 OPTIMIZACIÓN: Configurar estilo una sola vez
+        ctx.strokeStyle = trailColor;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        // 🔧 OPTIMIZACIÓN: Dibujar trail como una sola línea continua con gradiente de opacidad
+        ctx.beginPath();
+        ctx.moveTo(this.trail[0].x, this.trail[0].y);
+        
+        // Dibujar línea continua
+        for (let i = 1; i < this.trail.length; i++) {
+            ctx.lineTo(this.trail[i].x, this.trail[i].y);
+        }
+        
+        // 🔧 OPTIMIZACIÓN: Aplicar opacidad global en lugar de por segmento
+        const baseOpacity = 0.4; // Reducido para mejor rendimiento
+        ctx.globalAlpha = baseOpacity;
+        ctx.stroke();
+        
+        // 🔧 OPTIMIZACIÓN: Efecto de desvanecimiento solo en los últimos puntos
+        if (this.trail.length > 3) {
+            ctx.globalAlpha = baseOpacity * 0.6;
+            ctx.beginPath();
+            ctx.moveTo(this.trail[this.trail.length - 3].x, this.trail[this.trail.length - 3].y);
+            ctx.lineTo(this.trail[this.trail.length - 2].x, this.trail[this.trail.length - 2].y);
+            ctx.lineTo(this.trail[this.trail.length - 1].x, this.trail[this.trail.length - 1].y);
+            ctx.stroke();
+        }
+        
+        ctx.restore();
+    }
+    
+    /**
+     * 🌟 OPTIMIZADO: Renderizar efecto de glow
+     */
+    renderGlowEffect(ctx) {
+        // 🔧 OPTIMIZACIÓN: Solo aplicar glow si la nave se está moviendo rápido
+        const velocity = this.velocity.magnitude();
+        if (velocity < 10) return; // Solo si se mueve rápido
+        
+        // 🔧 OPTIMIZACIÓN: Reducir frecuencia del glow
+        if (this.frameCounter % 2 !== 0) return; // Solo cada 2 frames
+        
+        ctx.save();
+        
+        // Color del glow según propietario
+        let glowColor = '#00aaff';
+        if (this.fleetData && this.fleetData.owner) {
+            switch (this.fleetData.owner) {
+                case 'player':
+                    glowColor = '#00ff88';
+                    break;
+                case 'ai':
+                case 'enemy':
+                    glowColor = '#ff4444';
+                    break;
+                default:
+                    glowColor = '#ffaa00';
+            }
+        }
+        
+        // 🔧 OPTIMIZACIÓN: Glow más sutil y eficiente
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 6; // Reducido de 8 a 6
+        ctx.globalAlpha = 0.2; // Reducido de 0.3 a 0.2
+        
+        // Trasladar al centro del vehículo
+        ctx.translate(this.position.x, this.position.y);
+        
+        // Rotar según la velocidad
+        if (velocity > 0.1) {
+            ctx.rotate(this.velocity.angle());
+        }
+        
+        // 🔧 OPTIMIZACIÓN: Forma más simple para el glow
+        ctx.fillStyle = glowColor;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius * 1.2, 0, Math.PI * 2); // Círculo simple en lugar de triángulo
+        ctx.fill();
         
         ctx.restore();
     }

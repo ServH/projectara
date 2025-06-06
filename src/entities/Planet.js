@@ -65,8 +65,8 @@ export class Planet {
             pendingWaves: [],
             isLaunching: false,
             lastLaunchTime: 0,
-            launchInterval: 200, // 200ms entre oleadas
-            maxConcurrentFleets: 3, // Máximo 3 flotas cerca del planeta
+            launchInterval: 300, // 🔧 AUMENTADO: 300ms entre oleadas (era 200ms)
+            maxConcurrentFleets: 2, // 🔧 REDUCIDO: Máximo 2 flotas cerca del planeta (era 3)
             currentNearbyFleets: 0
         };
         
@@ -308,7 +308,7 @@ export class Planet {
         this.ships -= totalShipsToSend;
 
         // 🌊 CALCULAR OLEADAS DE ENJAMBRE
-        const maxWaveSize = 8; // Máximo 8 naves por oleada
+        const maxWaveSize = 6; // 🔧 REDUCIDO: Máximo 6 naves por oleada (era 8)
         const waves = [];
         
         for (let i = 0; i < totalShipsToSend; i += maxWaveSize) {
@@ -381,20 +381,28 @@ export class Planet {
             y: directionToTarget.y / distanceToTarget
         };
         
-        // 🔧 NUEVO: Posición de salida en el borde del planeta hacia el destino
-        const launchDistance = this.radius + 8; // Justo fuera del borde del planeta
+        // 🔧 MEJORADO: Sistema de posiciones de salida más inteligente
         const baseAngle = Math.atan2(normalizedDirection.y, normalizedDirection.x);
         
-        // Variación angular para dispersión de oleada (máximo ±30 grados)
-        const maxAngleVariation = Math.PI / 6; // 30 grados
-        const angleVariation = (Math.random() - 0.5) * maxAngleVariation;
-        const finalAngle = baseAngle + angleVariation;
+        // 🔧 NUEVO: Reducir variación angular para evitar enganche
+        const maxAngleVariation = Math.PI / 12; // Reducido a 15 grados (era 30)
+        
+        // 🔧 NUEVO: Distribución más sistemática para evitar superposición
+        const angleStep = (maxAngleVariation * 2) / Math.max(1, totalWaves - 1);
+        const waveAngleOffset = (waveIndex - (totalWaves - 1) / 2) * angleStep;
+        
+        // 🔧 NUEVO: Distancia de salida escalonada para evitar colisiones
+        const baseDistance = this.radius + 15; // Más distancia del borde
+        const distanceVariation = waveIndex * 8; // Cada oleada más lejos
+        const launchDistance = baseDistance + distanceVariation;
+        
+        const finalAngle = baseAngle + waveAngleOffset;
         
         // Calcular posición final de lanzamiento
         const launchX = this.x + Math.cos(finalAngle) * launchDistance;
         const launchY = this.y + Math.sin(finalAngle) * launchDistance;
 
-        console.log(`🚀 Oleada ${waveIndex}: Salida desde ángulo ${(finalAngle * 180 / Math.PI).toFixed(1)}° hacia ${targetPlanet.id}`);
+        console.log(`🚀 Oleada ${waveIndex + 1}/${totalWaves}: Salida desde distancia ${launchDistance.toFixed(1)}px, ángulo ${(finalAngle * 180 / Math.PI).toFixed(1)}° hacia ${targetPlanet.id}`);
 
         return {
             id: `fleet_${Date.now()}_${waveIndex}_${Math.random().toString(36).substr(2, 9)}`,
@@ -404,7 +412,7 @@ export class Planet {
             toPlanet: targetPlanet.id,
             targetPlanet: targetPlanet,
             
-            // 🔧 NUEVO: Posiciones inteligentes hacia el destino
+            // 🔧 MEJORADO: Posiciones escalonadas para evitar enganche
             startX: launchX,
             startY: launchY,
             x: launchX,
