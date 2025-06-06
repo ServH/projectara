@@ -489,6 +489,4 @@ window.runSafetyTests = async function(gameEngine, renderer) {
     }
     
     return results;
-};
-
-export { SafetyTestRunner }; 
+}; 
