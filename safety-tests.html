@@ -354,7 +354,7 @@
                 
                 // Importar GameEngine (ajustar ruta según estructura real)
                 const gameModule = await import('./src/core/GameEngine.js');
-                gameEngine = new gameModule.GameEngine();
+                gameEngine = new gameModule.default();
                 
                 // Inicializar canvas
                 const canvas = document.getElementById('gameCanvas');
@@ -405,14 +405,15 @@
                     renderer = gameEngine.renderer;
                 }
                 
-                // Inicializar juego
-                await gameEngine.initialize();
+                // Habilitar modo debug para tests
+                gameEngine.enableDebugMode();
                 
-                // Crear algunos planetas de prueba si no existen
-                if (!gameEngine.getAllPlanets || gameEngine.getAllPlanets().length === 0) {
-                    console.log('🪐 Creando planetas de prueba...');
-                    createTestPlanets();
-                }
+                // Inicializar juego
+                gameEngine.init();
+                
+                // Verificar que se generaron planetas
+                const planets = gameEngine.getAllPlanets();
+                console.log(`🪐 ${planets.length} planetas generados automáticamente`);
                 
                 gameInitialized = true;
                 updateGameStatus();
