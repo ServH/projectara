@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Tests de Seguridad - Fase 0</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            margin: 10px 0;
+            opacity: 0.9;
+        }
+        
+        .warning-box {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .warning-box h3 {
+            color: #ffc107;
+            margin: 0 0 10px 0;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #6c757d, #495057);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .game-container {
+            margin: 30px 0;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .game-header {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .results-container {
+            margin-top: 30px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            padding: 20px;
+            display: none;
+        }
+        
+        .test-result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid;
+        }
+        
+        .test-result.passed {
+            background: rgba(40, 167, 69, 0.2);
+            border-left-color: #28a745;
+        }
+        
+        .test-result.failed {
+            background: rgba(220, 53, 69, 0.2);
+            border-left-color: #dc3545;
+        }
+        
+        .test-result.warning {
+            background: rgba(255, 193, 7, 0.2);
+            border-left-color: #ffc107;
+        }
+        
+        .test-result h4 {
+            margin: 0 0 10px 0;
+            font-size: 1.2em;
+        }
+        
+        .test-details {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .status {
+            text-align: center;
+            font-size: 1.1em;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        
+        .log-container {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            display: none;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 2px 0;
+        }
+        
+        .log-entry.success { color: #28a745; }
+        .log-entry.error { color: #dc3545; }
+        .log-entry.warning { color: #ffc107; }
+        .log-entry.info { color: #17a2b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Tests de Seguridad Pre-Refactorización</h1>
+            <p>Fase 0 Obligatoria - Validación del Estado Actual</p>
+        </div>
+        
+        <div class="warning-box">
+            <h3>⚠️ IMPORTANTE</h3>
+            <p>Estos tests deben pasar ANTES de proceder con cualquier refactorización.</p>
+            <p>Si algún test falla, la refactorización debe ser bloqueada hasta corregir los problemas.</p>
+        </div>
+        
+        <div class="controls">
+            <button id="startGameBtn" class="btn btn-primary">🎮 Iniciar Juego</button>
+            <button id="runTestsBtn" class="btn btn-primary" disabled>🛡️ Ejecutar Tests</button>
+            <button id="showLogsBtn" class="btn btn-secondary">📋 Mostrar Logs</button>
+            <button id="clearResultsBtn" class="btn btn-secondary">🗑️ Limpiar</button>
+        </div>
+        
+        <div class="game-container">
+            <div class="game-header">
+                <h3>🎮 Galcon Game - Estado de Testing</h3>
+                <div id="gameStatus" class="status">⏳ Juego no iniciado</div>
+            </div>
+            <iframe id="gameFrame" src="index.html" width="100%" height="600" style="border: none;"></iframe>
+        </div>
+        
+        <div id="progressContainer" style="display: none;">
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+            <div id="progressText" class="status">Preparando tests...</div>
+        </div>
+        
+        <div id="logContainer" class="log-container">
+            <div id="logContent"></div>
+        </div>
+        
+        <div id="resultsContainer" class="results-container">
+            <h2>📊 Resultados de Tests de Seguridad</h2>
+            <div id="resultsContent"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Estado global
+        let gameEngine = null;
+        let renderer = null;
+        let testRunner = null;
+        let gameReady = false;
+        
+        // Referencias DOM
+        const startGameBtn = document.getElementById('startGameBtn');
+        const runTestsBtn = document.getElementById('runTestsBtn');
+        const showLogsBtn = document.getElementById('showLogsBtn');
+        const clearResultsBtn = document.getElementById('clearResultsBtn');
+        const gameStatus = document.getElementById('gameStatus');
+        const gameFrame = document.getElementById('gameFrame');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const logContainer = document.getElementById('logContainer');
+        const logContent = document.getElementById('logContent');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultsContent = document.getElementById('resultsContent');
+        
+        // Event listeners
+        startGameBtn.addEventListener('click', initializeGame);
+        runTestsBtn.addEventListener('click', runSafetyTests);
+        showLogsBtn.addEventListener('click', toggleLogs);
+        clearResultsBtn.addEventListener('click', clearResults);
+        
+        // Inicializar juego
+        async function initializeGame() {
+            try {
+                startGameBtn.disabled = true;
+                gameStatus.textContent = '⏳ Inicializando juego...';
+                
+                // Esperar a que el iframe cargue
+                await waitForGameLoad();
+                
+                // Obtener referencias del juego
+                const gameWindow = gameFrame.contentWindow;
+                gameEngine = gameWindow.gameEngine;
+                renderer = gameWindow.canvasRenderer;
+                
+                if (!gameEngine || !renderer) {
+                    throw new Error('No se pudieron obtener referencias del juego');
+                }
+                
+                // Esperar a que el juego se estabilice
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                gameReady = true;
+                gameStatus.textContent = '✅ Juego listo para testing';
+                runTestsBtn.disabled = false;
+                
+                addLog('✅ Juego inicializado correctamente', 'success');
+                
+            } catch (error) {
+                gameStatus.textContent = '❌ Error al inicializar juego';
+                addLog(`❌ Error: ${error.message}`, 'error');
+                startGameBtn.disabled = false;
+            }
+        }
+        
+        // Esperar a que el juego cargue
+        function waitForGameLoad() {
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('Timeout esperando carga del juego'));
+                }, 10000);
+                
+                gameFrame.onload = () => {
+                    clearTimeout(timeout);
+                    // Esperar un poco más para que el juego se inicialice
+                    setTimeout(resolve, 1000);
+                };
+            });
+        }
+        
+        // Ejecutar tests de seguridad
+        async function runSafetyTests() {
+            if (!gameReady) {
+                addLog('❌ Juego no está listo', 'error');
+                return;
+            }
+            
+            try {
+                runTestsBtn.disabled = true;
+                progressContainer.style.display = 'block';
+                resultsContainer.style.display = 'none';
+                
+                // Importar SafetyTestRunner
+                const { SafetyTestRunner } = await import('./tests/SafetyTestRunner.js');
+                testRunner = new SafetyTestRunner();
+                
+                addLog('🛡️ Iniciando tests de seguridad...', 'info');
+                updateProgress(0, 'Iniciando tests...');
+                
+                // Ejecutar tests
+                const results = await testRunner.runAllSafetyTests(gameEngine, renderer);
+                
+                updateProgress(100, 'Tests completados');
+                
+                // Mostrar resultados
+                displayResults(results);
+                
+                if (results.passed) {
+                    addLog('✅ Todos los tests de seguridad pasaron', 'success');
+                    gameStatus.textContent = '✅ Tests pasaron - Refactorización puede proceder';
+                } else {
+                    addLog('❌ Tests de seguridad fallaron', 'error');
+                    gameStatus.textContent = '❌ Tests fallaron - Refactorización bloqueada';
+                }
+                
+            } catch (error) {
+                addLog(`❌ Error ejecutando tests: ${error.message}`, 'error');
+                gameStatus.textContent = '❌ Error en tests';
+            } finally {
+                runTestsBtn.disabled = false;
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 2000);
+            }
+        }
+        
+        // Actualizar barra de progreso
+        function updateProgress(percentage, text) {
+            progressFill.style.width = `${percentage}%`;
+            progressText.textContent = text;
+        }
+        
+        // Mostrar resultados
+        function displayResults(results) {
+            resultsContainer.style.display = 'block';
+            
+            let html = `
+                <div class="test-result ${results.passed ? 'passed' : 'failed'}">
+                    <h4>${results.passed ? '✅' : '❌'} Resultado General</h4>
+                    <div class="test-details">
+                        <p><strong>Tests ejecutados:</strong> ${results.summary.totalTests}</p>
+                        <p><strong>Tests pasados:</strong> ${results.summary.passedTests}</p>
+                        <p><strong>Tests fallidos:</strong> ${results.summary.failedTests}</p>
+                        <p><strong>Warnings:</strong> ${results.summary.totalWarnings}</p>
+                        <p><strong>Errores:</strong> ${results.summary.totalErrors}</p>
+                        <p><strong>Tasa de éxito:</strong> ${results.summary.successRate.toFixed(1)}%</p>
+                    </div>
+                </div>
+            `;
+            
+            // Mostrar resultados individuales
+            for (const [testName, result] of Object.entries(results.testResults)) {
+                html += `
+                    <div class="test-result ${result.passed ? 'passed' : 'failed'}">
+                        <h4>${result.passed ? '✅' : '❌'} ${testName}</h4>
+                        <div class="test-details">
+                            <p><strong>Estado:</strong> ${result.passed ? 'PASADO' : 'FALLIDO'}</p>
+                            <p><strong>Errores:</strong> ${result.errors.length}</p>
+                            <p><strong>Warnings:</strong> ${result.warnings.length}</p>
+                            ${result.errors.length > 0 ? `<p><strong>Detalles de errores:</strong><br>${result.errors.join('<br>')}</p>` : ''}
+                            ${result.warnings.length > 0 ? `<p><strong>Warnings:</strong><br>${result.warnings.join('<br>')}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            resultsContent.innerHTML = html;
+        }
+        
+        // Agregar entrada al log
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContent.appendChild(logEntry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+        
+        // Toggle logs
+        function toggleLogs() {
+            if (logContainer.style.display === 'none' || !logContainer.style.display) {
+                logContainer.style.display = 'block';
+                showLogsBtn.textContent = '📋 Ocultar Logs';
+            } else {
+                logContainer.style.display = 'none';
+                showLogsBtn.textContent = '📋 Mostrar Logs';
+            }
+        }
+        
+        // Limpiar resultados
+        function clearResults() {
+            resultsContainer.style.display = 'none';
+            logContent.innerHTML = '';
+            progressContainer.style.display = 'none';
+            addLog('🗑️ Resultados limpiados', 'info');
+        }
+        
+        // Interceptar logs del juego
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        
+        console.log = (...args) => {
+            originalConsoleLog.apply(console, args);
+            addLog(args.join(' '), 'info');
+        };
+        
+        console.error = (...args) => {
+            originalConsoleError.apply(console, args);
+            addLog(args.join(' '), 'error');
+        };
+        
+        console.warn = (...args) => {
+            originalConsoleWarn.apply(console, args);
+            addLog(args.join(' '), 'warning');
+        };
+        
+        // Inicialización
+        addLog('🛡️ Sistema de tests de seguridad iniciado', 'info');
+        addLog('📋 Haz clic en "Iniciar Juego" para comenzar', 'info');
+    </script>
+</body>
+</html> 
